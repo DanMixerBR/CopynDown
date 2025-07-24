@@ -2,6 +2,16 @@
 
 Discover the best script to download videos from YouTube and Instagram, developed in 2023 by **DanMixerBR**. The scripts use the latest version of **yt-dlp** and **ffmpeg**.
 
+**Credits:**
+
+@DanMixerBR, for creating the BAT scripts with custom commands and a simple interface for downloading videos!
+@bashonly, for helping with questions about yt-dlp!
+@pukkandan and all the members of the official project!
+
+**Important notes: **
+
+- For subtitles to be recognized by televisions and other devices, the subtitle file must have the same name as the video and be saved in the same folder.
+
 **INSTRUCTIONS:**
 
 1. Download the latest version here on GitHub;
