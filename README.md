@@ -5,9 +5,11 @@ Discover the best script to download videos from YouTube and Instagram, develope
 
 **CREDITS:**
 
-@DanMixerBR for creating the BAT scripts with custom commands and a simple interface for downloading videos!
-@bashonly for helping with questions about yt-dlp!
-@pukkandan and all the members of the official project!
+**@DanMixerBR** for creating the BAT scripts with custom commands and a simple interface for downloading videos!
+<br> </br>
+**@bashonly** for helping with questions about yt-dlp!
+<br> </br>
+**@pukkandan** and all the members of the official project!
 <br> </br>
 
 **IMPORTANT NOTES:**
