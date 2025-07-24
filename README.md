@@ -19,18 +19,16 @@ Discover the best script to download videos from YouTube and Instagram, develope
 
 **INSTRUCTIONS:**
 
-1. Download the latest version here on GitHub;
+1. Download the latest version here on GitHub.
 
-2. Unzip the **.7z** file to any location on your computer;
+2. Unzip the **.zip** file to any location on your computer.
 
-3. Run the desired script. Example: **YT Video Downloader.bat**;
+3. Run the desired script. Example: **YT Video Downloader.bat**.
 
-4. Enter the link of the video you want to download and press **Enter**. The video will be automatically downloaded in the best quality available.
+4. Enter the link of the video you want to download and press **Enter**. The video will automatically download in the best available quality.
 
 ![Screenshot_29](https://github.com/user-attachments/assets/08708010-a19c-466c-96eb-7f7cd61ade09)
 
-5. Downloads are available in the same folder as the script. Example: "**videos**" folder for YouTube downloads and "**reels**" folder for Instagram downloads.
+5. Downloaded videos are saved in the "**videos**" folder and audio files are saved in the **"audios**" folder.
 
 ![image](https://github.com/user-attachments/assets/0cc51162-455a-4894-8398-26cbb5492b95)
-
-If you have any questions, visit our Discord: https://discord.gg/579dn6xk
