@@ -5,11 +5,13 @@ The best script for downloading videos from YouTube and Instagram, developed in 
 
 **CREDITS:**
 
-**@DanMixerBR** for creating the BAT scripts with custom commands and a simple interface for downloading videos!
+**@DanMixerBR**, for creating the **BAT scripts** with custom commands and a simple interface for downloading videos.
 <br> </br>
-**@bashonly** for helping with questions about yt-dlp!
+**@bashonly**, for helping with questions related to **yt-dlp**.
 <br> </br>
-**@pukkandan** and all the members of the official project!
+**@GyanD**, for compiling **FFmpeg Essentials**.
+<br> </br>
+**@pukkadan** and all the contributors to the official **yt-dlp** project.
 <br> </br>
 
 **IMPORTANT NOTES:**
