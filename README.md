@@ -1,11 +1,11 @@
 ﻿# **CopynDown**
 
-**Developed by DanMixerBR**
+Developed by **DanMixerBR**
 <br> </br>
 CopynDown is a robust Python-based solution for downloading content from YouTube and Instagram. Featuring a lightweight and intuitive interface, the app allows you to download MP4 videos at maximum resolution and extract audio in multiple formats with just a few clicks.
 <br> </br>
 
-**Powered by:**
+Powered by:
 <br>
 **yt-dlp core**
 <br>
