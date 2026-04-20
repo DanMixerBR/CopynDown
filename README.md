@@ -12,7 +12,7 @@ Powered by:
 **Deno Runtime**
 <br>
 **FFmpeg Essentials**
-<br>
+<br> </br>
 
 **Important note:** For subtitles to be recognized by TVs and other devices, the subtitle file must have the same name as the video and be saved in the same location.
 <br> </br>
