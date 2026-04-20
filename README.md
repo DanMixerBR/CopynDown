@@ -1,36 +1,15 @@
-﻿# **YT Video Downloader**
+﻿# **CopynDown**
 
-The best script for downloading videos from YouTube and Instagram, developed in 2023 by **DanMixerBR**. It uses the latest versions of **yt-dlp** and **ffmpeg**.
+**Developed by DanMixerBR**
+<br> </br>
+CopynDown is a robust Python-based solution for downloading content from YouTube and Instagram. Featuring a lightweight and intuitive interface, the app allows you to download MP4 videos at maximum resolution and extract audio in multiple formats with just a few clicks.
 <br> </br>
 
-**CREDITS:**
-
-**@DanMixerBR**, for creating the **BAT scripts** with custom commands and a simple interface for downloading videos.
+**Powered by:**
 <br> </br>
-**@bashonly**, for helping with questions related to **yt-dlp**.
+yt-dlp core
+Deno Runtime
+FFmpeg Essentials
+
+**Important note:** For subtitles to be recognized by TVs and other devices, the subtitle file must have the same name as the video and be saved in the same location.
 <br> </br>
-**@GyanD**, for compiling **FFmpeg Essentials**.
-<br> </br>
-**@pukkadan** and all the contributors to the official **yt-dlp** project.
-<br> </br>
-
-**IMPORTANT NOTES:**
-
-- For subtitles to be recognized by televisions and other devices, the subtitle file must have the same name as the video and be saved in the same folder.
-<br> </br>
-
-**INSTRUCTIONS:**
-
-1. Download the latest version here on GitHub.
-
-2. Unzip the **.zip** file to any location on your computer.
-
-3. Run the desired script. Example: **YT Video Downloader.bat**.
-
-4. Enter the link of the video you want to download and press **Enter**. The video will automatically download in the best available quality.
-
-![Screenshot_29](https://github.com/user-attachments/assets/08708010-a19c-466c-96eb-7f7cd61ade09)
-
-5. Downloaded videos are saved in the "**videos**" folder and audio files are saved in the **"audios**" folder.
-
-![image](https://github.com/user-attachments/assets/0cc51162-455a-4894-8398-26cbb5492b95)
