@@ -6,12 +6,13 @@ CopynDown is a robust Python-based solution for downloading content from YouTube
 <br> </br>
 
 **Powered by:**
-<br> </br>
-yt-dlp core
-<br> </br>
-Deno Runtime
-<br> </br>
-FFmpeg Essentials
+<br>
+**yt-dlp core**
+<br>
+**Deno Runtime**
+<br>
+**FFmpeg Essentials**
+<br>
 
 **Important note:** For subtitles to be recognized by TVs and other devices, the subtitle file must have the same name as the video and be saved in the same location.
 <br> </br>
