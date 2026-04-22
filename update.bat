@@ -14,4 +14,4 @@ echo.
 echo.
 
 timeout /t 5
-(goto) 2>nul & del "%~f0"
+start /b "" cmd /c "timeout /t 1 >nul & del /f /q "%~f0""
