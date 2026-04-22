@@ -14,4 +14,4 @@ echo.
 echo.
 
 pause
-start /b "" cmd /c "timeout /t 1 >nul & del /f /q "%~f0""
+start /b "" cmd /c "del /f /q "%~f0""
