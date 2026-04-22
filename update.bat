@@ -22,11 +22,11 @@ del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.
 echo.
 echo %G%-------------------------------------------------------%W%
 echo   [SUCCESS] Update completed!
-echo   Please restart the app
+echo   Please restart the app.
 echo %G%-------------------------------------------------------%W%
 echo.
 
-timeout /t 7 >nul
+timeout /t 5
 
 :: Self-deletion logic to keep the workspace clean
 start /b "" cmd /c "timeout /t 1 >nul & del /f /q "%~f0""
