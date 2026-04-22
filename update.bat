@@ -1,6 +1,6 @@
 @echo off
 echo.
-Updating CopynDown... Please wait.
+echo Updating CopynDown... Please wait.
 echo.
 powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
 
