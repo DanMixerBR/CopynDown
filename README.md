@@ -6,15 +6,15 @@ CopynDown is a robust Python-based solution for downloading media from several p
 <br> </br>
 
 Powered by:
-<br>
+<br> </br>
 **Python**
-<br>
+<br> </br>
 **CustomTkinter**
-<br>
+<br> </br>
 **yt-dlp core**
-<br>
+<br> </br>
 **Deno Runtime**
-<br>
+<br> </br>
 **FFmpeg Essentials**
 <br> </br>
 
