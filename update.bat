@@ -14,8 +14,8 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
-cd..
 powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force" 2>&1
+cd..
 powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force" 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
