@@ -22,7 +22,7 @@ echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
 rmdir /s /q "bin"
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" >nul 2>&1
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
-del /f /q "core\CopynDown.zip" "CopynDown.exe" "core\Auto Update.bat" >nul 2>&1
+del /f /q "core\CopynDown.zip" "CopynDown.zip" "CopynDown.exe" "core\Auto Update.bat" >nul 2>&1
 
 echo.
 echo %G%-------------------------------------------------------%W%
