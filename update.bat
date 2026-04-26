@@ -1,5 +1,5 @@
 @echo off
-title CopynDown Updater v20
+title CopynDown Updater
 cls
 
 :: ANSI Color Definitions
@@ -10,21 +10,21 @@ set "W=%ESC%[0m"
 set "Y=%ESC%[93m"
 
 echo %C%=======================================================%W%
-echo           %G%CopynDown%W% - %Y%Update Manager%W%
+echo           %G%CopynDown v20%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-cd..
 rmdir /s /q "bin" "core\certifi" "core\charset_normalizer" "core\customtkinter" "core\PIL" "core\tcl" "core\tcl8" "core\tk" >nul 2>&1
-del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" >nul 2>&1
+del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Auto Update.bat" >nul 2>&1
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
-del /f /q "core\CopynDown.zip" "CopynDown.zip" "core\Auto Update.bat" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
-if exist "CopynDown.zip" (
-    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
-) else (
-    powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
+if exist "certifi" (
+    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
+	del /f /q "CopynDown.zip"
+) else (   
+	powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
+	del /f /q "CopynDown.zip"
 )
 
 echo.
