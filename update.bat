@@ -14,9 +14,9 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
-powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
+if exist "CopynDown.zip" powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
 cd..
-powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
+if exist "core\CopynDown.zip" powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force"
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
 rmdir /s /q "bin"
