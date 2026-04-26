@@ -15,7 +15,7 @@ echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 cd..
-powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force"
+powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath 'core' -Force"
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
 rmdir /s /q "core\bin"
