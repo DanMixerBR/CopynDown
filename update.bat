@@ -18,10 +18,10 @@ cd..
 powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath 'core' -Force"
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-rmdir /s /q "core\bin"
+rmdir /s /q "bin"
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" 
-del /f /q "Readme (EN).txt" "Readme (PT).txt" "core\bin\Readme (EN).txt" "core\bin\Readme (PT).txt" "YT.Video.Downloader.zip" 
-del /f /q "core\CopynDown.zip" "core\CopynDown.exe.old" "core\bin\update.bat" "core\Auto Update.bat" >nul 2>&1
+del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" 
+del /f /q "core\CopynDown.zip" "core\CopynDown.exe.old" "core\Auto Update.bat" >nul 2>&1
 
 echo.
 echo %G%-------------------------------------------------------%W%
