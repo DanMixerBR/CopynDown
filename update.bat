@@ -22,9 +22,9 @@ del /f /q "core\CopynDown.zip" "CopynDown.zip" "core\Auto Update.bat" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 if exist "CopynDown.zip" (
-    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
+    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
 ) else (
-    powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force"
+    powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force" >nul 2>&1
 )
 
 echo.
