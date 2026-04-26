@@ -14,10 +14,13 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
-powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
+cd..
+powershell -command "Expand-Archive -Path 'core\CopynDown.zip' -DestinationPath '.' -Force"
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Readme (EN).txt" "Readme (PT).txt" "bin\Readme (EN).txt" "bin\Readme (PT).txt" "YT.Video.Downloader.zip" "CopynDown.zip" "CopynDown.exe.old" "bin\update.bat" "Auto Update.bat" >nul 2>&1
+del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" 
+del /f /q "Readme (EN).txt" "Readme (PT).txt" "core\bin\Readme (EN).txt" "core\bin\Readme (PT).txt" "YT.Video.Downloader.zip" 
+del /f /q "core\CopynDown.zip" "core\CopynDown.exe.old" "core\bin\update.bat" "core\Auto Update.bat" >nul 2>&1
 
 echo.
 echo %G%-------------------------------------------------------%W%
