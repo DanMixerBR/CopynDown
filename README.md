@@ -6,7 +6,7 @@ Developed by **DanMixerBR**
 CopynDown is a robust Python-based solution for downloading media from several platforms. Featuring a lightweight and efficient interface, the app allows you to download videos and audios with just a few clicks.
 <br> </br>
 
-<img width="802" height="682" alt="image" src="https://github.com/user-attachments/assets/fc9e3911-5eaf-4be2-aa8b-7fe21529fe45" />
+<img width="802" height="682" alt="image" src="https://github.com/user-attachments/assets/8b06b2fb-fb3d-42d1-bba5-2d9b662b2076" />
 <br> </br>
 
 
