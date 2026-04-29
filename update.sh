@@ -15,7 +15,6 @@ echo ""
 
 echo -e "${C}[${W}*${C}]${W} Status: ${Y}Extracting new files...${W}"
 
-# O PULO DO GATO: O "-d .." força a extração para uma pasta antes da atual
 unzip -o CopynDown_Linux.zip -d .. > /dev/null 2>&1
 
 chmod +x CopynDown.bin
@@ -24,7 +23,6 @@ chmod +x bin/ffmpeg
 chmod +x bin/ffprobe
 chmod +x bin/deno
 
-# Deleta o arquivo zip (que continua na pasta atual) após a extração
 rm -f CopynDown_Linux.zip
 
 echo ""
@@ -34,8 +32,6 @@ echo "  Please restart the app."
 echo -e "${G}-------------------------------------------------------${W}"
 echo ""
 
-# Aguarda 5 segundos
 sleep 5
 
-# Lógica de auto-deleção (Apaga o próprio script)
 rm -- "$0"
