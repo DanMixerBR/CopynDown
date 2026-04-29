@@ -22,7 +22,7 @@ echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 if exist "certifi" and 'CopynDown_Windows.zip' (
     powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
 	del /f /q "CopynDown_Windows.zip"
-) elif exist "certifi" and "CopynDown.zip" (
+) else if exist "certifi" and "CopynDown.zip" (
     powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
     del /f /q "CopynDown.zip"
 ) else (   
