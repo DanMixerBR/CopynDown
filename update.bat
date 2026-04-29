@@ -14,7 +14,8 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-rmdir /s /q "bin" "core\certifi" "core\charset_normalizer" "core\customtkinter" "core\PIL" "core\tcl" "core\tcl8" "core\tk" >nul 2>&1
+robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
+rmdir /s /q "core\certifi" "core\charset_normalizer" "core\customtkinter" "core\PIL" "core\tcl" "core\tcl8" "core\tk" >nul 2>&1
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Auto Update.bat" >nul 2>&1
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
 
