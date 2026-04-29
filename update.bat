@@ -10,7 +10,7 @@ set "W=%ESC%[0m"
 set "Y=%ESC%[93m"
 
 echo %C%=======================================================%W%
-echo           %G%CopynDown v20%W% - %Y%Update Manager%W%
+echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
