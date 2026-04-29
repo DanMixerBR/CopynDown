@@ -1,23 +1,25 @@
 #!/bin/bash
 
-# Garante que o script está rodando na pasta certa
-cd "$(dirname "$0")" || exit
+# 1. Pega o caminho ABSOLUTO de onde o script e o ZIP realmente estão
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_NAME="$(basename "$0")"
+
+# 2. Se o terminal for invisível (chamado pelo Python), abre uma janela real
+if [ ! -t 1 ]; then
+    if command -v gnome-terminal &> /dev/null; then
+        # Força o terminal novo a entrar na pasta correta antes de rodar!
+        gnome-terminal -- bash -c "cd '$SCRIPT_DIR' && bash '$SCRIPT_NAME'"
+    elif command -v xterm &> /dev/null; then
+        xterm -e bash -c "cd '$SCRIPT_DIR' && bash '$SCRIPT_NAME'"
+    fi
+    exit 0 # Mata o processo invisível antigo
+fi
+
+# 3. Garante que o terminal visível trabalhe dentro da pasta certa
+cd "$SCRIPT_DIR" || exit
 
 # =================================================================
-# O PULO DO GATO: DETECÇÃO DE TERMINAL INVISÍVEL
-# =================================================================
-# O comando [ ! -t 1 ] verifica se o script NÃO tem uma tela conectada a ele.
-if [ ! -t 1 ]; then
-    # Se estiver invisível, ele tenta abrir o próprio script em um terminal real
-    if command -v gnome-terminal &> /dev/null; then
-        gnome-terminal -- bash "$0"
-    elif command -v xterm &> /dev/null; then
-        xterm -e bash "$0"
-    else
-        bash "$0" # Fallback: se o usuário tiver um Linux exótico sem terminal padrão
-    fi
-    exit 0 # Mata a versão invisível original
-fi
+# INTERFACE VISUAL E LÓGICA DE EXTRAÇÃO
 # =================================================================
 
 # ANSI Color Definitions
@@ -35,7 +37,7 @@ echo ""
 
 echo -e "${C}[${W}*${C}]${W} Status: ${Y}Extracting new files...${W}"
 
-# Extrai o zip uma pasta para trás
+# Extrai o zip uma pasta para trás (na raiz do app)
 unzip -o CopynDown_Linux.zip -d .. > /dev/null 2>&1
 
 # Deleta o arquivo zip após a extração
@@ -48,8 +50,8 @@ echo "  Please restart the app."
 echo -e "${G}-------------------------------------------------------${W}"
 echo ""
 
-# Agora a janela preta vai ficar visível por 5 segundos!
+# Aguarda 5 segundos para o usuário ler a tela
 sleep 5
 
-# Lógica de auto-deleção (Apaga o próprio script)
-rm -- "$0"
+# Lógica de auto-deleção à prova de falhas (usando o caminho absoluto)
+rm -f "$SCRIPT_DIR/$SCRIPT_NAME"
