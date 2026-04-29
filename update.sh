@@ -16,10 +16,10 @@ echo ""
 echo -e "${C}[${W}*${C}]${W} Status: ${Y}Extracting new files...${W}"
 
 # Extrai o zip sobrescrevendo os arquivos antigos sem perguntar (-o)
-unzip -o CopynDown.zip > /dev/null 2>&1
+unzip -o CopynDown_Linux.zip > /dev/null 2>&1
 
 # Deleta o arquivo zip após a extração
-rm -f CopynDown.zip
+rm -f CopynDown_Linux.zip
 
 echo ""
 echo -e "${G}-------------------------------------------------------${W}"
