@@ -19,15 +19,22 @@ del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
-if exist "certifi" if exist "CopynDown_Windows.zip" (
-    powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
-	del /f /q "CopynDown_Windows.zip"
-) else if exist "certifi" if exist "CopynDown.zip" (
-    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
-    del /f /q "CopynDown.zip"
-) else (   
-	powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
-	del /f /q "CopynDown.zip"
+if exist "certifi" (
+    if exist "CopynDown_Windows.zip" (
+        powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
+        del /f /q "CopynDown_Windows.zip"
+    ) else if exist "CopynDown.zip" (
+        powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
+        del /f /q "CopynDown.zip"
+    )
+) else (
+    if exist "CopynDown_Windows.zip" (
+        powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '.' -Force"
+        del /f /q "CopynDown_Windows.zip"
+    ) else if exist "CopynDown.zip" (
+        powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
+        del /f /q "CopynDown.zip"
+    )
 )
 
 echo.
