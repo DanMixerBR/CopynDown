@@ -17,7 +17,7 @@ echo -e "${C}[${W}*${C}]${W} Status: ${Y}Extracting new files...${W}"
 
 unzip -o CopynDown_Linux.zip -d .. > /dev/null 2>&1
 
-chmod +x CopynDown.bin
+chmod +x CopynDown
 chmod +x bin/yt-dlp
 chmod +x bin/ffmpeg
 chmod +x bin/ffprobe
