@@ -20,11 +20,11 @@ del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 if exist "certifi" (
-    powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
-	del /f /q "CopynDown.zip"
+    powershell -command "Expand-Archive -Path '"CopynDown_Windows.zip"' -DestinationPath '..' -Force"
+	del /f /q "CopynDown.zip" "CopynDown_Windows.zip"
 ) else (   
-	powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
-	del /f /q "CopynDown.zip"
+	powershell -command "Expand-Archive -Path '"CopynDown_Windows.zip"' -DestinationPath '.' -Force"
+	del /f /q "CopynDown.zip" "CopynDown_Windows.zip"
 )
 
 echo.
