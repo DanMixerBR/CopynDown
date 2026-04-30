@@ -15,14 +15,17 @@
 
 ## 📸 Screenshots
 
-![Windows Interface]([link-imagem-windows.png])
-*CopynDown running on Windows.*
+<p align="center">
+  <img src="assets/windows_ui.png" alt="Windows Interface" width="50%">
+  <br>
+  <em>CopynDown running on Windows.</em>
+</p>
 
-![Linux Interface]([link-imagem-linux.png])
-*CopynDown running on Ubuntu.*
-
-
-
+<p align="center">
+  <img src="assets/linux_ui.png" alt="Linux Interface" width="50%">
+  <br>
+  <em>CopynDown running on Ubuntu.</em>
+</p>
 
 ## ⚙️ Supported Formats & Resolutions
 
@@ -105,5 +108,6 @@ This project is built using:
 * [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) for the modern UI.
 * [yt-dlp](https://github.com/yt-dlp/yt-dlp) for media downloading.
 * [FFmpeg](https://ffmpeg.org/) for media conversion.
+* [Deno](https://deno.com/) as the JavaScript runtime for executing complex extraction scripts.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
