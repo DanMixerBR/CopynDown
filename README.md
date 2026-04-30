@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/c062d9b9-e05b-4d09-8d6f-905fb2a59daa" alt="CopynDown Logo" width="150">
+  <img src="assets/Logo.png" alt="CopynDown Logo" width="150">
   <h1>CopynDown</h1>
   <p>A modern, fast, and cross-platform media downloader and converter.</p>
   <p><b>Developed with 💻 by DanMixerBR</b></p>
