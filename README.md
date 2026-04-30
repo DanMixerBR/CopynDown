@@ -71,7 +71,8 @@ It is completely safe to bypass this warning. To do so:
 1. Click on **"More info"** at the end of the paragraph.
 2. A new button will appear at the bottom. Click on **"Run anyway"**.
 
-![SmartScreen Bypass]([link-do-seu-print-ou-gif-do-smartscreen])
+<img src="assets/SmartScreen_Bypass_1.png" alt="Windows Interface" width="50%">
+<img src="assets/SmartScreen_Bypass_2.png" alt="Windows Interface" width="50%">
 
 *Note: You will only need to do this once. If you want to verify the safety of the application, feel free to inspect the open-source code in this repository.*
 
