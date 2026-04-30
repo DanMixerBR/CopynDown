@@ -1,0 +1,90 @@
+========================================================================
+                 COPYNDOWN - TECHNICAL SPECIFICATIONS
+========================================================================
+Version: 25
+Engines: yt-dlp, FFmpeg
+========================================================================
+
+This document outlines the default parameters, codecs, and arguments 
+used by CopynDown's engines for downloading and converting media.
+
+------------------------------------------------------------------------
+1. YT-DLP ENGINE (DOWNLOADS)
+------------------------------------------------------------------------
+
+[GLOBAL ARGUMENTS]
+- Ignore errors: -i
+- Output Template (Social Media*): %(uploader)s [%(id)s].%(ext)s
+- Output Template (Standard): %(title)s.%(ext)s
+* Social media includes Instagram, TikTok, Kwai, Twitter/X, Facebook, Reddit, LinkedIn, Pinterest, and Snapchat.
+
+[VIDEO DOWNLOAD ARGUMENTS]
+- Embed Thumbnail: --embed-thumbnail (Except for WEBM)
+- Embed Metadata: --embed-metadata
+- Embed Subtitles: --write-subs --write-auto-subs --sub-langs [lang] --convert-subs srt --embed-subs
+
+[VIDEO FORMAT SELECTION (-S)]
+- MP4 Target:  res:[Y],aext:m4a
+- MKV Target:  res:[Y],aext:opus
+- WEBM Target: res:[Y],vcodec:vp9,aext:opus
+- 1080p H.264: res:1080,vcodec:avc1,aext:m4a
+- Remuxing:    --merge-output-format [EXT] --remux-video [EXT]
+*(Where [Y] is the selected resolution: 360, 480, 720, 1080, 1440, 2160)*
+
+[AUDIO DOWNLOAD ARGUMENTS]
+- Extract Audio: -x
+- Audio Format:  --audio-format [EXT]
+- Quality (128k/192k/320k): --audio-quality [BITRATE]
+- Embed Thumbnail: --embed-thumbnail (Except for WAV)
+- Embed Metadata:  --embed-metadata --parse-metadata "%(playlist_index|)s:%(track_number)s" (Except for WAV)
+
+
+------------------------------------------------------------------------
+2. FFMPEG ENGINE (CONVERSIONS)
+------------------------------------------------------------------------
+
+[GLOBAL ARGUMENTS]
+- Overwrite existing: -y
+- Input: -i [SOURCE]
+
+[VIDEO CODECS (-c:v)]
+- H.264: libx264    | Params: -crf 18 -preset faster
+- H.265: libx265    | Params: -crf 22 -preset faster -tag:v hvc1
+- VP9:   libvpx-vp9 | Params: -crf 20 -b:v 0 -row-mt 1 -cpu-used 4
+- Copy:  copy       | (No re-encoding)
+- None:  -vn        | (Drops video stream)
+
+[AUDIO CODECS (-c:a)]
+- AAC:   aac          | Params: -b:a 192k
+- MP3:   libmp3lame   | Params: -b:a 192k (or 320k for audio extraction)
+- Opus:  libopus      | Params: -b:a 192k
+- Ogg:   libvorbis    | Params: (Varies based on target bitrate)
+- FLAC:  flac         | (Lossless, no bitrate specified)
+- WAV:   pcm_s16le    | (Uncompressed)
+- Copy:  copy         | (No re-encoding)
+- None:  -an          | (Drops audio stream)
+
+[AUDIO MODIFIERS]
+- Channels (-ac): 2 (Stereo) or 1 (Mono)
+- Sample Rate (-ar): 48000 or 44100
+
+
+------------------------------------------------------------------------
+3. INTELLIGENT AUTO-FIXES (COMPATIBILITY SAFEGUARDS)
+------------------------------------------------------------------------
+To prevent conversion failures and ensure playback compatibility across 
+all devices, CopynDown applies the following automatic overwrites:
+
+# AVI Compatibility Lock
+- If target is AVI and Video Codec is 'Copy' -> Forces 'libx264'
+- If target is AVI and Audio Codec is incompatible (AAC/FLAC/Opus/Copy) -> Forces 'libmp3lame'
+
+# WEBM Compatibility Lock
+- If target is WEBM and Video Codec is H.264/H.265/Copy -> Forces 'libvpx-vp9'
+- If target is WEBM and Audio Codec is AAC/MP3/FLAC/Copy -> Forces 'libopus'
+- If user attempts to download WEBM format with '1080p (H.264)' -> Forces '1080p (AV1/VP9)'
+
+# Extract Original Lock
+- If user extracts pure audio into MP3 container -> Forces re-encoding to 320kbps MP3
+- If user extracts pure audio into WAV container -> Forces re-encoding to pcm_s16le
+*(Pure copy into these containers from random sources often breaks container headers).*
