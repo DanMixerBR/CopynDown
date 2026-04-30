@@ -79,7 +79,7 @@ If you are a developer and want to run CopynDown directly from the Python source
 
 1. Clone this repository:
    ```bash
-   git clone [https://github.com/](https://github.com/)[DanMixerBR]/CopynDown.git
+   git clone https://github.com/DanMixerBR/CopynDown.git
    ```
 2. Navigate to the project directory:
    ```bash
@@ -91,7 +91,7 @@ If you are a developer and want to run CopynDown directly from the Python source
    ```
 4. Run the application:
    ```bash
-   python main.py
+   python copyndown.py
    ```
 
 ## 👨‍💻 Author
