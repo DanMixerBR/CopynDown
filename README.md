@@ -41,15 +41,15 @@
 ## 📥 Installation
 
 ### Windows
-1. Download the latest release of `CopynDown_Windows.zip` from the [Releases]([seu-link-de-releases-aqui]) page.
+1. Download the latest release of `CopynDown_Windows.zip` from the [Releases](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip) page.
 2. Extract the downloaded `.zip` file to your preferred folder.
 3. Double-click the `CopynDown.exe` file to run the application.
 
 ### Linux
-1. Download the latest release of `CopynDown_Linux.zip` from the [Releases]([seu-link-de-releases-aqui]) page.
+1. Download the latest release of `CopynDown_Linux.zip` from the [Releases](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip) page.
 2. Extract the downloaded `.zip` file.
-3. Right-click the `Install_CopynDown.sh` file, select **Properties**, go to the **Permissions** tab, and check **"Allow executing file as program"**.
-4. Double-click `Install_CopynDown.sh` and select **"Run as a program"** (or run it via terminal).
+3. Right-click the `Install_CopynDown.sh` and select **"Run as a program"** (or run it via terminal).
+4. Right-click `CopynDown` shortcut and select **"Allow Launching"** to run the application.
 
 > **Note:** The Linux installation script will automatically configure the required environment and create a convenient shortcut on both your Desktop and your Application Menu!
 
@@ -76,4 +76,34 @@ If you are a developer and want to run CopynDown directly from the Python source
 
 1. Clone this repository:
    ```bash
-   git clone [https://github.com/](https://github.com/)[SeuUsuario]/CopynDown.git
+   git clone [https://github.com/](https://github.com/)[DanMixerBR]/CopynDown.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd CopynDown
+   ```
+3. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the application:
+   ```bash
+   python main.py
+   ```
+
+## 👨‍💻 Author
+
+**DanMixerBR**  
+*Creator and Lead Developer*  
+If you have any questions, suggestions, or just want to say hi, feel free to reach out!
+* GitHub: [@DanMixerBR](https://github.com/DanMixerBR)
+
+## ⚖️ Credits & License
+
+This project is built using:
+* [Python](https://www.python.org/)
+* [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) for the modern UI.
+* [yt-dlp](https://github.com/yt-dlp/yt-dlp) for media downloading.
+* [FFmpeg](https://ffmpeg.org/) for media conversion.
+
+This project is licensed under the MIT License - see the LICENSE file for details.
