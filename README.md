@@ -24,7 +24,7 @@ Video: MP4, MKV, WEBM, MOV, and AVI.
 Audio: M4A, MP3, FLAC, WAV, Opus, and Ogg.
 <br> </br>
 
-<img width="802" height="682" alt="image" src="https://github.com/user-attachments/assets/8b06b2fb-fb3d-42d1-bba5-2d9b662b2076" />
+<img width="832" height="682" alt="image" src="https://github.com/user-attachments/assets/53f7bfb2-a8c6-4371-afc2-6440b46cdb7f" />
 <br> </br>
 
 
