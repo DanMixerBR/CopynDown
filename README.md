@@ -91,7 +91,7 @@ If you are a developer and want to run CopynDown directly from the Python source
    ```
 4. Run the application:
    ```bash
-   python copyndown.py
+   python main.py
    ```
 
 ## 👨‍💻 Author
