@@ -27,7 +27,9 @@
   <em>CopynDown running on Ubuntu.</em>
 </p>
 
-## ⚙️ Supported Formats & Resolutions
+## ⚙️ Supported Sites, Formats & Resolutions
+
+**Supported websites:** YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Facebook, Twitter/X, Reddit, and SoundCloud.
 
 **Supported video resolutions:** 2160p (4K), 1440p (QHD), 1080p (Full HD), 720p, 480p, and 360p.
 
