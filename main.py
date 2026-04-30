@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "24.2"
+        self.version = "24.3"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -1589,17 +1589,23 @@ class DownloaderApp(ctk.CTk):
         ctk.CTkLabel(scroll_frame, text="Developed by DanMixerBR", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=(0, 25))
         
         desc_text = (
-            "CopynDown is a robust Python-based solution for downloading media from several platforms. "
-            "Featuring a lightweight and efficient interface, the app allows you to download video and audio files with just a few clicks.\n\n"
-            "Supported websites: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Facebook, Twitter/X, Reddit, and SoundCloud."
+            "A modern, fast, and cross-platform media downloader and converter. "
+            "Featuring a lightweight interface, it allows you to easily download and convert video and audio files from several platforms with just a few clicks.\n\n"
+            "Supported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Facebook, Twitter/X, Reddit, and SoundCloud."
         )
         ctk.CTkLabel(scroll_frame, text=desc_text, font=("Segoe UI", 13), justify="left", wraplength=550).pack(anchor="w", pady=10)
-        ctk.CTkLabel(scroll_frame, text="Powered by:", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=(30, 10))
+        ctk.CTkLabel(scroll_frame, text="Credits & License", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=(30, 10))
         
-        for lib in ["Python", "CustomTkinter", "yt-dlp core", "Deno Runtime", "FFmpeg Essentials"]:
-            f = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-            f.pack(fill="x", pady=2)
-            ctk.CTkLabel(f, text=lib, font=("Segoe UI", 13)).pack(anchor="w")
+        credits_text = (
+            "Built with:\n\n"
+            "• Python\n"
+            "• CustomTkinter\n"
+            "• yt-dlp\n"
+            "• FFmpeg\n"
+            "• Deno\n\n"
+            "This software is distributed under the MIT License."
+        )
+        ctk.CTkLabel(scroll_frame, text=credits_text, font=("Segoe UI", 13), justify="left").pack(anchor="w", pady=10)
             
         btn_frame = ctk.CTkFrame(self.about_win, fg_color="transparent")
         btn_frame.pack(pady=15)
