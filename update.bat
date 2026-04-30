@@ -14,7 +14,6 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
 rmdir /s /q "core\certifi" "core\charset_normalizer" "core\customtkinter" "core\PIL" "core\tcl" "core\tcl8" "core\tk" >nul 2>&1
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Auto Update.bat" >nul 2>&1
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
@@ -33,6 +32,7 @@ if exist "certifi" (
         powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '.' -Force"
         del /f /q "CopynDown_Windows.zip"
     ) else if exist "CopynDown.zip" (
+        robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
         powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
         del /f /q "CopynDown.zip"
     )
