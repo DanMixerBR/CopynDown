@@ -615,7 +615,7 @@ class DownloaderApp(ctk.CTk):
     def on_focus(self, event):
         try:
             if not self.config_data.get("General", {}).get("auto_paste", True): return
-            if getattr(self, 'is_busy', False) or getattr(self, 'is_updating', False): return
+            
             if self.current_category.get() in [self.TAB_C_VID, self.TAB_C_AUD]: return
                 
             text = self.clipboard_get()[:2000]
@@ -626,8 +626,15 @@ class DownloaderApp(ctk.CTk):
                         self.status_id = None
                     self.url_entry.delete(0, 'end')
                     self.url_entry.insert(0, text)
-                    self.reset_status(text="URL Auto-Detected!")
-                    self.schedule_reset(5000)
+                    
+                    self.evaluate_ui_state()
+                    
+                    if not getattr(self, 'is_busy', False) and not getattr(self, 'is_updating', False):
+                        if self.status_id: 
+                            self.after_cancel(self.status_id)
+                            self.status_id = None
+                        self.reset_status(text="URL Auto-Detected!")
+                        self.schedule_reset(5000)
         except Exception as e:
             pass
 
@@ -637,12 +644,16 @@ class DownloaderApp(ctk.CTk):
             self.url_entry.delete(0, 'end')
             self.url_entry.insert(0, clipboard)
             
-            if self.is_valid_media_url(clipboard):
-                self.reset_status(text="URL Detected!")
-                self.schedule_reset(5000)
-            else:
-                self.reset_status("Invalid URL!", color="#f85149")
-                self.schedule_reset(5000)
+            self.evaluate_ui_state()
+            
+            if not getattr(self, 'is_busy', False) and not getattr(self, 'is_updating', False):
+                if self.is_valid_media_url(clipboard):
+                    self.reset_status(text="URL Detected!")
+                    self.schedule_reset(5000)
+                else:
+                    self.reset_status("Invalid URL!", color="#f85149")
+                    self.schedule_reset(5000)
+                    
         except Exception as e:
             if e.__class__.__name__ != 'TclError': 
                 self.add_to_log(f">>> Unexpected error reading clipboard: {e}")
@@ -1228,7 +1239,25 @@ class DownloaderApp(ctk.CTk):
             
             btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", command=lambda i=index: self.remove_from_queue(i))
             btn_remove.pack(side="right", padx=10)
-
+    
+    def animate_queue_button(self, count):
+        # 1. Cancela a animação anterior se o usuário clicar várias vezes rápido
+        if getattr(self, 'queue_anim_id', None):
+            self.after_cancel(self.queue_anim_id)
+            
+        # 2. Muda para o estado de "Sucesso" (Verde)
+        self.btn_queue.configure(text=f"✅ Added! ({count})", text_color="#3fb950")
+        
+        # 3. Função interna que reverte o botão ao normal
+        def revert():
+            current_count = len(self.download_queue)
+            # Verifica se a janela ainda existe para evitar erros ao fechar o app
+            if self.winfo_exists():
+                self.btn_queue.configure(text=f"📥 Queue ({current_count})", text_color="#e0e0e0")
+                
+        # 4. Agenda a reversão para daqui a 2 segundos (2000 ms)
+        self.queue_anim_id = self.after(2000, revert)
+    
     def remove_from_queue(self, index):
         if 0 <= index < len(self.download_queue):
             self.download_queue.pop(index)
@@ -1247,9 +1276,9 @@ class DownloaderApp(ctk.CTk):
         }
         self.download_queue.append(queue_item)
         
-        # 2. Atualiza contador
+        # 2. Atualiza contador e dispara a animação
         count = len(self.download_queue)
-        self.btn_queue.configure(text=f"📥 Queue ({count})")
+        self.safe_ui(self.animate_queue_button, count)
         self.render_queue_list()
         
         # 3. Limpa a caixa de texto instantaneamente
@@ -1280,9 +1309,7 @@ class DownloaderApp(ctk.CTk):
         # 5. Inicia a engrenagem principal de download se ela estiver parada
         if not self.is_queue_running:
             self.process_next_in_queue()
-        else:
-            self.safe_ui(self.progress_label.configure, text=f"Added to queue! (Position: {count})", text_color="#1f538d")
-
+        
     def process_next_in_queue(self):
         # Se a fila esvaziou, termina e libera os botões de configuração
         if not self.download_queue:
