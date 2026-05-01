@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "25"
+        self.version = "25.1"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -127,14 +127,18 @@ class DownloaderApp(ctk.CTk):
             self.bind_all("<Button-5>", lambda e: e.widget.event_generate("<MouseWheel>", delta=-120))
         
     def on_closing(self):
-        # 1. Cancela o seu timer do reset_status se ele estiver rodando
+        # Trava de Segurança: Mata processos pendentes antes de fechar
+        if getattr(self, 'current_process', None):
+            try:
+                if self.is_windows:
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.current_process.pid)], capture_output=True, creationflags=0x08000000)
+                else:
+                    self.current_process.terminate()
+            except: pass
+
         if getattr(self, 'status_id', None):
             self.after_cancel(self.status_id)
-            
-        # 2. Destrói a janela (para sumir da tela instantaneamente)
         self.destroy()
-        
-        # 3. Mata o processo no nível do sistema operacional
         os._exit(0)
 
     def safe_ui(self, func, *args, **kwargs):
@@ -441,48 +445,69 @@ class DownloaderApp(ctk.CTk):
             
         self.last_ui_state = current_state
 
-        self.url_frame.pack_forget()
-        self.convert_container.pack_forget()
-        self.options_frame.pack_forget()
-        self.cv_opt_frame.pack_forget()
-        self.ca_opt_frame.pack_forget()
-        self.switch_advanced.pack_forget()
-        self.switch_extract_audio.pack_forget()
-        self.action_frame.pack_forget()
-        self.status_frame.pack_forget()
+        # ==========================================================
+        # O SEGREDO ANTI-PISCAR: Empacotador Inteligente (Smart Pack)
+        # ==========================================================
+        def smart_pack(widget, show, **kwargs):
+            is_packed = (widget.winfo_manager() == "pack")
+            if show and not is_packed:
+                widget.pack(**kwargs)
+            elif not show and is_packed:
+                widget.pack_forget()
 
+        # Se estiver atualizando o app, esconde tudo e mostra só o status
         if self.is_updating:
-            self.status_frame.pack(fill="x", padx=40, pady=(10, 0))
+            smart_pack(self.url_frame, False)
+            smart_pack(self.convert_container, False)
+            smart_pack(self.options_frame, False)
+            smart_pack(self.cv_opt_frame, False)
+            smart_pack(self.ca_opt_frame, False)
+            smart_pack(self.switch_advanced, False)
+            smart_pack(self.switch_extract_audio, False)
+            smart_pack(self.action_frame, False)
+            smart_pack(self.status_frame, True, fill="x", padx=40, pady=(10, 0))
             return 
 
+        # 1. Área do Topo (URLs) - Ficam antes do container dinâmico
+        smart_pack(self.convert_container, show=is_convert, fill="x", padx=40, before=self.dynamic_container)
+        smart_pack(self.url_frame, show=not is_convert, fill="x", padx=40, pady=(0, 10), before=self.dynamic_container)
+
         if is_convert:
-            self.convert_container.pack(fill="x", padx=40, before=self.dynamic_container)
             self.btn_download.configure(text="Convert media")
-            is_valid = bool(self.src_entry.get().strip())
         else:
-            self.url_frame.pack(fill="x", padx=40, pady=(0, 10), before=self.dynamic_container)
             self.btn_download.configure(text="Download media")
-            is_valid = self.is_valid_media_url(self.url_entry.get().strip())
 
+        # 2. Determina se as opções devem aparecer
+        show_options = True
         if not is_convert and hide_mode and not is_valid:
-            return
+            show_options = False
+            
+        show_status = show_options or getattr(self, 'is_queue_running', False)
 
-        if is_conv_vid:
-            self.cv_opt_frame.pack(fill="x", padx=40, pady=(0, 15))
-        elif is_conv_aud:
-            self.ca_opt_frame.pack(fill="x", padx=40, pady=(0, 15))
-            self.switch_extract_audio.pack(anchor="w", padx=40, pady=(0, 10))
-        else:
-            self.options_frame.pack(fill="x", padx=40)
-            self.switch_advanced.pack(anchor="w", padx=40, pady=(15, 30))
+        # ==========================================================
+        # ORDENAÇÃO ESTRITA (STRICT PACKING ORDER)
+        # Empacotamos usando 'before' (âncoras) para garantir que
+        # nada passe por cima dos botões ou da barra de status!
+        # ==========================================================
+        
+        # A. A Barra de Status é a âncora final (sempre fica por último)
+        smart_pack(self.status_frame, show=show_status, fill="x", padx=40, pady=(10, 0))
+        
+        # B. O Action Frame (Botões) é ancorado estritamente ANTES da Barra de Status
+        smart_pack(self.action_frame, show=show_status, fill="x", padx=40, pady=(0, 15), before=self.status_frame)
 
-        self.action_frame.pack(fill="x", padx=40, pady=(0, 15))
-        self.status_frame.pack(fill="x", padx=40, pady=(10, 0))
+        # C. As opções são ancoradas estritamente ANTES dos Botões (Action Frame)
+        # Como o código é lido de cima para baixo, a ordem visual será perfeita.
+        smart_pack(self.cv_opt_frame, show=(show_options and is_conv_vid), fill="x", padx=40, pady=(0, 15), before=self.action_frame)
+        smart_pack(self.ca_opt_frame, show=(show_options and is_conv_aud), fill="x", padx=40, pady=(0, 15), before=self.action_frame)
+        smart_pack(self.switch_extract_audio, show=(show_options and is_conv_aud), anchor="w", padx=40, pady=(0, 10), before=self.action_frame)
+        smart_pack(self.options_frame, show=(show_options and not is_convert), fill="x", padx=40, before=self.action_frame)
+        smart_pack(self.switch_advanced, show=(show_options and not is_convert), anchor="w", padx=40, pady=(15, 30), before=self.action_frame)
 
-        if is_valid:
+        # 4. Controle do Switch Avançado
+        if is_valid and not is_convert:
             if is_playlist:
                 self.switch_advanced.configure(state="disabled")
-                # Se o usuário colou a playlist com o switch já ligado, desliga-o à força:
                 if self.manual_selection_var.get():
                     self.manual_selection_var.set(False)
             else:
@@ -1190,26 +1215,32 @@ class DownloaderApp(ctk.CTk):
             self.queue_window = ctk.CTkToplevel(self)
             self.apply_window_icon(self.queue_window)
             self.queue_window.title("Process Queue")
-            self.center_window(self.queue_window, 550, 400) # Janela levemente maior
+            self.center_window(self.queue_window, 550, 400)
             self.queue_window.transient(self)
             self.queue_window.resizable(False, False)
             self.queue_window.configure(fg_color="#181a1f")
+
+            # =========================================================
+            # O SEGREDO DA MEMÓRIA: Não destruir a janela, apenas ocultar
+            # =========================================================
+            self.queue_window.protocol("WM_DELETE_WINDOW", self.queue_window.withdraw)
 
             ctk.CTkLabel(self.queue_window, text="Process Queue", font=("Segoe UI", 16, "bold")).pack(pady=(15, 5))
 
             self.queue_scroll = ctk.CTkScrollableFrame(self.queue_window, fg_color="#21252b")
             self.queue_scroll.pack(fill="both", expand=True, padx=15, pady=10)
 
-            # --- NOVO: FRAME DO BOTÃO CLEAR ---
             btn_frame = ctk.CTkFrame(self.queue_window, fg_color="transparent")
             btn_frame.pack(fill="x", padx=15, pady=(0, 15))
 
             ctk.CTkButton(btn_frame, text="Clear Queue", width=100, height=30, font=("Segoe UI", 12, "bold"), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
-            # ----------------------------------
 
             self.render_queue_list()
         else:
+            # Se a janela já existe na memória, apenas trazemos ela de volta
             self.queue_window.deiconify()
+            self.queue_window.lift() # Traz para frente da janela principal
+            self.render_queue_list() # Força a atualização visual por segurança
 
     # --- NOVA FUNÇÃO PARA LIMPAR TUDO ---
     def clear_entire_queue(self):
@@ -1220,25 +1251,79 @@ class DownloaderApp(ctk.CTk):
     def render_queue_list(self):
         if not hasattr(self, 'queue_window') or self.queue_window is None or not self.queue_window.winfo_exists():
             return
-            
-        for widget in self.queue_scroll.winfo_children():
-            widget.destroy()
 
+        # 1. Cria a mensagem de "Fila Vazia" se ela não existir OU se foi morta
+        if not hasattr(self, 'empty_label') or not self.empty_label.winfo_exists():
+            self.empty_label = ctk.CTkLabel(self.queue_scroll, text="Queue is empty.", text_color="gray")
+            
+        # 2. Se a fila estiver vazia, esconde tudo e mostra a mensagem
         if not self.download_queue:
-            ctk.CTkLabel(self.queue_scroll, text="Queue is empty.", text_color="gray").pack(pady=20)
+            for widget in self.queue_scroll.winfo_children():
+                if widget != self.empty_label:
+                    widget.pack_forget()
+            self.empty_label.pack(pady=20)
             return
+            
+        # Esconde a mensagem de vazia se houver itens
+        if self.empty_label.winfo_manager() == "pack":
+            self.empty_label.pack_forget()
 
+        # 3. Mapeia os frames (linhas) que já existem na tela
+        existing_frames = [w for w in self.queue_scroll.winfo_children() if w != self.empty_label]
+
+        # 4. Loop Inteligente: Atualiza os velhos ou cria os novos
         for index, task in enumerate(self.download_queue):
-            f = ctk.CTkFrame(self.queue_scroll, fg_color="#181a1f", corner_radius=8)
-            f.pack(fill="x", pady=8, padx=5)
-            
             name = task.get("name", "Media Task")
-            if len(name) > 80: name = name[:77] + "..."
-            
-            ctk.CTkLabel(f, text=f"{index+1}. {name}", font=("Segoe UI", 12)).pack(side="left", padx=10, pady=12)
-            
-            btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", command=lambda i=index: self.remove_from_queue(i))
-            btn_remove.pack(side="right", padx=10)
+            if len(name) > 60: name = name[:57] + "..." # Reduzi um pouco para caber as setas
+
+            if index < len(existing_frames):
+                # ==========================================
+                # A. RECICLA o frame existente (0% Flicker)
+                # ==========================================
+                f = existing_frames[index]
+                if f.winfo_manager() != "pack":
+                    f.pack(fill="x", pady=8, padx=5) 
+                
+                # Atualiza a Label (Índice 0)
+                lbl = f.winfo_children()[0]
+                lbl.configure(text=f"{index+1}. {name}")
+                task["label_widget"] = lbl
+                
+                # Atualiza o Botão X (Índice 1)
+                btn_remove = f.winfo_children()[1]
+                btn_remove.configure(command=lambda i=index: self.remove_from_queue(i))
+
+                # Atualiza o Botão Descer ▼ (Índice 2)
+                btn_down = f.winfo_children()[2]
+                btn_down.configure(state="normal" if index < len(self.download_queue)-1 else "disabled", command=lambda i=index: self.move_queue_item(i, 1))
+
+                # Atualiza o Botão Subir ▲ (Índice 3)
+                btn_up = f.winfo_children()[3]
+                btn_up.configure(state="normal" if index > 0 else "disabled", command=lambda i=index: self.move_queue_item(i, -1))
+
+            else:
+                # ==========================================
+                # B. CRIA um novo frame com os novos botões
+                # ==========================================
+                f = ctk.CTkFrame(self.queue_scroll, fg_color="#181a1f", corner_radius=8)
+                f.pack(fill="x", pady=8, padx=5)
+                
+                lbl = ctk.CTkLabel(f, text=f"{index+1}. {name}", font=("Segoe UI", 12))
+                lbl.pack(side="left", padx=10, pady=12)
+                task["label_widget"] = lbl
+                
+                btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", command=lambda i=index: self.remove_from_queue(i))
+                btn_remove.pack(side="right", padx=10)
+
+                btn_down = ctk.CTkButton(f, text="▼", width=30, height=24, fg_color="#2c313a", state="normal" if index < len(self.download_queue)-1 else "disabled", command=lambda i=index: self.move_queue_item(i, 1))
+                btn_down.pack(side="right", padx=2)
+
+                btn_up = ctk.CTkButton(f, text="▲", width=30, height=24, fg_color="#2c313a", state="normal" if index > 0 else "disabled", command=lambda i=index: self.move_queue_item(i, -1))
+                btn_up.pack(side="right", padx=2)
+
+        # 5. Esconde os frames que sobraram (se a fila diminuiu)
+        for i in range(len(self.download_queue), len(existing_frames)):
+            existing_frames[i].pack_forget()
     
     def animate_queue_button(self, count):
         # 1. Cancela a animação anterior se o usuário clicar várias vezes rápido
@@ -1264,6 +1349,18 @@ class DownloaderApp(ctk.CTk):
             count = len(self.download_queue)
             self.btn_queue.configure(text=f"📥 Queue ({count})")
             self.render_queue_list()
+            
+    def move_queue_item(self, index, direction):
+        # direction: -1 para subir, 1 para descer
+        new_index = index + direction
+        
+        # Verifica se o novo índice está dentro dos limites da fila
+        if 0 <= new_index < len(self.download_queue):
+            # Troca os itens de lugar na lista do Python
+            self.download_queue[index], self.download_queue[new_index] = self.download_queue[new_index], self.download_queue[index]
+            
+            # Chama a renderização limpa que criamos
+            self.render_queue_list()
 
     def run_command(self, cmd, task_name="Media Task"):
         is_convert = self.current_category.get() in [self.TAB_C_VID, self.TAB_C_AUD]
@@ -1272,7 +1369,8 @@ class DownloaderApp(ctk.CTk):
         queue_item = {
             "cmd": cmd, 
             "name": task_name, 
-            "is_convert": is_convert
+            "is_convert": is_convert,
+            "label_widget": None
         }
         self.download_queue.append(queue_item)
         
@@ -1296,9 +1394,21 @@ class DownloaderApp(ctk.CTk):
                     result = subprocess.run(title_cmd, capture_output=True, text=True, encoding='utf-8', startupinfo=self.startupinfo)
                     
                     if result.returncode == 0 and result.stdout.strip():
-                        # Substitui a URL no dicionário pelo Nome verdadeiro do vídeo!
-                        queue_item["name"] = result.stdout.strip()
-                        self.safe_ui(self.render_queue_list) # Atualiza a janela da fila visualmente
+                        new_name = result.stdout.strip()
+                        queue_item["name"] = new_name
+                        
+                        # ATUALIZAÇÃO CIRÚRGICA: Sem piscar a tela, altera só o texto!
+                        def update_label():
+                            if queue_item.get("label_widget") and queue_item["label_widget"].winfo_exists():
+                                try:
+                                    # Calcula a posição caso o usuário tenha apagado algo
+                                    idx = self.download_queue.index(queue_item)
+                                    display_name = new_name if len(new_name) <= 80 else new_name[:77] + "..."
+                                    queue_item["label_widget"].configure(text=f"{idx+1}. {display_name}")
+                                except ValueError:
+                                    pass # O item saiu da fila antes do nome carregar
+
+                        self.safe_ui(update_label)
                 except Exception:
                     pass # Se falhar (ex: link privado), ele continua mostrando o link normal
             
