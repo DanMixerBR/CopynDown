@@ -257,18 +257,18 @@ class DownloaderApp(ctk.CTk):
         self.cv_dst_fmt.grid(row=1, column=1, sticky="ew", pady=(0, 15))
 
         ctk.CTkLabel(self.cv_opt_frame, text="Video Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=0, sticky="w", pady=(0, 5))
-        self.vcodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto (copy)", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.vcodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Original", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.vcodec_menu.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
         ctk.CTkLabel(self.cv_opt_frame, text="Audio Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.acodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto (copy)", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.acodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.acodec_menu.grid(row=3, column=1, sticky="ew")
 
         self.ca_opt_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
         self.ca_opt_frame.grid_columnconfigure((0, 1), weight=1)
         
-        ctk.CTkLabel(self.ca_opt_frame, text="Quality (Bitrate)", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.ca_bitrate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto (copy)", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        ctk.CTkLabel(self.ca_opt_frame, text="Bitrate", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
+        self.ca_bitrate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.ca_bitrate.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
 
         ctk.CTkLabel(self.ca_opt_frame, text="Output Format", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=1, sticky="w", pady=(0, 5))
@@ -280,7 +280,7 @@ class DownloaderApp(ctk.CTk):
         self.ca_channels.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
         ctk.CTkLabel(self.ca_opt_frame, text="Sample Rate", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.ca_sample_rate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto (copy)", "48000 Hz", "44100 Hz"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.ca_sample_rate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Original", "48000 Hz", "44100 Hz"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.ca_sample_rate.grid(row=3, column=1, sticky="ew")
 
         self.switch_advanced = ctk.CTkSwitch(
@@ -394,14 +394,14 @@ class DownloaderApp(ctk.CTk):
         elif category == self.TAB_C_VID:
             self.cv_resolution.set("Original")
             self.cv_dst_fmt.set("MP4")
-            self.vcodec_menu.set("Auto (copy)")
-            self.acodec_menu.set("Auto (copy)")
+            self.vcodec_menu.set("Original")
+            self.acodec_menu.set("Original")
 
         elif category == self.TAB_C_AUD:
             self.ca_channels.set("Original")
             self.ca_dst_fmt.set("M4A")
-            self.ca_bitrate.set("Auto (copy)")
-            self.ca_sample_rate.set("Auto (copy)")
+            self.ca_bitrate.set("Auto")
+            self.ca_sample_rate.set("Original")
 
         self.evaluate_ui_state()
     
@@ -855,8 +855,8 @@ class DownloaderApp(ctk.CTk):
         cmd = [ffmpeg_exe, "-y", "-i", src]
         
         if is_video:
-            vc_map = {"Auto (copy)": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
-            ac_map = {"Auto (copy)": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
+            vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
+            ac_map = {"Original": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
             
             vc = vc_map.get(self.vcodec_menu.get(), "copy")
             ac = ac_map.get(self.acodec_menu.get(), "copy")
@@ -874,7 +874,7 @@ class DownloaderApp(ctk.CTk):
                     # scale=-2 garante que a largura seja sempre par (exigência do H.264/H.265) preservando a proporção!
                     scale_filter = f"scale=-2:{target_h}" 
                     
-                    # FFmpeg NÃO pode redimensionar sem recodificar. Força a recodificação se estiver no "Auto (copy)":
+                    # FFmpeg NÃO pode redimensionar sem recodificar. Força a recodificação se estiver no "Original":
                     if vc == "copy":
                         if ext_final == "webm":
                             vc = "libvpx-vp9"
@@ -956,11 +956,11 @@ class DownloaderApp(ctk.CTk):
                 sample_rate = self.ca_sample_rate.get()
                 channels = self.ca_channels.get()
                 
-                if bitrate != "Auto (copy)" and ac != "copy" and ac != "flac":
+                if bitrate != "Auto" and ac != "copy" and ac != "flac":
                     # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
                     cmd.extend(["-b:a", bitrate.replace(" kbps", "k")])
                     
-                if sample_rate != "Auto (copy)" and ac != "copy":
+                if sample_rate != "Original" and ac != "copy":
                     cmd.extend(["-ar", sample_rate.replace(" Hz", "")])
                     
                 # Fix: Os canais de áudio agora são enviados para o FFmpeg!
