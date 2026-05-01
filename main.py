@@ -386,8 +386,8 @@ class DownloaderApp(ctk.CTk):
             self.format_menu.set("MP4")
             
         elif category == self.TAB_AUD:
-            self.quality_menu.configure(values=["Standard", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)"])
-            self.quality_menu.set("Standard")
+            self.quality_menu.configure(values=["Auto", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)"])
+            self.quality_menu.set("Auto")
             self.format_menu.configure(values=["M4A", "MP3", "FLAC", "WAV", "Opus"])
             self.format_menu.set("M4A")
             
@@ -807,7 +807,7 @@ class DownloaderApp(ctk.CTk):
             return
             
         bitrate_map = {"Low (128 kbps)": "128k", "Medium (192 kbps)": "192k", "High (320 kbps)": "320k"}
-        if q != "Standard": base_cmd.extend(["--audio-quality", bitrate_map.get(q)])
+        if q != "Auto": base_cmd.extend(["--audio-quality", bitrate_map.get(q)])
             
         cmd = base_cmd + ["-o", f"{real_path}/%(playlist_index&{{}}. |)s%(title)s.%(ext)s", url]
         self.run_command(cmd, task_name=url)
