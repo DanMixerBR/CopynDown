@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "24.3"
+        self.version = "25"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -54,6 +54,7 @@ class DownloaderApp(ctk.CTk):
         self.status_id = None
         self.log_window = None
         self.current_process = None
+        self.current_playlist_item = ""
         self.is_cancelling = False
         self.is_busy = False
         self.is_updating = False
@@ -80,7 +81,10 @@ class DownloaderApp(ctk.CTk):
         self.valid_domains = [
             "youtube.com", "youtu.be", "instagram.com", "tiktok.com", "twitter.com", 
             "x.com", "facebook.com", "fb.watch", "twitch.tv", "clips.twitch.tv", 
-            "vimeo.com", "reddit.com", "dailymotion.com", "dai.ly", "soundcloud.com"
+            "vimeo.com", "reddit.com", "dailymotion.com", "dai.ly", "soundcloud.com",
+            "linkedin.com", "pinterest.com", "snapchat.com", "bilibili.com", 
+            "rumble.com", "bandcamp.com", "mixcloud.com", "kick.com", "odysee.com",
+            "kwai.com", "kw.ai"
         ]
         
         self.full_logs = "--- Program Logs ---\n"
@@ -253,18 +257,18 @@ class DownloaderApp(ctk.CTk):
         self.cv_dst_fmt.grid(row=1, column=1, sticky="ew", pady=(0, 15))
 
         ctk.CTkLabel(self.cv_opt_frame, text="Video Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=0, sticky="w", pady=(0, 5))
-        self.vcodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto", "H.264", "H.265", "VP9", "None (Audio Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.vcodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto (copy)", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.vcodec_menu.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
         ctk.CTkLabel(self.cv_opt_frame, text="Audio Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.acodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.acodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Auto (copy)", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.acodec_menu.grid(row=3, column=1, sticky="ew")
 
         self.ca_opt_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
         self.ca_opt_frame.grid_columnconfigure((0, 1), weight=1)
         
         ctk.CTkLabel(self.ca_opt_frame, text="Quality (Bitrate)", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.ca_bitrate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.ca_bitrate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto (copy)", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.ca_bitrate.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
 
         ctk.CTkLabel(self.ca_opt_frame, text="Output Format", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=1, sticky="w", pady=(0, 5))
@@ -276,13 +280,20 @@ class DownloaderApp(ctk.CTk):
         self.ca_channels.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
         ctk.CTkLabel(self.ca_opt_frame, text="Sample Rate", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.ca_sample_rate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto", "48000 Hz", "44100 Hz"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.ca_sample_rate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto (copy)", "48000 Hz", "44100 Hz"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
         self.ca_sample_rate.grid(row=3, column=1, sticky="ew")
 
         self.switch_advanced = ctk.CTkSwitch(
             self.dynamic_container, text="Advanced selection", 
             variable=self.manual_selection_var, font=("Segoe UI", 12),
             command=self.on_advanced_toggle
+        )
+        
+        self.extract_audio_var = ctk.BooleanVar(value=False)
+        self.switch_extract_audio = ctk.CTkSwitch(
+            self.dynamic_container, text="Extract original audio", 
+            variable=self.extract_audio_var, font=("Segoe UI", 12),
+            command=self.on_extract_audio_toggle
         )
 
         self.action_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
@@ -383,14 +394,14 @@ class DownloaderApp(ctk.CTk):
         elif category == self.TAB_C_VID:
             self.cv_resolution.set("Original")
             self.cv_dst_fmt.set("MP4")
-            self.vcodec_menu.set("Auto")
-            self.acodec_menu.set("Auto")
+            self.vcodec_menu.set("Auto (copy)")
+            self.acodec_menu.set("Auto (copy)")
 
         elif category == self.TAB_C_AUD:
             self.ca_channels.set("Original")
             self.ca_dst_fmt.set("M4A")
-            self.ca_bitrate.set("Auto")
-            self.ca_sample_rate.set("Auto")
+            self.ca_bitrate.set("Auto (copy)")
+            self.ca_sample_rate.set("Auto (copy)")
 
         self.evaluate_ui_state()
     
@@ -398,7 +409,17 @@ class DownloaderApp(ctk.CTk):
         self.evaluate_ui_state() 
         if self.manual_selection_var.get():
             self.handle_unified_download()
-        
+    
+    def on_extract_audio_toggle(self):
+        if self.extract_audio_var.get():
+            self.ca_bitrate.configure(state="disabled")
+            self.ca_channels.configure(state="disabled")
+            self.ca_sample_rate.configure(state="disabled")
+        else:
+            self.ca_bitrate.configure(state="normal")
+            self.ca_channels.configure(state="normal")
+            self.ca_sample_rate.configure(state="normal")
+    
     def evaluate_ui_state(self, *args):
         cat = self.current_category.get()
         is_conv_vid = (cat == self.TAB_C_VID)
@@ -426,6 +447,7 @@ class DownloaderApp(ctk.CTk):
         self.cv_opt_frame.pack_forget()
         self.ca_opt_frame.pack_forget()
         self.switch_advanced.pack_forget()
+        self.switch_extract_audio.pack_forget()
         self.action_frame.pack_forget()
         self.status_frame.pack_forget()
 
@@ -449,6 +471,7 @@ class DownloaderApp(ctk.CTk):
             self.cv_opt_frame.pack(fill="x", padx=40, pady=(0, 15))
         elif is_conv_aud:
             self.ca_opt_frame.pack(fill="x", padx=40, pady=(0, 15))
+            self.switch_extract_audio.pack(anchor="w", padx=40, pady=(0, 10))
         else:
             self.options_frame.pack(fill="x", padx=40)
             self.switch_advanced.pack(anchor="w", padx=40, pady=(15, 30))
@@ -457,9 +480,6 @@ class DownloaderApp(ctk.CTk):
         self.status_frame.pack(fill="x", padx=40, pady=(10, 0))
 
         if is_valid:
-            # Verifica se há "list=" no link (padrão universal de playlists do YouTube)
-            is_playlist = not is_convert and "list=" in self.url_entry.get().lower()
-            
             if is_playlist:
                 self.switch_advanced.configure(state="disabled")
                 # Se o usuário colou a playlist com o switch já ligado, desliga-o à força:
@@ -638,6 +658,27 @@ class DownloaderApp(ctk.CTk):
         x = int((win.winfo_screenwidth() / 2) - (width / 2))
         y = int((win.winfo_screenheight() / 2) - (height / 2))
         win.geometry(f"{width}x{height}+{x}+{y}")
+        
+    def apply_modal_fix(self, modal_win):
+        # Resolve o congelamento fatal do Windows ao minimizar janelas com grab_set
+        def on_unmap(e):
+            if e.widget is self and modal_win.winfo_exists():
+                modal_win.grab_release() # Solta o bloqueio ao minimizar
+
+        def on_map(e):
+            if e.widget is self and modal_win.winfo_exists():
+                modal_win.grab_set()     # Restaura o bloqueio ao voltar à tela
+
+        id_unmap = self.bind("<Unmap>", on_unmap, add="+")
+        id_map = self.bind("<Map>", on_map, add="+")
+
+        # Limpa os eventos da memória quando a janela for fechada (Prevenção de Memory Leak)
+        def on_destroy(e):
+            if e.widget is modal_win:
+                self.unbind("<Unmap>", id_unmap)
+                self.unbind("<Map>", id_map)
+                
+        modal_win.bind("<Destroy>", on_destroy, add="+")
 
     def reset_status(self, text="Ready!", color="gray"):
         if self.status_id: 
@@ -645,36 +686,32 @@ class DownloaderApp(ctk.CTk):
             self.status_id = None
         self.progress_label.configure(text=text, text_color=color)
         if self.current_category.get() in [self.TAB_C_VID, self.TAB_C_AUD] and self.is_busy:
-             self.progress_bar.configure(mode="indeterminate")
-             self.progress_bar.start()
+            self.progress_bar.configure(mode="indeterminate")
+            self.progress_bar.start()
         else:
-             self.progress_bar.configure(mode="determinate")
-             self.progress_bar.stop()
-             self.progress_bar.set(0)
-             self.progress_bar.configure(progress_color="#1f538d")
+            self.progress_bar.configure(mode="determinate")
+            self.progress_bar.stop()
+            self.progress_bar.set(0)
+            self.progress_bar.configure(progress_color="#1f538d")
         self.evaluate_ui_state()
 
     def schedule_reset(self, time=5000):
         if self.status_id: self.after_cancel(self.status_id)
         self.status_id = self.after(time, self.reset_status)
 
-    def status_error(self, log_msg=""):
+    def set_terminal_state(self, label_text, log_msg=""):
         self.progress_bar.configure(mode="determinate")
         self.progress_bar.stop()
-        self.progress_label.configure(text="Process Error!", text_color="#f85149")
+        self.progress_label.configure(text=label_text, text_color="#f85149")
         self.progress_bar.configure(progress_color="#f85149")
         self.progress_bar.set(1)
         if log_msg: self.add_to_log(log_msg)
-        
 
-    def status_canceled(self, log_msg="Process canceled by user!"):
-        self.progress_bar.configure(mode="determinate")
-        self.progress_bar.stop()
-        self.progress_label.configure(text="Canceled!", text_color="#f85149")
-        self.progress_bar.configure(progress_color="#f85149")
-        self.progress_bar.set(1)
-        self.add_to_log(log_msg)
+    def status_error(self, log_msg=""):
+        self.set_terminal_state("Process Error!", log_msg)
         
+    def status_canceled(self, log_msg=">>> Process Canceled!"):
+        self.set_terminal_state("Canceled!", log_msg)        
         
     def status_update_error(self, filename=None, size_mb=None, custom_msg=None):
         # FIX: Define o fallback seguro dependendo do sistema operacional
@@ -684,10 +721,7 @@ class DownloaderApp(ctk.CTk):
         f_size = f"{size_mb:.1f} MB" if size_mb is not None else "Unknown size"
         error_msg = custom_msg if custom_msg else f"ERROR: The file '{f_name}' ({f_size}) appears corrupted.\nDeleted for safety."
         
-        self.progress_label.configure(text="Update Aborted!", text_color="#f85149")
-        self.progress_bar.configure(progress_color="#f85149")
-        self.progress_bar.set(1)
-        self.add_to_log(error_msg)
+        self.set_terminal_state("Update Aborted!", error_msg)
         
         parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
         self.safe_ui(messagebox.showerror, "Aborted", error_msg, parent=parent_win)
@@ -715,7 +749,7 @@ class DownloaderApp(ctk.CTk):
         cfg = self.config_data[self.TAB_VID]
         real_path = os.path.expanduser(self.config_data["General"]["video_path"])
         
-        if any(d in url for d in ["instagram.com", "tiktok.com", "twitter.com", "x.com", "facebook.com", "fb.watch", "reddit.com"]):
+        if any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", "x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"]):
             out_tmpl = "%(uploader)s [%(id)s].%(ext)s"
         else:
             out_tmpl = "%(title)s.%(ext)s"
@@ -789,31 +823,66 @@ class DownloaderApp(ctk.CTk):
         base_name = os.path.splitext(os.path.basename(src))[0]
         ext_final = self.cv_dst_fmt.get().lower() if is_video else self.ca_dst_fmt.get().lower()
         
+        if not is_video and self.extract_audio_var.get():
+            suffix = "extracted"
+        else:
+            suffix = "converted"
+        
         gen_cfg = self.config_data.get("General", {})
         save_dir = os.path.expanduser(gen_cfg.get("video_path") if is_video else gen_cfg.get("audio_path"))
         
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
             
-        dst = os.path.join(save_dir, f"{base_name}_converted.{ext_final}").replace("\\", "/")
+        dst = os.path.join(save_dir, f"{base_name}_{suffix}.{ext_final}").replace("\\", "/")
         if src == dst:
-             dst = os.path.join(save_dir, f"{base_name}_new.{ext_final}").replace("\\", "/")
+            dst = os.path.join(save_dir, f"{base_name}_new.{ext_final}").replace("\\", "/")
             
         # ===================================================
         # [LINUX/MAC FIX] FFMPEG SEM .EXE
         # ===================================================
         ffmpeg_exe = os.path.join("bin", f"ffmpeg{self.exe}").replace("\\", "/")
         if not os.path.exists(ffmpeg_exe):
-            ffmpeg_exe = "ffmpeg"
+            try:
+                # Tenta rodar o FFmpeg do sistema silenciosamente para ver se ele existe
+                subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                ffmpeg_exe = "ffmpeg"
+            except Exception:
+                # Se der erro, avisa na tela e cancela a conversão!
+                self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please install it via package manager or place it in the 'bin' folder.")
+                return
             
         cmd = [ffmpeg_exe, "-y", "-i", src]
         
         if is_video:
-            vc_map = {"Auto": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9", "None (Audio Only)": "none"}
-            ac_map = {"Auto": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
+            vc_map = {"Auto (copy)": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
+            ac_map = {"Auto (copy)": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
             
             vc = vc_map.get(self.vcodec_menu.get(), "copy")
             ac = ac_map.get(self.acodec_menu.get(), "copy")
+            
+            # ==============================================================
+            # NOVA LÓGICA DE RESOLUÇÃO (COM AUTO-FIX)
+            # ==============================================================
+            res_choice = self.cv_resolution.get()
+            scale_filter = None
+            if res_choice != "Original" and vc != "none":
+                h_map = {"2160p (4K)": "2160", "1440p (QHD)": "1440", "1080p": "1080", "720p": "720", "480p": "480", "360p": "360"}
+                target_h = h_map.get(res_choice)
+                
+                if target_h:
+                    # scale=-2 garante que a largura seja sempre par (exigência do H.264/H.265) preservando a proporção!
+                    scale_filter = f"scale=-2:{target_h}" 
+                    
+                    # FFmpeg NÃO pode redimensionar sem recodificar. Força a recodificação se estiver no "Auto (copy)":
+                    if vc == "copy":
+                        if ext_final == "webm":
+                            vc = "libvpx-vp9"
+                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced VP9 codec to allow scaling to {target_h}p.")
+                        else:
+                            vc = "libx264"
+                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 codec to allow scaling to {target_h}p.")
+            # ==============================================================
             
             # ==============================================================
             # TRAVAS DE COMPATIBILIDADE INTELIGENTES (AUTO-FIX)
@@ -839,13 +908,20 @@ class DownloaderApp(ctk.CTk):
             if vc == "none": cmd.append("-vn")
             else:
                 cmd.extend(["-c:v", vc])
-                if vc == "libvpx-vp9":
-                    cmd.extend(["-crf", "30", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
                 
-                # --- PARÂMETROS DE VELOCIDADE (H.264 e H.265 / AVI, MP4, MKV) ---
-                elif vc in ["libx264", "libx265"]:
-                    # -preset veryfast: Acelera brutalmente a conversão em vídeos normais
-                    cmd.extend(["-crf", "18", "-preset", "veryfast"])
+                if scale_filter:
+                    cmd.extend(["-vf", scale_filter])
+                
+                if vc == "libvpx-vp9":
+                    cmd.extend(["-crf", "20", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
+                
+                elif vc == "libx264":
+                    # Adicionado pix_fmt para máxima compatibilidade universal
+                    cmd.extend(["-crf", "18", "-preset", "faster", "-pix_fmt", "yuv420p"])
+                    
+                elif vc == "libx265":
+                    # Adicionado pix_fmt para máxima compatibilidade universal
+                    cmd.extend(["-crf", "22", "-preset", "faster", "-tag:v", "hvc1"])
                 
                 elif vc != "copy": 
                     cmd.extend(["-crf", "18"])
@@ -857,18 +933,39 @@ class DownloaderApp(ctk.CTk):
         else:
             cmd.append("-vn")
             dst_fmt = self.ca_dst_fmt.get().lower()
-            bitrate = self.ca_bitrate.get().replace(" bps", "")
-            sample_rate = self.ca_sample_rate.get()
             
-            ac_map = {"m4a": "aac", "mp3": "libmp3lame", "flac": "flac", "wav": "pcm_s16le", "opus": "libopus", "ogg": "libvorbis"}
-            ac = ac_map.get(dst_fmt, "copy")
-            
-            cmd.extend(["-c:a", ac])
-            if bitrate != "Auto" and ac != "copy" and ac != "flac":
-                cmd.extend(["-b:a", bitrate])
+            # --- LÓGICA DE EXTRAÇÃO E TRAVA DE COMPATIBILIDADE ---
+            if self.extract_audio_var.get():
+                if dst_fmt in ["mp3", "wav"]:
+                    # Trava Inteligente: Impede cópia pura para MP3/WAV. Força recodificação na melhor qualidade possível.
+                    ac_map = {"mp3": "libmp3lame", "wav": "pcm_s16le"}
+                    ac = ac_map.get(dst_fmt)
+                    cmd.extend(["-c:a", ac])
+                    if dst_fmt == "mp3": cmd.extend(["-b:a", "320k"])
+                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced {ac} for {dst_fmt.upper()} compatibility during extraction.")
+                else:
+                    cmd.extend(["-c:a", "copy"])
+                    
+            # --- LÓGICA DE RECODIFICAÇÃO (Com bugs corrigidos!) ---
+            else:
+                ac_map = {"m4a": "aac", "mp3": "libmp3lame", "flac": "flac", "wav": "pcm_s16le", "opus": "libopus", "ogg": "libvorbis"}
+                ac = ac_map.get(dst_fmt, "copy")
+                cmd.extend(["-c:a", ac])
                 
-            if sample_rate != "Auto" and ac != "copy":
-                cmd.extend(["-ar", sample_rate.replace(" Hz", "")])
+                bitrate = self.ca_bitrate.get()
+                sample_rate = self.ca_sample_rate.get()
+                channels = self.ca_channels.get()
+                
+                if bitrate != "Auto (copy)" and ac != "copy" and ac != "flac":
+                    # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
+                    cmd.extend(["-b:a", bitrate.replace(" kbps", "k")])
+                    
+                if sample_rate != "Auto (copy)" and ac != "copy":
+                    cmd.extend(["-ar", sample_rate.replace(" Hz", "")])
+                    
+                # Fix: Os canais de áudio agora são enviados para o FFmpeg!
+                if channels != "Original" and ac != "copy":
+                    cmd.extend(["-ac", "2" if "Stereo" in channels else "1"])
             
         cmd.append(dst)
         self.run_command(cmd, task_name=base_name)
@@ -882,6 +979,7 @@ class DownloaderApp(ctk.CTk):
         manual_win.resizable(False, False)
         manual_win.transient(self)
         manual_win.grab_set()
+        self.apply_modal_fix(manual_win)
         manual_win.configure(fg_color="#181a1f")
 
         def on_close(): 
@@ -922,6 +1020,8 @@ class DownloaderApp(ctk.CTk):
         def handle_error(error_msg):
             self.is_busy = False
             if manual_win.winfo_exists(): manual_win.destroy()
+            self.manual_selection_var.set(False)
+            self.evaluate_ui_state()
             self.status_error(error_msg)
 
         def build_ui_task(formats, thumb_url, video_title):
@@ -1042,7 +1142,11 @@ class DownloaderApp(ctk.CTk):
         if not self.is_valid_media_url(url):
             self.status_error("ERROR: Invalid URL.")
             return
-
+        
+        if not os.path.exists(self.ytdlp_path):
+            self.status_error("ERROR: yt-dlp is missing! Please place it in the 'bin' folder.")
+            return
+        
         if tab == self.TAB_VID: self.download_video()
         elif tab == self.TAB_AUD: self.download_music()
 
@@ -1209,11 +1313,13 @@ class DownloaderApp(ctk.CTk):
             self.progress_bar.start()
             self.progress_label.configure(text="Starting conversion...", text_color="white")
             self.progress_bar.configure(progress_color="#1f538d")
+            self.add_to_log("\n>>> Starting conversion...")
         else:
             self.progress_bar.configure(mode="determinate")
             self.progress_bar.set(0)
             self.progress_label.configure(text="Starting download...", text_color="white")
             self.progress_bar.configure(progress_color="#1f538d")
+            self.add_to_log("\n>>> Starting download...")
         
         def task():
             error_detected = False
@@ -1276,6 +1382,7 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.progress_bar.configure, progress_color="#3fb950")
                     self.safe_ui(self.progress_bar.set, 1)
                     
+                    self.safe_ui(self.add_to_log, f">>> {msg}\n")
                     self.safe_ui(self.process_next_in_queue)
 
                 elif error_detected:
@@ -1285,6 +1392,8 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.progress_label.configure, text=msg, text_color="#d29922") # AMARELO/LARANJA
                     self.safe_ui(self.progress_bar.configure, progress_color="#d29922")
                     self.safe_ui(self.progress_bar.set, 1)
+                    
+                    self.safe_ui(self.add_to_log, f">>> {msg}\n")
                     
                     # Espera 3 segundos para o usuário ler o aviso e continua a fila guerreira!
                     self.safe_ui(self.after, 3000, self.process_next_in_queue)
@@ -1317,6 +1426,7 @@ class DownloaderApp(ctk.CTk):
         self.center_window(settings_win, 500, 620)
         settings_win.transient(self)
         settings_win.grab_set()
+        self.apply_modal_fix(settings_win)
         settings_win.resizable(False, False)
         settings_win.configure(fg_color="#181a1f")
         
@@ -1334,17 +1444,32 @@ class DownloaderApp(ctk.CTk):
         vid_entry.insert(0, self.config_data.get("General", {}).get("video_path", "~/Videos/CopynDown"))
         vid_entry.configure(state="readonly")
         vid_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        def format_and_insert_path(p, entry_widget):
+            if not p: return  # Se o usuário cancelar a janela, não faz nada
+            
+            p = p.replace("\\", "/")
+            home = os.path.expanduser("~").replace("\\", "/")
+            app_dir = os.path.abspath(".").replace("\\", "/")
+            
+            # Regra 1: Se estiver dentro da pasta do app (útil para o cookies.txt)
+            if p.startswith(app_dir): 
+                p = p[len(app_dir):].lstrip("/")
+            # Regra 2: Se estiver na pasta do usuário (útil para salvar mídias)
+            elif p.startswith(home): 
+                p = "~" + p[len(home):]
+                
+            entry_widget.configure(state="normal")
+            entry_widget.delete(0, 'end')
+            entry_widget.insert(0, p)
+            entry_widget.configure(state="readonly")
+
+        # --- APLICAÇÃO NAS PASTAS (VÍDEO/ÁUDIO) ---
+        def change_path(entry_widget):
+            p = filedialog.askdirectory(parent=settings_win)
+            format_and_insert_path(p, entry_widget)
         
-        def change_vid_path():
-            if p := filedialog.askdirectory(parent=settings_win):
-                p = p.replace("\\", "/")
-                home = os.path.expanduser("~").replace("\\", "/")
-                if p.startswith(home): p = "~" + p[len(home):]
-                vid_entry.configure(state="normal")
-                vid_entry.delete(0, 'end')
-                vid_entry.insert(0, p)
-                vid_entry.configure(state="readonly")
-        ctk.CTkButton(vid_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=change_vid_path).pack(side="right")
+        ctk.CTkButton(vid_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(vid_entry)).pack(side="right")
 
         ctk.CTkLabel(scroll_frame, text="Audio output folder:", font=("Segoe UI", 12)).pack(anchor="w", pady=(10, 0))
         aud_path_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
@@ -1353,17 +1478,8 @@ class DownloaderApp(ctk.CTk):
         aud_entry.insert(0, self.config_data.get("General", {}).get("audio_path", "~/Music/CopynDown"))
         aud_entry.configure(state="readonly")
         aud_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        def change_aud_path():
-            if p := filedialog.askdirectory(parent=settings_win):
-                p = p.replace("\\", "/")
-                home = os.path.expanduser("~").replace("\\", "/")
-                if p.startswith(home): p = "~" + p[len(home):]
-                aud_entry.configure(state="normal")
-                aud_entry.delete(0, 'end')
-                aud_entry.insert(0, p)
-                aud_entry.configure(state="readonly")
-        ctk.CTkButton(aud_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=change_aud_path).pack(side="right")
+
+        ctk.CTkButton(aud_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(aud_entry)).pack(side="right")
 
         ctk.CTkLabel(scroll_frame, text="General Options", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
         
@@ -1376,16 +1492,8 @@ class DownloaderApp(ctk.CTk):
         cookie_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
         def change_cookie_path():
-            if p := filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")], parent=settings_win):
-                p = p.replace("\\", "/")
-                home = os.path.expanduser("~").replace("\\", "/")
-                app_dir = os.path.abspath(".").replace("\\", "/")
-                if p.startswith(app_dir): p = p[len(app_dir):].lstrip("/")
-                elif p.startswith(home): p = "~" + p[len(home):]
-                cookie_entry.configure(state="normal")
-                cookie_entry.delete(0, 'end')
-                cookie_entry.insert(0, p)
-                cookie_entry.configure(state="readonly")
+            p = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")], parent=settings_win)
+            format_and_insert_path(p, cookie_entry)
         ctk.CTkButton(cookie_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=change_cookie_path).pack(side="right")
 
         v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
@@ -1549,6 +1657,10 @@ class DownloaderApp(ctk.CTk):
             btn.configure(state=state)
 
     def check_ytdlp_updates(self):
+        if not os.path.exists(self.ytdlp_path):
+            if self.winfo_exists():
+                self.safe_ui(self.add_to_log, ">>> Warning: yt-dlp is missing! Update check skipped. Please check your 'bin' folder.")
+            return
         try:
             self.safe_ui(self.toggle_buttons, "disabled", is_downloading=False)
             process = subprocess.Popen([self.ytdlp_path, "-U"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', startupinfo=self.startupinfo)
@@ -1579,6 +1691,7 @@ class DownloaderApp(ctk.CTk):
         self.about_win.resizable(False, False)
         self.about_win.transient(self)
         self.about_win.grab_set()
+        self.apply_modal_fix(self.about_win)
         self.about_win.configure(fg_color="#181a1f")
         
         scroll_frame = ctk.CTkScrollableFrame(self.about_win, width=580, height=350, fg_color="transparent")
@@ -1589,9 +1702,8 @@ class DownloaderApp(ctk.CTk):
         ctk.CTkLabel(scroll_frame, text="Developed by DanMixerBR", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=(0, 25))
         
         desc_text = (
-            "A modern, fast, and cross-platform media downloader and converter. "
-            "Featuring a lightweight interface, it allows you to easily download and convert video and audio files from several platforms with just a few clicks.\n\n"
-            "Supported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Facebook, Twitter/X, Reddit, and SoundCloud."
+            "A modern, fast, and cross-platform media downloader and converter.\n\n"
+            "Supported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai, Facebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble, Bandcamp, Mixcloud, Kick, and Odysee."
         )
         ctk.CTkLabel(scroll_frame, text=desc_text, font=("Segoe UI", 13), justify="left", wraplength=550).pack(anchor="w", pady=10)
         ctk.CTkLabel(scroll_frame, text="Credits & License", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=(30, 10))
@@ -1631,7 +1743,7 @@ class DownloaderApp(ctk.CTk):
         script_ext = "bat" if self.is_windows else "sh"
         script_url = f"https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/update.{script_ext}"
         hash_url = "https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/hash_v2.txt"
-        zip_plataform = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
+        zip_platform = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
         
         try:
             local_v = self.get_local_version()
@@ -1654,13 +1766,13 @@ class DownloaderApp(ctk.CTk):
 
                 dir_app = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
                 script_path = os.path.join(dir_app, f"update.{script_ext}")
-                zip_path = os.path.join(dir_app, zip_plataform)
+                zip_path = os.path.join(dir_app, zip_platform)
                 
                 if os.path.exists(zip_path): os.remove(zip_path)
                     
                 self.safe_ui(self.progress_label.configure, text="Updating... 25%", text_color="white")
                 self.safe_ui(self.progress_bar.set, 0.25)
-                self.safe_ui(self.add_to_log, "Downloading file update...")
+                self.safe_ui(self.add_to_log, "\n>>> Downloading update file...")
                 
                 if self.is_windows: 
                     r = requests.get(download_url_windows, timeout=30)
@@ -1718,7 +1830,7 @@ class DownloaderApp(ctk.CTk):
                 self.safe_ui(self.progress_label.configure, text="Update Ready! (100%)", text_color="#3fb950")
                 self.safe_ui(self.progress_bar.configure, progress_color="#3fb950")
                 self.safe_ui(self.progress_bar.set, 1)
-                self.safe_ui(self.add_to_log, "Update downloaded and verified successfully!")
+                self.safe_ui(self.add_to_log, ">>> Update downloaded and verified successfully!")
                 
                 parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
                 messagebox.showinfo("Success", "Update Ready! The app will close to complete the update.", parent=parent_win)
@@ -1772,12 +1884,9 @@ class DownloaderApp(ctk.CTk):
             self.is_updating = False
             err_text = str(e)
             if "File structure" in err_text or "Hash mismatch" in err_text:
-                self.safe_ui(self.status_update_error, zip_plataform, None, custom_msg=err_text)
+                self.safe_ui(self.status_update_error, zip_platform, None, custom_msg=err_text)
             else:
-                self.safe_ui(self.progress_label.configure, text="Update Failed!", text_color="#f85149")
-                self.safe_ui(self.progress_bar.configure, progress_color="#f85149")
-                self.safe_ui(self.progress_bar.set, 1)
-                self.safe_ui(self.add_to_log, f"ERROR: {err_text}")
+                self.safe_ui(self.set_terminal_state, "Update Failed!", f"ERROR: {err_text}")
                 self.safe_ui(self.schedule_reset, 7000)
                 
                 parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
