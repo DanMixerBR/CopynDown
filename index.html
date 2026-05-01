@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CopynDown | Media Downloader & Converter</title>
+    <style>
+        /* CSS Variables baseadas na interface do CopynDown */
+        :root {
+            --bg-dark: #181a1f;
+            --bg-card: #21252b;
+            --bg-hover: #2c313a;
+            --primary: #1f538d;
+            --primary-hover: #14375e;
+            --text-main: #e0e0e0;
+            --text-muted: #8a939e;
+            --border-color: #3a3f4b;
+            --success: #3fb950;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Container Principal */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            padding: 40px 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 0 20px 0; /* Padding inferior reduzido para aproximar a imagem */
+        }
+
+        /* Estilo da Logo */
+        .hero-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .version-badge {
+            background-color: var(--bg-card);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        /* Botões de Download */
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 40px; /* Espaço entre botões e imagem */
+        }
+
+        .btn {
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-hover);
+        }
+
+        /* Screenshot do Programa */
+        .app-screenshot-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .app-screenshot {
+            max-width: 80%; /* Não deixa a imagem ficar gigante em telas grandes */
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4); /* Sombra elegante */
+            border: 1px solid var(--border-color);
+        }
+
+        /* Features Section */
+        .card {
+            background-color: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .feature-item h3 {
+            font-size: 1.1rem;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .feature-item p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Sites and Formats */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .tag {
+            background-color: var(--bg-dark);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsividade para telas menores */
+        @media (max-width: 768px) {
+            .app-screenshot {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- HERO SECTION -->
+        <header class="hero">
+            <!-- LOGO AQUI -->
+            <img src="https://raw.githubusercontent.com/DanMixerBR/CopynDown/main/assets/Logo.png" alt="CopynDown Logo" class="hero-logo">
+            
+            <h1>CopynDown</h1>
+            <div class="version-badge">Version 25</div>
+            <p>A modern, fast, and cross-platform media downloader and converter built for high technical fidelity.</p>
+            
+            <div class="btn-group">
+                <a href="https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip" class="btn btn-primary">
+                    ↓ Download for Windows
+                </a>
+                <a href="https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip" class="btn btn-secondary">
+                    ↓ Download for Linux
+                </a>
+                <a href="https://github.com/DanMixerBR/CopynDown" class="btn btn-secondary" target="_blank">
+                    View on GitHub
+                </a>
+            </div>
+        </header>
+
+        <!-- SCREENSHOT DA INTERFACE -->
+        <div class="app-screenshot-container">
+            <img src="https://raw.githubusercontent.com/DanMixerBR/CopynDown/main/assets/windows_ui.png" alt="CopynDown Windows Interface" class="app-screenshot">
+        </div>
+
+        <!-- MAIN CARD -->
+        <main class="card">
+            <h2>Why CopynDown?</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <h3>Modern GUI</h3>
+                    <p>Clean and intuitive interface with a native Dark Mode, built to be user-friendly without sacrificing advanced options.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Versatile Downloads</h3>
+                    <p>Support for individual links and full playlists, complete with intelligent thumbnail and metadata embedding.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Built-in Converter</h3>
+                    <p>Easily convert media into various formats with smart Auto-Fixes ensuring maximum playback compatibility.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>High Fidelity</h3>
+                    <p>Download videos up to 4K resolution (AV1/VP9) and extract lossless original audio or up to 320 kbps.</p>
+                </div>
+            </div>
+
+            <h2>Supported Platforms</h2>
+            <div class="tags">
+                <span class="tag">YouTube</span>
+                <span class="tag">Vimeo</span>
+                <span class="tag">Dailymotion</span>
+                <span class="tag">Twitch</span>
+                <span class="tag">Instagram</span>
+                <span class="tag">TikTok</span>
+                <span class="tag">Kwai</span>
+                <span class="tag">Facebook</span>
+                <span class="tag">Twitter/X</span>
+                <span class="tag">Reddit</span>
+                <span class="tag">SoundCloud</span>
+                <span class="tag">LinkedIn</span>
+                <span class="tag">Pinterest</span>
+                <span class="tag">Bilibili</span>
+                <span class="tag">Rumble</span>
+                <span class="tag">Kick</span>
+                <span class="tag">+ Many More</span>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer>
+            <p>Developed with 💻 by <strong>DanMixerBR</strong></p>
+            <p>Released under the MIT License.</p>
+        </footer>
+    </div>
+
+</body>
+</html>
