@@ -80,7 +80,7 @@ all devices, CopynDown applies the following automatic overwrites:
 - H.265 and VP9: Dynamically adapt to the source. If the input is HDR (10-bit), the output will preserve the HDR metadata natively.
 
 # Resolution Scaling
-- FFmpeg cannot scale resolutions using the 'Copy' codec. If the user requests a resolution change while 'Auto (copy)' is selected, CopynDown forces 'libx264' (or 'libvpx-vp9' for WEBM) to ensure the resize operation succeeds without crashing.
+- FFmpeg cannot scale resolutions using the 'Copy' codec. If the user requests a resolution change while 'Original' is selected, CopynDown forces 'libx264' (or 'libvpx-vp9' for WEBM) to ensure the resize operation succeeds without crashing.
 
 # AVI Compatibility Lock
 - If target is AVI and Video Codec is 'Copy' -> Forces 'libx264'
