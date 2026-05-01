@@ -48,7 +48,7 @@ used by CopynDown's engines for downloading and converting media.
 - Input: -i [SOURCE]
 
 [VIDEO CODECS (-c:v)]
-- H.264: libx264    | Params: -crf 18 -preset faster
+- H.264: libx264    | Params: -crf 18 -preset faster -pix_fmt yuv420p
 - H.265: libx265    | Params: -crf 22 -preset faster -tag:v hvc1
 - VP9:   libvpx-vp9 | Params: -crf 20 -b:v 0 -row-mt 1 -cpu-used 4
 - Copy:  copy       | (No re-encoding)
@@ -75,6 +75,13 @@ used by CopynDown's engines for downloading and converting media.
 To prevent conversion failures and ensure playback compatibility across 
 all devices, CopynDown applies the following automatic overwrites:
 
+# HDR Handling (10-bit vs 8-bit SDR)
+- H.264: Strictly locked to 8-bit SDR (-pix_fmt yuv420p). If a user converts an HDR video using H.264, it will automatically tone-map to standard colors to guarantee playback on legacy devices.
+- H.265 and VP9: Dynamically adapt to the source. If the input is HDR (10-bit), the output will preserve the HDR metadata natively.
+
+# Resolution Scaling
+- FFmpeg cannot scale resolutions using the 'Copy' codec. If the user requests a resolution change while 'Auto (copy)' is selected, CopynDown forces 'libx264' (or 'libvpx-vp9' for WEBM) to ensure the resize operation succeeds without crashing.
+
 # AVI Compatibility Lock
 - If target is AVI and Video Codec is 'Copy' -> Forces 'libx264'
 - If target is AVI and Audio Codec is incompatible (AAC/FLAC/Opus/Copy) -> Forces 'libmp3lame'
@@ -84,7 +91,7 @@ all devices, CopynDown applies the following automatic overwrites:
 - If target is WEBM and Audio Codec is AAC/MP3/FLAC/Copy -> Forces 'libopus'
 - If user attempts to download WEBM format with '1080p (H.264)' -> Forces '1080p (AV1/VP9)'
 
-# Extract Original Lock
+# Extract Original Audio Lock
 - If user extracts pure audio into MP3 container -> Forces re-encoding to 320kbps MP3
 - If user extracts pure audio into WAV container -> Forces re-encoding to pcm_s16le
 *(Pure copy into these containers from random sources often breaks container headers).*
