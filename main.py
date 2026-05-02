@@ -879,7 +879,11 @@ class DownloaderApp(ctk.CTk):
         
         if cfg["thumb"] and (self.manual_selection_var.get() or afmt != "wav"): base_cmd.append("--embed-thumbnail")
         if cfg["meta"] and (self.manual_selection_var.get() or afmt != "wav"): 
-            base_cmd.extend(["--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s"])
+            base_cmd.extend([
+                "--embed-metadata", 
+                "--parse-metadata", "%(playlist_index|)s:%(track_number)s",
+                "--parse-metadata", "%(release_year,upload_date>.4)s:%(meta_date)s"
+            ])
             
         if self.manual_selection_var.get():
             self.open_manual_selection(url, base_cmd, "%(playlist_index&{}. |)s%(title)s.%(ext)s", ["M4A", "MP3", "FLAC", "WAV", "Opus"])
@@ -1193,7 +1197,7 @@ class DownloaderApp(ctk.CTk):
                 
                 clean_cmd = base_cmd.copy()
                 if ext_final in ["webm", "wav"]:
-                    clean_cmd = [arg for arg in clean_cmd if arg not in ("--embed-thumbnail", "--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "--embed-subs")]
+                    clean_cmd = [arg for arg in clean_cmd if arg not in ("--embed-thumbnail", "--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "%(release_year,upload_date>.4)s:%(meta_date)s", "--embed-subs")]
 
                 if current_tab == self.TAB_AUD: cmd = clean_cmd + ["-f", fmt, "--audio-format", ext_final, "-o", f"{base_path}/{output_template}", url]
                 else: cmd = clean_cmd + ["-f", fmt, "--merge-output-format", ext_final, "--remux-video", ext_final, "-o", f"{base_path}/{output_template}", "-o", f"subtitle:{base_path}/subtitles/{output_template}", url]
