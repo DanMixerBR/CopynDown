@@ -19,9 +19,9 @@ del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 if exist "certifi" (
-    rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
-    del /f /q "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
     if exist "CopynDown_Windows.zip" (
+        rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
+        del /f /q "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
         powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
         del /f /q "CopynDown_Windows.zip"
     ) else if exist "CopynDown.zip" (
