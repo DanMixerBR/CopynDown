@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "25.1"
+        self.version = "25.2"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
