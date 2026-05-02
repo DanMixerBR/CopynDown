@@ -18,27 +18,23 @@ del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.
 del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
+set "ZIP_FILE="
+if exist "CopynDown_Windows.zip" set "ZIP_FILE=CopynDown_Windows.zip"
+if exist "CopynDown.zip" set "ZIP_FILE=CopynDown.zip"
+
+if not defined ZIP_FILE exit /b
+
 if exist "certifi" (
-    if exist "CopynDown_Windows.zip" (
-        rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
-        del /f /q "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
-        powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
-        del /f /q "CopynDown_Windows.zip"
-    ) else if exist "CopynDown.zip" (
-        powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '..' -Force"
-        del /f /q "CopynDown.zip"
-    )
+    rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
+    del /f /q "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
+    set "DEST_PATH=.."
 ) else (
-    if exist "CopynDown_Windows.zip" (
-        robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
-        powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '.' -Force"
-        del /f /q "CopynDown_Windows.zip"
-    ) else if exist "CopynDown.zip" (
-        robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
-        powershell -command "Expand-Archive -Path 'CopynDown.zip' -DestinationPath '.' -Force"
-        del /f /q "CopynDown.zip"
-    )
+    robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
+    set "DEST_PATH=."
 )
+
+powershell -command "Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%DEST_PATH%' -Force"
+del /f /q "%ZIP_FILE%"
 
 echo.
 echo %G%-------------------------------------------------------%W%
