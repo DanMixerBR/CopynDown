@@ -195,7 +195,7 @@ class DownloaderApp(ctk.CTk):
         self.btn_settings = ctk.CTkButton(
             top_bar, text="⚙ Settings", width=90, height=35, corner_radius=10,
             font=("Segoe UI", 12), fg_color="#21252b", hover_color="#2c313a",
-            command=self.show_settings
+            command=self.
         )
         self.btn_settings.pack(side="right")
 
@@ -1676,7 +1676,7 @@ class DownloaderApp(ctk.CTk):
 
         ctk.CTkButton(aud_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(aud_entry)).pack(side="right")
 
-        ctk.CTkLabel(scroll_frame, text="General Options", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
+        ctk.CTkLabel(scroll_frame, text="General Options", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
         
         v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
         v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
@@ -1792,13 +1792,13 @@ class DownloaderApp(ctk.CTk):
         self.btn_extract.configure(command=perform_extraction)
         # =================================================================
         
-        ctk.CTkLabel(scroll_frame, text="Media Embedding (Video & Audio)", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
+        ctk.CTkLabel(scroll_frame, text="Media Embedding (Video & Audio)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
         v_vid_thumb = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("thumb", True))
         v_aud_meta = ctk.BooleanVar(value=self.config_data.get(self.TAB_AUD, {}).get("meta", True))
         ctk.CTkCheckBox(scroll_frame, text="Embed thumbnail (Cover art)", variable=v_vid_thumb).pack(pady=4, anchor="w")
         ctk.CTkCheckBox(scroll_frame, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta).pack(pady=4, anchor="w")
 
-        ctk.CTkLabel(scroll_frame, text="Subtitles (Video only)", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
+        ctk.CTkLabel(scroll_frame, text="Subtitles (Video only)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
         v_native_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("native_subs", False))
         v_auto_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("auto_subs", False))
         v_embed_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("embed_subs", False))
