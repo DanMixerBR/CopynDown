@@ -122,6 +122,11 @@ class DownloaderApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
         
+        if not self.is_windows:
+            # Em vez de 120 (força do Windows), usamos 1 (força do Linux)
+            self.bind_all("<Button-4>", lambda e: e.widget.event_generate("<MouseWheel>", delta=1))
+            self.bind_all("<Button-5>", lambda e: e.widget.event_generate("<MouseWheel>", delta=-1))
+        
     def on_closing(self):
         # Trava de Segurança: Mata processos pendentes antes de fechar
         if getattr(self, 'current_process', None):
