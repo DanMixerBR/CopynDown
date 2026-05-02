@@ -1295,6 +1295,11 @@ class DownloaderApp(ctk.CTk):
         self.download_queue.clear()
         self.btn_queue.configure(text="📥 Queue (0)")
         self.render_queue_list()
+        
+    def reset_queue_state(self):
+        self.clear_entire_queue()
+        self.is_queue_running = False
+        self.toggle_buttons("normal")
 
     def render_queue_list(self):
         if not hasattr(self, 'queue_window') or self.queue_window is None or not self.queue_window.winfo_exists():
@@ -1550,7 +1555,7 @@ class DownloaderApp(ctk.CTk):
                             if match and not error_detected and not self.is_cancelling:
                                 self.safe_ui(self.download_progress, float(match.group(1))) 
 
-                # ... (código acima continua igual, lendo as linhas do terminal) ...
+                # ... (código acima lê as linhas do terminal, mantenha igual) ...
                 self.current_process.stdout.close()
                 self.current_process.wait()
                 
@@ -1560,11 +1565,23 @@ class DownloaderApp(ctk.CTk):
                 
                 if self.is_cancelling:
                     self.safe_ui(self.status_canceled)
-                    self.download_queue.clear()
-                    self.safe_ui(lambda: self.btn_queue.configure(text="📥 Queue (0)"))
-                    self.safe_ui(self.render_queue_list)
-                    self.is_queue_running = False
-                    self.safe_ui(self.toggle_buttons, "normal")
+                    
+                    # ===================================================
+                    # NOVO: LIMPEZA DO ARQUIVO FANTASMA (FFmpeg)
+                    # ===================================================
+                    if is_convert:
+                        # O último argumento do comando FFmpeg sempre é o arquivo de destino!
+                        target_file = cmd[-1] 
+                        try:
+                            if os.path.exists(target_file):
+                                os.remove(target_file)
+                                self.safe_ui(self.add_to_log, f">>> Incomplete file deleted: {os.path.basename(target_file)}")
+                        except Exception as e:
+                            self.safe_ui(self.add_to_log, f">>> Warning: Could not delete incomplete file: {e}")
+                    # ===================================================
+
+                    # FIX: Prevenção de Atropelamento de Threads (Race Condition)
+                    self.safe_ui(self.reset_queue_state)
 
                 elif self.current_process.returncode == 0 and not error_detected:
                     end_process_time = time.time()
@@ -1581,7 +1598,6 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.process_next_in_queue)
 
                 elif error_detected:
-                    # --- NOVO: STATUS AMARELO (PLAYLIST INCOMPLETA / ERRO PARCIAL) ---
                     msg = "Conversion Incomplete (Check Logs)" if is_convert else "Download Incomplete (Check Logs)"
                     
                     self.safe_ui(self.progress_label.configure, text=msg, text_color="#d29922") # AMARELO/LARANJA
@@ -1589,17 +1605,13 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.progress_bar.set, 1)
                     
                     self.safe_ui(self.add_to_log, f">>> {msg}\n")
-                    
-                    # Espera 3 segundos para o usuário ler o aviso e continua a fila guerreira!
                     self.safe_ui(self.after, 3000, self.process_next_in_queue)
 
                 else:
                     self.safe_ui(self.status_error)
-                    self.download_queue.clear()
-                    self.safe_ui(lambda: self.btn_queue.configure(text="📥 Queue (0)"))
-                    self.safe_ui(self.render_queue_list)
-                    self.is_queue_running = False
-                    self.safe_ui(self.toggle_buttons, "normal")
+                    
+                    # FIX: Prevenção de Atropelamento de Threads no bloco de Erro
+                    self.safe_ui(self.reset_queue_state)
 
             except Exception as e:
                 self.safe_ui(self.status_error, f"SYSTEM ERROR: {e}")
