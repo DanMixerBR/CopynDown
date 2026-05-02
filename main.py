@@ -90,8 +90,8 @@ class DownloaderApp(ctk.CTk):
         self.full_logs = "--- Program Logs ---\n"
         
         self.DEF_AUTO_PASTE = True
-        self.DEF_USE_COOKIES = False
         self.DEF_HIDE_OPTS = False
+        self.DEF_USE_COOKIES = False
 
         self.config_data = {
             "General": {
