@@ -24,7 +24,7 @@
 <p align="center">
   <img src="assets/linux_ui.png" alt="Linux Interface" width="50%">
   <br>
-  <em>CopynDown running on Ubuntu.</em>
+  <em>CopynDown running on Linux.</em>
 </p>
 
 ## ⚙️ Supported Sites, Formats & Resolutions
