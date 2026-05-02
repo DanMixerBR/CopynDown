@@ -195,7 +195,7 @@ class DownloaderApp(ctk.CTk):
         self.btn_settings = ctk.CTkButton(
             top_bar, text="⚙ Settings", width=90, height=35, corner_radius=10,
             font=("Segoe UI", 12), fg_color="#21252b", hover_color="#2c313a",
-            command=self.
+            command=self.show_settings
         )
         self.btn_settings.pack(side="right")
 
