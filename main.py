@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "25.2"
+        self.version = "25.3"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -882,7 +882,8 @@ class DownloaderApp(ctk.CTk):
             base_cmd.extend([
                 "--embed-metadata", 
                 "--parse-metadata", "%(playlist_index|)s:%(track_number)s",
-                "--parse-metadata", "%(release_year,upload_date>.4)s:%(meta_date)s"
+                "--parse-metadata", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s",
+                "--parse-metadata", "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
             ])
             
         if self.manual_selection_var.get():
@@ -1197,7 +1198,7 @@ class DownloaderApp(ctk.CTk):
                 
                 clean_cmd = base_cmd.copy()
                 if ext_final in ["webm", "wav"]:
-                    clean_cmd = [arg for arg in clean_cmd if arg not in ("--embed-thumbnail", "--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "%(release_year,upload_date>.4)s:%(meta_date)s", "--embed-subs")]
+                    clean_cmd = [arg for arg in clean_cmd if arg not in ("--embed-thumbnail", "--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s", "%(album_artist,creator,channel|)s:%(meta_album_artist)s", "--embed-subs")]
 
                 if current_tab == self.TAB_AUD: cmd = clean_cmd + ["-f", fmt, "--audio-format", ext_final, "-o", f"{base_path}/{output_template}", url]
                 else: cmd = clean_cmd + ["-f", fmt, "--merge-output-format", ext_final, "--remux-video", ext_final, "-o", f"{base_path}/{output_template}", "-o", f"subtitle:{base_path}/subtitles/{output_template}", url]
