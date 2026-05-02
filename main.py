@@ -122,10 +122,6 @@ class DownloaderApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
         
-        if not self.is_windows:
-            self.bind_all("<Button-4>", lambda e: e.widget.event_generate("<MouseWheel>", delta=120))
-            self.bind_all("<Button-5>", lambda e: e.widget.event_generate("<MouseWheel>", delta=-120))
-        
     def on_closing(self):
         # Trava de Segurança: Mata processos pendentes antes de fechar
         if getattr(self, 'current_process', None):
@@ -204,88 +200,62 @@ class DownloaderApp(ctk.CTk):
         self.desc_label = ctk.CTkLabel(self.main_card, text="", font=("Segoe UI", 13), text_color="gray")
         self.desc_label.pack(pady=(25, 5))
 
-        self.url_frame = ctk.CTkFrame(self.main_card, corner_radius=10, border_width=1, border_color="#3a3f4b", fg_color="#181a1f")
+        # ==========================================================
+        # 1. INPUT UNIVERSAL (0% Flicker)
+        # ==========================================================
+        self.input_frame = ctk.CTkFrame(self.main_card, corner_radius=10, border_width=1, border_color="#3a3f4b", fg_color="#181a1f")
         
-        self.url_entry = ctk.CTkEntry(
-            self.url_frame, placeholder_text="Paste URL here", 
-            placeholder_text_color="#8a939e", height=38, font=("Segoe UI", 13), 
-            border_width=0, fg_color="transparent", bg_color="transparent",
-            validate="key", validatecommand=self.vcmd
-        )
-        self.url_entry.pack(side="left", fill="x", expand=True, padx=(15, 5), pady=5)
-        self.url_entry.bind("<KeyRelease>", self.evaluate_ui_state)
+        self.main_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Paste URL here", placeholder_text_color="#8a939e", height=38, font=("Segoe UI", 13), border_width=0, fg_color="transparent", bg_color="transparent", validate="key", validatecommand=self.vcmd)
+        self.main_entry.pack(side="left", fill="x", expand=True, padx=(15, 5), pady=5)
+        self.main_entry.bind("<KeyRelease>", self.evaluate_ui_state)
         
-        self.btn_paste = ctk.CTkButton(
-            self.url_frame, text="Paste", width=70, height=36, corner_radius=8, 
-            font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e",
-            command=self.paste_url_btn
-        )
-        self.btn_paste.pack(side="right", padx=(0, 6), pady=6)
+        self.main_btn = ctk.CTkButton(self.input_frame, text="Paste", width=70, height=36, corner_radius=8, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e", command=self.paste_url_btn)
+        self.main_btn.pack(side="right", padx=(0, 6), pady=6)
 
-        self.convert_container = ctk.CTkFrame(self.main_card, fg_color="transparent")
-        
-        self.src_frame = ctk.CTkFrame(self.convert_container, corner_radius=10, border_width=1, border_color="#3a3f4b", fg_color="#181a1f")
-        self.src_frame.pack(fill="x", pady=(0, 10))
-        self.src_entry = ctk.CTkEntry(self.src_frame, placeholder_text="Select source media file...", placeholder_text_color="#8a939e", height=38, font=("Segoe UI", 13), border_width=0, fg_color="transparent")
-        self.src_entry.pack(side="left", fill="x", expand=True, padx=(15, 5), pady=5)
-        self.src_entry.bind("<KeyRelease>", self.evaluate_ui_state)
-        self.btn_browse_src = ctk.CTkButton(self.src_frame, text="Browse", width=70, height=36, corner_radius=8, font=("Segoe UI", 12, "bold"), fg_color="#34495e", hover_color="#2c3e50", command=self.browse_source)
-        self.btn_browse_src.pack(side="right", padx=(0, 6), pady=6)
+        # Apelidos mágicos para o código de download não quebrar!
+        self.url_entry = self.main_entry
+        self.src_entry = self.main_entry
 
+        # O contêiner dinâmico voltou à vida!
         self.dynamic_container = ctk.CTkFrame(self.main_card, fg_color="transparent")
         self.dynamic_container.pack(fill="both", expand=True)
-        
+
         self.divider = ctk.CTkFrame(self.dynamic_container, height=1, fg_color="#3a3f4b")
         self.divider.pack(fill="x", padx=40, pady=(15, 15))
 
+        # ==========================================================
+        # 2. PAINEL DE OPÇÕES UNIVERSAL (0% Flicker)
+        # ==========================================================
         self.options_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
         self.options_frame.grid_columnconfigure((0, 1), weight=1)
 
-        ctk.CTkLabel(self.options_frame, text="Quality", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.quality_menu = ctk.CTkOptionMenu(self.options_frame, values=["1080p (H.264)", "720p"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.quality_menu.grid(row=1, column=0, sticky="ew", padx=(0, 20))
+        self.lbl_1 = ctk.CTkLabel(self.options_frame, text="Quality", font=("Segoe UI", 12), text_color="gray")
+        self.lbl_1.grid(row=0, column=0, sticky="w", pady=(0, 5))
+        self.menu_1 = ctk.CTkOptionMenu(self.options_frame, values=["1080p (H.264)", "720p"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_1.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
 
-        ctk.CTkLabel(self.options_frame, text="Format", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=1, sticky="w", pady=(0, 5))
-        self.format_menu = ctk.CTkOptionMenu(self.options_frame, values=["MP4", "MKV", "WEBM"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.format_menu.grid(row=1, column=1, sticky="ew")
+        self.lbl_2 = ctk.CTkLabel(self.options_frame, text="Format", font=("Segoe UI", 12), text_color="gray")
+        self.lbl_2.grid(row=0, column=1, sticky="w", pady=(0, 5))
+        self.menu_2 = ctk.CTkOptionMenu(self.options_frame, values=["MP4", "MKV", "WEBM"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_2.grid(row=1, column=1, sticky="ew", pady=(0, 15))
 
-        self.cv_opt_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
-        self.cv_opt_frame.grid_columnconfigure((0, 1), weight=1)
-        
-        ctk.CTkLabel(self.cv_opt_frame, text="Resolution", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.cv_resolution = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Original", "2160p (4K)", "1440p (QHD)", "1080p", "720p", "480p", "360p"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.cv_resolution.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
+        self.lbl_3 = ctk.CTkLabel(self.options_frame, text="Video Codec", font=("Segoe UI", 12), text_color="gray")
+        self.lbl_3.grid(row=2, column=0, sticky="w", pady=(0, 5))
+        self.menu_3 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_3.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
-        ctk.CTkLabel(self.cv_opt_frame, text="Output Format", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=1, sticky="w", pady=(0, 5))
-        self.cv_dst_fmt = ctk.CTkOptionMenu(self.cv_opt_frame, values=["MP4", "MKV", "WEBM", "MOV", "AVI"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.cv_dst_fmt.grid(row=1, column=1, sticky="ew", pady=(0, 15))
+        self.lbl_4 = ctk.CTkLabel(self.options_frame, text="Audio Codec", font=("Segoe UI", 12), text_color="gray")
+        self.lbl_4.grid(row=2, column=1, sticky="w", pady=(0, 5))
+        self.menu_4 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_4.grid(row=3, column=1, sticky="ew")
 
-        ctk.CTkLabel(self.cv_opt_frame, text="Video Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=0, sticky="w", pady=(0, 5))
-        self.vcodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Original", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.vcodec_menu.grid(row=3, column=0, sticky="ew", padx=(0, 20))
-
-        ctk.CTkLabel(self.cv_opt_frame, text="Audio Codec", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.acodec_menu = ctk.CTkOptionMenu(self.cv_opt_frame, values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.acodec_menu.grid(row=3, column=1, sticky="ew")
-
-        self.ca_opt_frame = ctk.CTkFrame(self.dynamic_container, fg_color="transparent")
-        self.ca_opt_frame.grid_columnconfigure((0, 1), weight=1)
-        
-        ctk.CTkLabel(self.ca_opt_frame, text="Bitrate", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.ca_bitrate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Auto", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.ca_bitrate.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
-
-        ctk.CTkLabel(self.ca_opt_frame, text="Output Format", font=("Segoe UI", 12), text_color="gray").grid(row=0, column=1, sticky="w", pady=(0, 5))
-        self.ca_dst_fmt = ctk.CTkOptionMenu(self.ca_opt_frame, values=["M4A", "MP3", "FLAC", "WAV", "Opus", "Ogg"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.ca_dst_fmt.grid(row=1, column=1, sticky="ew", pady=(0, 15))
-
-        ctk.CTkLabel(self.ca_opt_frame, text="Audio Channels", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=0, sticky="w", pady=(0, 5))
-        self.ca_channels = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Original", "Stereo (2.0)", "Mono (1.0)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.ca_channels.grid(row=3, column=0, sticky="ew", padx=(0, 20))
-
-        ctk.CTkLabel(self.ca_opt_frame, text="Sample Rate", font=("Segoe UI", 12), text_color="gray").grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.ca_sample_rate = ctk.CTkOptionMenu(self.ca_opt_frame, values=["Original", "48000 Hz", "44100 Hz"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
-        self.ca_sample_rate.grid(row=3, column=1, sticky="ew")
+        # Mais apelidos mágicos!
+        self.quality_menu = self.menu_1
+        self.format_menu = self.menu_2
+        self.menu_conv_1 = self.menu_1
+        self.menu_conv_2 = self.menu_2
+        self.menu_conv_3 = self.menu_3
+        self.menu_conv_4 = self.menu_4
 
         self.switch_advanced = ctk.CTkSwitch(
             self.dynamic_container, text="Advanced selection", 
@@ -382,30 +352,90 @@ class DownloaderApp(ctk.CTk):
             self.TAB_C_AUD: "Audio Converter"
         }
         self.desc_label.configure(text=desc_map.get(category, ""))
+        
+        # --- Limpeza Inteligente do Input ---
+        is_convert = category in [self.TAB_C_VID, self.TAB_C_AUD]
+        if getattr(self, 'last_tab_is_convert', None) != is_convert:
+            self.main_entry.delete(0, 'end')
+        self.last_tab_is_convert = is_convert
 
+        if is_convert:
+            self.main_entry.configure(placeholder_text="Select source media file...")
+            self.main_btn.configure(text="Browse", fg_color="#34495e", hover_color="#2c3e50", command=self.browse_source)
+        else:
+            self.main_entry.configure(placeholder_text="Paste URL here")
+            self.main_btn.configure(text="Paste", fg_color="#1f538d", hover_color="#14375e", command=self.paste_url_btn)
+
+        # --- Painel Universal ---
         if category == self.TAB_VID:
-            self.quality_menu.configure(values=["2160p (4K)", "1440p (QHD)", "1080p (AV1/VP9)", "1080p (H.264)", "720p", "480p", "360p"])
-            self.quality_menu.set("2160p (4K)")
-            self.format_menu.configure(values=["MP4", "MKV", "WEBM"])
-            self.format_menu.set("MP4")
+            self.lbl_1.configure(text="Quality")
+            self.menu_1.configure(values=["2160p (4K)", "1440p (QHD)", "1080p (AV1/VP9)", "1080p (H.264)", "720p", "480p", "360p"])
+            self.menu_1.set("2160p (4K)")
+
+            self.lbl_2.configure(text="Format")
+            self.menu_2.configure(values=["MP4", "MKV", "WEBM"])
+            self.menu_2.set("MP4")
+
+            self.lbl_3.grid_remove()
+            self.menu_3.grid_remove()
+            self.lbl_4.grid_remove()
+            self.menu_4.grid_remove()
             
         elif category == self.TAB_AUD:
-            self.quality_menu.configure(values=["Auto", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)"])
-            self.quality_menu.set("Auto")
-            self.format_menu.configure(values=["M4A", "MP3", "FLAC", "WAV", "Opus"])
-            self.format_menu.set("M4A")
-            
+            self.lbl_1.configure(text="Quality")
+            self.menu_1.configure(values=["Auto", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)"])
+            self.menu_1.set("Auto")
+
+            self.lbl_2.configure(text="Format")
+            self.menu_2.configure(values=["M4A", "MP3", "FLAC", "WAV", "Opus"])
+            self.menu_2.set("M4A")
+
+            self.lbl_3.grid_remove()
+            self.menu_3.grid_remove()
+            self.lbl_4.grid_remove()
+            self.menu_4.grid_remove()
+
         elif category == self.TAB_C_VID:
-            self.cv_resolution.set("Original")
-            self.cv_dst_fmt.set("MP4")
-            self.vcodec_menu.set("Original")
-            self.acodec_menu.set("Original")
+            self.lbl_1.configure(text="Resolution")
+            self.menu_1.configure(values=["Original", "2160p (4K)", "1440p (QHD)", "1080p", "720p", "480p", "360p"])
+            self.menu_1.set("Original")
+
+            self.lbl_2.configure(text="Output Format")
+            self.menu_2.configure(values=["MP4", "MKV", "WEBM", "MOV", "AVI"])
+            self.menu_2.set("MP4")
+
+            self.lbl_3.configure(text="Video Codec")
+            self.menu_3.configure(values=["Original", "H.264", "H.265", "VP9"])
+            self.menu_3.set("Original")
+            self.lbl_3.grid()
+            self.menu_3.grid()
+
+            self.lbl_4.configure(text="Audio Codec")
+            self.menu_4.configure(values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"])
+            self.menu_4.set("Original")
+            self.lbl_4.grid()
+            self.menu_4.grid()
 
         elif category == self.TAB_C_AUD:
-            self.ca_channels.set("Original")
-            self.ca_dst_fmt.set("M4A")
-            self.ca_bitrate.set("Auto")
-            self.ca_sample_rate.set("Original")
+            self.lbl_1.configure(text="Bitrate")
+            self.menu_1.configure(values=["Auto", "320 kbps", "256 kbps", "192 kbps", "128 kbps"])
+            self.menu_1.set("Auto")
+
+            self.lbl_2.configure(text="Output Format")
+            self.menu_2.configure(values=["M4A", "MP3", "FLAC", "WAV", "Opus", "Ogg"])
+            self.menu_2.set("M4A")
+
+            self.lbl_3.configure(text="Audio Channels")
+            self.menu_3.configure(values=["Original", "Stereo (2.0)", "Mono (1.0)"])
+            self.menu_3.set("Original")
+            self.lbl_3.grid()
+            self.menu_3.grid()
+
+            self.lbl_4.configure(text="Sample Rate")
+            self.menu_4.configure(values=["Original", "48000 Hz", "44100 Hz"])
+            self.menu_4.set("Original")
+            self.lbl_4.grid()
+            self.menu_4.grid()
 
         self.evaluate_ui_state()
     
@@ -416,13 +446,13 @@ class DownloaderApp(ctk.CTk):
     
     def on_extract_audio_toggle(self):
         if self.extract_audio_var.get():
-            self.ca_bitrate.configure(state="disabled")
-            self.ca_channels.configure(state="disabled")
-            self.ca_sample_rate.configure(state="disabled")
+            self.menu_1.configure(state="disabled")
+            self.menu_3.configure(state="disabled")
+            self.menu_4.configure(state="disabled")
         else:
-            self.ca_bitrate.configure(state="normal")
-            self.ca_channels.configure(state="normal")
-            self.ca_sample_rate.configure(state="normal")
+            self.menu_1.configure(state="normal")
+            self.menu_3.configure(state="normal")
+            self.menu_4.configure(state="normal")
     
     def evaluate_ui_state(self, *args):
         cat = self.current_category.get()
@@ -433,11 +463,11 @@ class DownloaderApp(ctk.CTk):
         hide_mode = self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS)
         
         if is_convert:
-            is_valid = bool(self.src_entry.get().strip())
+            is_valid = bool(self.main_entry.get().strip())
             is_playlist = False
         else:
-            is_valid = self.is_valid_media_url(self.url_entry.get().strip())
-            is_playlist = is_valid and "list=" in self.url_entry.get().lower()
+            is_valid = self.is_valid_media_url(self.main_entry.get().strip())
+            is_playlist = is_valid and "list=" in self.main_entry.get().lower()
             
         current_state = (cat, is_valid, self.is_updating, self.manual_selection_var.get(), is_playlist, hide_mode)
         if getattr(self, "last_ui_state", None) == current_state:
@@ -446,63 +476,71 @@ class DownloaderApp(ctk.CTk):
         self.last_ui_state = current_state
 
         # ==========================================================
-        # O SEGREDO ANTI-PISCAR: Empacotador Inteligente (Smart Pack)
+        # O SEGREDO ANTI-PISCAR V2: Empacotador Inteligente (Smart Pack)
         # ==========================================================
         def smart_pack(widget, show, **kwargs):
             is_packed = (widget.winfo_manager() == "pack")
-            if show and not is_packed:
-                widget.pack(**kwargs)
+            if show:
+                if not is_packed:
+                    # Primeira vez: empacota na ordem certa
+                    widget.pack(**kwargs)
+                else:
+                    # Atualização (O BUG MORRE AQUI): Removemos a ordem para forçar o Tkinter a ler as novas margens!
+                    kwargs.pop('before', None)
+                    widget.pack_configure(**kwargs)
             elif not show and is_packed:
                 widget.pack_forget()
 
-        # Se estiver atualizando o app, esconde tudo e mostra só o status
+        # Se estiver atualizando o app...
         if self.is_updating:
-            smart_pack(self.url_frame, False)
-            smart_pack(self.convert_container, False)
+            smart_pack(self.input_frame, False)
             smart_pack(self.options_frame, False)
-            smart_pack(self.cv_opt_frame, False)
-            smart_pack(self.ca_opt_frame, False)
             smart_pack(self.switch_advanced, False)
             smart_pack(self.switch_extract_audio, False)
             smart_pack(self.action_frame, False)
             smart_pack(self.status_frame, True, fill="x", padx=40, pady=(10, 0))
             return 
 
-        # 1. Área do Topo (URLs) - Ficam antes do container dinâmico
-        smart_pack(self.convert_container, show=is_convert, fill="x", padx=40, before=self.dynamic_container)
-        smart_pack(self.url_frame, show=not is_convert, fill="x", padx=40, pady=(0, 10), before=self.dynamic_container)
+        # 1. Área do Topo SEMPRE FIXA
+        smart_pack(self.input_frame, show=True, fill="x", padx=40, pady=(0, 10), before=self.dynamic_container)
 
         if is_convert:
             self.btn_download.configure(text="Convert media")
         else:
             self.btn_download.configure(text="Download media")
 
-        # 2. Determina se as opções devem aparecer
         show_options = True
         if not is_convert and hide_mode and not is_valid:
             show_options = False
             
         show_status = show_options or getattr(self, 'is_queue_running', False)
-
-        # ==========================================================
-        # ORDENAÇÃO ESTRITA (STRICT PACKING ORDER)
-        # Empacotamos usando 'before' (âncoras) para garantir que
-        # nada passe por cima dos botões ou da barra de status!
-        # ==========================================================
         
-        # A. A Barra de Status é a âncora final (sempre fica por último)
-        smart_pack(self.status_frame, show=show_status, fill="x", padx=40, pady=(10, 0))
-        
-        # B. O Action Frame (Botões) é ancorado estritamente ANTES da Barra de Status
-        smart_pack(self.action_frame, show=show_status, fill="x", padx=40, pady=(0, 15), before=self.status_frame)
+        # ======================================================
+        # LÓGICA DE ESPAÇAMENTO DINÂMICO (PIXEL PERFECT)
+        # ======================================================
+        if cat == self.TAB_C_AUD:
+            btn_pady = (15, 10) 
+        elif cat == self.TAB_C_VID:
+            # 45px compensa exatamente a ausência do Switch para o botão não pular de uma aba pra outra!
+            btn_pady = (45, 10)
+        else:
+            btn_pady = (15, 10)
 
-        # C. As opções são ancoradas estritamente ANTES dos Botões (Action Frame)
-        # Como o código é lido de cima para baixo, a ordem visual será perfeita.
-        smart_pack(self.cv_opt_frame, show=(show_options and is_conv_vid), fill="x", padx=40, pady=(0, 15), before=self.action_frame)
-        smart_pack(self.ca_opt_frame, show=(show_options and is_conv_aud), fill="x", padx=40, pady=(0, 15), before=self.action_frame)
-        smart_pack(self.switch_extract_audio, show=(show_options and is_conv_aud), anchor="w", padx=40, pady=(0, 10), before=self.action_frame)
-        smart_pack(self.options_frame, show=(show_options and not is_convert), fill="x", padx=40, before=self.action_frame)
-        smart_pack(self.switch_advanced, show=(show_options and not is_convert), anchor="w", padx=40, pady=(15, 30), before=self.action_frame)
+        status_pady = (15, 0)
+        # ======================================================
+
+        # A. Barra de Status
+        smart_pack(self.status_frame, show=show_status, fill="x", padx=40, pady=status_pady)
+        
+        # B. Botões 
+        smart_pack(self.action_frame, show=show_status, fill="x", padx=40, pady=btn_pady, before=self.status_frame)
+
+        # C. Painel Único de Opções
+        smart_pack(self.options_frame, show=show_options, fill="x", padx=40, pady=0, before=self.action_frame)
+        
+        # D. Switches 
+        smart_pack(self.switch_extract_audio, show=(show_options and is_conv_aud), anchor="w", padx=40, pady=(15, 0), before=self.action_frame)
+        smart_pack(self.switch_advanced, show=(show_options and not is_convert), anchor="w", padx=40, pady=(0, 15), before=self.action_frame)
 
         # 4. Controle do Switch Avançado
         if is_valid and not is_convert:
@@ -857,7 +895,7 @@ class DownloaderApp(ctk.CTk):
 
         is_video = media_type == "video"
         base_name = os.path.splitext(os.path.basename(src))[0]
-        ext_final = self.cv_dst_fmt.get().lower() if is_video else self.ca_dst_fmt.get().lower()
+        ext_final = self.menu_conv_2.get().lower()
         
         if not is_video and self.extract_audio_var.get():
             suffix = "extracted"
@@ -885,7 +923,7 @@ class DownloaderApp(ctk.CTk):
                 ffmpeg_exe = "ffmpeg"
             except Exception:
                 # Se der erro, avisa na tela e cancela a conversão!
-                self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please install it via package manager or place it in the 'bin' folder.")
+                self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please check your 'bin' folder.")
                 return
             
         cmd = [ffmpeg_exe, "-y", "-i", src]
@@ -894,13 +932,13 @@ class DownloaderApp(ctk.CTk):
             vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
             ac_map = {"Original": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
             
-            vc = vc_map.get(self.vcodec_menu.get(), "copy")
-            ac = ac_map.get(self.acodec_menu.get(), "copy")
+            vc = vc_map.get(self.menu_conv_3.get(), "copy")
+            ac = ac_map.get(self.menu_conv_4.get(), "copy")            
             
             # ==============================================================
             # NOVA LÓGICA DE RESOLUÇÃO (COM AUTO-FIX)
             # ==============================================================
-            res_choice = self.cv_resolution.get()
+            res_choice = self.menu_conv_1.get()
             scale_filter = None
             if res_choice != "Original" and vc != "none":
                 h_map = {"2160p (4K)": "2160", "1440p (QHD)": "1440", "1080p": "1080", "720p": "720", "480p": "480", "360p": "360"}
@@ -968,7 +1006,7 @@ class DownloaderApp(ctk.CTk):
                 if ac != "copy" and ac != "flac": cmd.extend(["-b:a", "192k"])
         else:
             cmd.append("-vn")
-            dst_fmt = self.ca_dst_fmt.get().lower()
+            dst_fmt = self.menu_conv_2.get().lower()
             
             # --- LÓGICA DE EXTRAÇÃO E TRAVA DE COMPATIBILIDADE ---
             if self.extract_audio_var.get():
@@ -988,9 +1026,9 @@ class DownloaderApp(ctk.CTk):
                 ac = ac_map.get(dst_fmt, "copy")
                 cmd.extend(["-c:a", ac])
                 
-                bitrate = self.ca_bitrate.get()
-                sample_rate = self.ca_sample_rate.get()
-                channels = self.ca_channels.get()
+                bitrate = self.menu_conv_1.get()
+                sample_rate = self.menu_conv_4.get()
+                channels = self.menu_conv_3.get()
                 
                 if bitrate != "Auto" and ac != "copy" and ac != "flac":
                     # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
@@ -1308,18 +1346,21 @@ class DownloaderApp(ctk.CTk):
                 f = ctk.CTkFrame(self.queue_scroll, fg_color="#181a1f", corner_radius=8)
                 f.pack(fill="x", pady=8, padx=5)
                 
-                lbl = ctk.CTkLabel(f, text=f"{index+1}. {name}", font=("Segoe UI", 12))
-                lbl.pack(side="left", padx=10, pady=12)
+                # 1. CRIA OS WIDGETS PRIMEIRO (MANTÉM A ORDEM DA RECICLAGEM!)
+                lbl = ctk.CTkLabel(f, text=f"{index+1}. {name}", font=("Segoe UI", 12), anchor="w")
                 task["label_widget"] = lbl
                 
                 btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", command=lambda i=index: self.remove_from_queue(i))
-                btn_remove.pack(side="right", padx=10)
-
                 btn_down = ctk.CTkButton(f, text="▼", width=30, height=24, fg_color="#2c313a", state="normal" if index < len(self.download_queue)-1 else "disabled", command=lambda i=index: self.move_queue_item(i, 1))
-                btn_down.pack(side="right", padx=2)
-
                 btn_up = ctk.CTkButton(f, text="▲", width=30, height=24, fg_color="#2c313a", state="normal" if index > 0 else "disabled", command=lambda i=index: self.move_queue_item(i, -1))
+
+                # 2. EMPACOTA DA DIREITA PARA A ESQUERDA (Protege os botões!)
+                btn_remove.pack(side="right", padx=10)
+                btn_down.pack(side="right", padx=2)
                 btn_up.pack(side="right", padx=2)
+                
+                # 3. EMPACOTA O TEXTO POR ÚLTIMO (Preenchendo o espaço que sobrar)
+                lbl.pack(side="left", fill="x", expand=True, padx=10, pady=12)
 
         # 5. Esconde os frames que sobraram (se a fila diminuiu)
         for i in range(len(self.download_queue), len(existing_frames)):
@@ -1390,8 +1431,15 @@ class DownloaderApp(ctk.CTk):
             def fetch_title_task():
                 try:
                     # Pede pro yt-dlp apenas ler o título de forma rápida, sem baixar nada
-                    title_cmd = [self.ytdlp_path, "--print", "title", "--no-playlist", task_name]
-                    result = subprocess.run(title_cmd, capture_output=True, text=True, encoding='utf-8', startupinfo=self.startupinfo)
+                    title_cmd = [
+                        self.ytdlp_path, 
+                        "--get-title", 
+                        "--no-warnings", 
+                        "--flat-playlist", 
+                        "--no-playlist", 
+                        task_name
+                    ]
+                    result = subprocess.run(title_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                     
                     if result.returncode == 0 and result.stdout.strip():
                         new_name = result.stdout.strip()
@@ -1800,7 +1848,7 @@ class DownloaderApp(ctk.CTk):
             return
         try:
             self.safe_ui(self.toggle_buttons, "disabled", is_downloading=False)
-            process = subprocess.Popen([self.ytdlp_path, "-U"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', startupinfo=self.startupinfo)
+            process = subprocess.Popen([self.ytdlp_path, "-U"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
             for line in process.stdout:
                 if line.strip(): self.safe_ui(self.add_to_log, f"[yt-dlp update] {line.strip()}")
             process.stdout.close()
