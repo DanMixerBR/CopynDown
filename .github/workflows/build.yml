@@ -54,8 +54,8 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" -OutFile "deno.zip"
           Expand-Archive -Path "deno.zip" -DestinationPath "release\core\bin\"
           
-          # 7. Adiciona o atalho externo e compacta o ZIP final
-          Copy-Item -Path assets\CopynDown.exe -Destination release\
+          # 7. Compila o Launcher em C# e compacta o ZIP final
+          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32icon:bin_windows\icon.ico /out:release\CopynDown.exe assets\launcher.cs
           7z a -tzip -mx=9 CopynDown_Windows.zip .\release\*
 
       - name: Salvar o ZIP final
@@ -120,6 +120,7 @@ jobs:
           
           # 7. Adiciona o instalador externo e compacta o ZIP final
           cp assets/Install_CopynDown.sh release/
+          chmod +x release/Install_CopynDown.sh
           cd release
           zip -r -9 ../CopynDown_Linux.zip ./*
 
