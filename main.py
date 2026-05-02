@@ -80,7 +80,7 @@ class DownloaderApp(ctk.CTk):
         
         self.valid_domains = [
             "youtube.com", "youtu.be", "instagram.com", "tiktok.com", "twitter.com", 
-            "x.com", "facebook.com", "fb.watch", "twitch.tv", "clips.twitch.tv", 
+            "//x.com", ".x.com", "facebook.com", "fb.watch", "twitch.tv", "clips.twitch.tv", 
             "vimeo.com", "reddit.com", "dailymotion.com", "dai.ly", "soundcloud.com",
             "linkedin.com", "pinterest.com", "snapchat.com", "bilibili.com", 
             "rumble.com", "bandcamp.com", "mixcloud.com", "kick.com", "odysee.com",
@@ -90,7 +90,7 @@ class DownloaderApp(ctk.CTk):
         self.full_logs = "--- Program Logs ---\n"
         
         self.DEF_AUTO_PASTE = True
-        self.DEF_USE_COOKIES = True
+        self.DEF_USE_COOKIES = False
         self.DEF_HIDE_OPTS = False
 
         self.config_data = {
@@ -828,7 +828,7 @@ class DownloaderApp(ctk.CTk):
         cfg = self.config_data[self.TAB_VID]
         real_path = os.path.expanduser(self.config_data["General"]["video_path"])
         
-        if any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", "x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"]):
+        if any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"]):
             out_tmpl = "%(uploader)s [%(id)s].%(ext)s"
         else:
             out_tmpl = "%(title)s.%(ext)s"
@@ -1086,7 +1086,7 @@ class DownloaderApp(ctk.CTk):
         def fetch_data_task():
             try:
                 cmd_json = self.build_base_cmd(is_json=True) + ["--no-playlist", url]
-                output = subprocess.check_output(cmd_json, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
+                output = subprocess.check_output(cmd_json, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                 
                 video_data = json.loads(output)
                 formats = video_data.get('formats', [])
@@ -1678,6 +1678,13 @@ class DownloaderApp(ctk.CTk):
 
         ctk.CTkLabel(scroll_frame, text="General Options", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
         
+        v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
+        v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
+        v_use_cookies = ctk.BooleanVar(value=self.config_data.get("General", {}).get("use_cookies", self.DEF_USE_COOKIES))
+        ctk.CTkCheckBox(scroll_frame, text="Auto-paste URLs", variable=v_auto_paste).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(scroll_frame, text="Use cookies file", variable=v_use_cookies).pack(pady=4, anchor="w")
+        
         ctk.CTkLabel(scroll_frame, text="Cookies txt path:", font=("Segoe UI", 12)).pack(anchor="w")
         cookie_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
         cookie_frame.pack(pady=2, fill="x")
@@ -1690,13 +1697,100 @@ class DownloaderApp(ctk.CTk):
             p = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")], parent=settings_win)
             format_and_insert_path(p, cookie_entry)
         ctk.CTkButton(cookie_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=change_cookie_path).pack(side="right")
+        
+        # =================================================================
+        # NOVO: EXTRATOR AUTOMÁTICO DE COOKIES (NATIVO)
+        # =================================================================
+        ctk.CTkLabel(scroll_frame, text="Auto-extract cookies (May require admin privileges):", font=("Segoe UI", 12)).pack(anchor="w", pady=(10, 0))
+        extract_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        extract_frame.pack(pady=2, fill="x")
 
-        v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
-        v_use_cookies = ctk.BooleanVar(value=self.config_data.get("General", {}).get("use_cookies", self.DEF_USE_COOKIES))
-        v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
-        ctk.CTkCheckBox(scroll_frame, text="Auto-paste URLs", variable=v_auto_paste).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Use cookies file", variable=v_use_cookies).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
+        self.browser_menu = ctk.CTkOptionMenu(extract_frame, values=["Chrome", "Edge", "Firefox", "Brave", "Opera", "Chromium", "Vivaldi", "Safari"], fg_color="#21252b", button_color="#2c313a", width=120)
+        self.browser_menu.pack(side="left", padx=(0, 10))
+
+        self.btn_extract = ctk.CTkButton(extract_frame, text="Extract & Save", width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
+        self.btn_extract.pack(side="left")
+
+        def perform_extraction():
+            self.btn_extract.configure(state="disabled", text="Extracting...")
+            browser = self.browser_menu.get().lower()
+            c_path = cookie_entry.get()
+
+            def thread_task():
+                try:
+                    import rookiepy
+                    
+                    self.safe_ui(lambda: self.add_to_log(f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies..."))
+                    
+                    # Mapeia as funções de forma segura (Evita crash se o navegador não existir no OS)
+                    browsers = {
+                        "chrome": getattr(rookiepy, 'chrome', None),
+                        "edge": getattr(rookiepy, 'edge', None),
+                        "firefox": getattr(rookiepy, 'firefox', None),
+                        "brave": getattr(rookiepy, 'brave', None),
+                        "opera": getattr(rookiepy, 'opera', None),
+                        "chromium": getattr(rookiepy, 'chromium', None),
+                        "vivaldi": getattr(rookiepy, 'vivaldi', None),
+                        "safari": getattr(rookiepy, 'safari', None)
+                    }
+                    
+                    # Verifica se o navegador foi encontrado ou se é compatível com o sistema atual
+                    if browser not in browsers or browsers[browser] is None:
+                        raise ValueError(f"The browser '{browser.capitalize()}' is not supported on your current Operating System.")
+                        
+                    # Extrai da RAM/Cópia SQLite ignorando o fato do navegador estar aberto!
+                    # Passamos os domínios específicos para agilizar e não capturar lixo
+                    extracted_cookies = browsers[browser](domains=self.valid_domains)
+                    
+                    if not extracted_cookies:
+                        raise Exception("No cookies found for the target domains. Are you logged in?")
+
+                    # Converte a lista em formato Netscape HTTP Cookie File e salva na pasta bin
+                    with open(c_path, 'w', encoding='utf-8') as f:
+                        f.write("# Netscape HTTP Cookie File\n")
+                        f.write("# Generated by CopynDown Native Extractor\n\n")
+                        for c in extracted_cookies:
+                            domain = c.get('domain', '')
+                            include_sub = 'TRUE' if domain.startswith('.') else 'FALSE'
+                            path = c.get('path', '/')
+                            secure = 'TRUE' if c.get('secure') else 'FALSE'
+                            expires = str(int(c.get('expires', 0))) if c.get('expires') else '0'
+                            name = c.get('name', '')
+                            value = c.get('value', '')
+                            f.write(f"{domain}\t{include_sub}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n")
+                    
+                    self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="✅ Success!", fg_color="#3fb950"))
+                    self.safe_ui(lambda: self.add_to_log(f">>> Successfully generated valid cookies.txt at {c_path}"))
+                    
+                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract & Save", fg_color="#1f538d")))
+
+                except Exception as e:
+                    erro_str = str(e).lower()
+                    self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="❌ Error", fg_color="#a94442"))
+                    
+                    # Intercepta a trava de segurança moderna do Chromium
+                    if "admin" in erro_str or "appbound" in erro_str:
+                        aviso = (
+                            "Modern browsers (Chrome/Edge v130+) require Administrator privileges to extract cookies due to new security updates.\n\n"
+                            "To fix this:\n"
+                            "1. Close CopynDown.\n"
+                            "2. Right-click the program icon.\n"
+                            "3. Select 'Run as Administrator'.\n"
+                            "4. Try extracting again."
+                        )
+                        self.safe_ui(lambda: messagebox.showwarning("Admin Required", aviso, parent=settings_win))
+                    else:
+                        # Erros comuns (como navegador não instalado)
+                        self.safe_ui(lambda: messagebox.showerror("Extraction Error", f"Failed to extract cookies.\n\nDetails: {str(e)}", parent=settings_win))
+                        
+                    self.safe_ui(lambda: self.add_to_log(f">>> Cookie extraction error: {e}"))
+                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract & Save", fg_color="#1f538d")))
+
+            # Roda em segundo plano para não congelar a janela de Configurações
+            threading.Thread(target=thread_task, daemon=True).start()
+
+        self.btn_extract.configure(command=perform_extraction)
+        # =================================================================
         
         ctk.CTkLabel(scroll_frame, text="Media Embedding (Video & Audio)", font=("Segoe UI", 13, "bold")).pack(pady=(20, 5), anchor="w")
         v_vid_thumb = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("thumb", True))
