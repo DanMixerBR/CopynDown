@@ -58,6 +58,25 @@
 
 > **Note:** The Linux installation script will automatically configure the required environment and create a convenient shortcut on both your Desktop and your Application Menu!
 
+## 🍪 Authentication & Cookies (Age-Restricted/Private Content)
+
+Some platforms (like YouTube, Instagram, and TikTok) require an active login session to verify your age or subscription status before allowing you to view or download specific media. 
+
+CopynDown makes this easy with a built-in **Native Cookie Extractor**. You don't need to install any shady browser extensions!
+
+**How to extract and use your cookies:**
+1. Open your regular web browser and log in to the desired platform (e.g., youtube.com, instagram.com).
+2. Open **CopynDown** and click the **⚙ Settings** button.
+3. Scroll down to the **Auto-Extract Cookies** section.
+4. Select your web browser from the dropdown list and click **Extract & Save**.
+5. CopynDown will safely extract your current session directly from your browser and save it locally in the `bin` folder. 
+
+You can now download age-restricted and private content seamlessly!
+
+> **⚠️ Troubleshooting - Cookie Extraction Failed:**
+> *   **Admin Rights (Chrome/Edge v130+):** Due to modern security updates (App-Bound Encryption), Windows may block external apps from reading browser data. If the extraction fails, close CopynDown, right-click the `CopynDown.exe` icon, select **"Run as Administrator"**, and try again.
+> *   **Browser Lock:** Ensure the selected browser is completely closed before extracting, as some browsers lock their database while running.
+
 ## 🛡️ Troubleshooting
 
 ### Windows SmartScreen Warning (False Positive)
