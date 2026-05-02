@@ -24,7 +24,7 @@ jobs:
       - name: Compilar com Nuitka (Modo Windows)
         run: |
           # O Nuitka já gera o CopynDown.exe dentro da pasta main.dist
-          python -m nuitka --standalone --windows-console-mode=disable --enable-plugin=tk-inter --windows-icon-from-ico=bin_windows/icon.ico --company-name="DanMixerBR" --product-name="CopynDown" --file-version="25.2.0.0" --product-version="25.2.0.0" --copyright="MIT License" --output-filename=CopynDown.exe main.py
+          python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --enable-plugin=tk-inter --windows-icon-from-ico=bin_windows/icon.ico --company-name="DanMixerBR" --product-name="CopynDown" --file-version="25.2.0.0" --product-version="25.2.0.0" --copyright="MIT License" --output-filename=CopynDown.exe main.py
 
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Windows.zip)
         shell: powershell
@@ -54,7 +54,7 @@ jobs:
           
           # 7. Adiciona o atalho externo e compacta o ZIP final
           Copy-Item -Path assets\copyndown.exe -Destination release\
-          Compress-Archive -Path release\* -DestinationPath CopynDown_Windows.zip
+          7z a -tzip -mx=9 CopynDown_Windows.zip .\release\*
 
       - name: Salvar o ZIP final
         uses: actions/upload-artifact@v4
@@ -87,7 +87,7 @@ jobs:
       - name: Compilar com Nuitka (Modo Linux)
         run: |
           # O Nuitka já gera o CopynDown dentro da pasta main.dist
-          python -m nuitka --standalone --enable-plugin=tk-inter -o CopynDown main.py
+          python -m nuitka --assume-yes-for-downloads --standalone --enable-plugin=tk-inter -o CopynDown main.py
 
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Linux.zip)
         run: |
@@ -120,7 +120,7 @@ jobs:
           # 7. Adiciona o instalador externo e compacta o ZIP final
           cp assets/Install_CopynDown.sh release/
           cd release
-          zip -r ../CopynDown_Linux.zip ./*
+          zip -r -9 ../CopynDown_Linux.zip ./*
 
       - name: Salvar o ZIP final
         uses: actions/upload-artifact@v4
