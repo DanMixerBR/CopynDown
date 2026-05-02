@@ -14,12 +14,13 @@ echo           %G%CopynDown%W% - %Y%Update Manager%W%
 echo %C%=======================================================%W%
 echo.
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
-rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Auto Update.bat" >nul 2>&1
-del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
+del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 if exist "certifi" (
+    rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
+    del /f /q "bin\ffprobe.exe" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
     if exist "CopynDown_Windows.zip" (
         powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '..' -Force"
         del /f /q "CopynDown_Windows.zip"
