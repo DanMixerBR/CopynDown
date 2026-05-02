@@ -30,6 +30,7 @@ if exist "certifi" (
     )
 ) else (
     if exist "CopynDown_Windows.zip" (
+        robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
         powershell -command "Expand-Archive -Path 'CopynDown_Windows.zip' -DestinationPath '.' -Force"
         del /f /q "CopynDown_Windows.zip"
     ) else if exist "CopynDown.zip" (
