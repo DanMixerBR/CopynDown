@@ -2,6 +2,11 @@ name: Build CopynDown
 
 on:
   workflow_dispatch: 
+    inputs:
+      versao_tag:
+        description: 'Tag da Versão (ex: v25.3.0)'
+        required: true
+        default: 'v25.3.0'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -70,28 +75,28 @@ jobs:
     steps:
       - name: Baixar o código-fonte
         uses: actions/checkout@v4
-
+  
       - name: Configurar o Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
+  
       - name: Instalar dependências base do Linux
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-tk zip wget curl xz-utils
-
+  
       - name: Instalar bibliotecas do projeto
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install nuitka
-
+  
       - name: Compilar com Nuitka (Modo Linux)
         run: |
           # O Nuitka já gera o CopynDown dentro da pasta main.dist
           python -m nuitka --assume-yes-for-downloads --standalone --enable-plugin=tk-inter -o CopynDown main.py
-
+  
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Linux.zip)
         run: |
           # 1. Prepara a pasta core e a subpasta bin
@@ -125,9 +130,53 @@ jobs:
           chmod +x release/Install_CopynDown.sh
           cd release
           zip -r -9 ../CopynDown_Linux.zip ./*
-
+  
       - name: Salvar o ZIP final
         uses: actions/upload-artifact@v4
         with:
           name: Release-Linux
           path: CopynDown_Linux.zip
+  
+  release-and-publish:
+    needs: [build-windows, build-linux] # Garante que só roda após os compiladores terminarem
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Autorização de segurança para o robô poder commitar os arquivos hash
+    
+    steps:
+      - name: Baixar o código-fonte
+        uses: actions/checkout@v4
+  
+      - name: Baixar ZIPs Gerados
+        uses: actions/download-artifact@v4
+        with:
+          path: ./downloads
+          merge-multiple: true # Junta os artefatos do Windows e Linux na mesma pasta
+  
+      - name: Calcular Hashes e Atualizar TXTs
+        run: |
+          # O comando sha256sum gera o código, e o awk filtra para pegar apenas as letras/números
+          HASH_WIN=$(sha256sum ./downloads/CopynDown_Windows.zip | awk '{ print $1 }')
+          HASH_LINUX=$(sha256sum ./downloads/CopynDown_Linux.zip | awk '{ print $1 }')
+          
+          # Sobrescreve os arquivos do seu repositório com os novos hashes
+          echo "$HASH_WIN" > hash.txt
+          echo "$HASH_WIN" > hash_v2.txt
+          echo "$HASH_LINUX" >> hash_v2.txt
+  
+      - name: Salvar os Hashes direto no Repositório (Commit Automático)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🤖 Atualização automática de hashes para a versão ${{ github.event.inputs.versao_tag }}"
+          file_pattern: "hash.txt hash_v2.txt"
+  
+      - name: Criar a Página de Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.versao_tag }}
+          name: "CopynDown ${{ github.event.inputs.versao_tag }}"
+          files: |
+            ./downloads/CopynDown_Windows.zip
+            ./downloads/CopynDown_Linux.zip
+          draft: true
+  
