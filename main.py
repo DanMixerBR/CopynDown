@@ -45,7 +45,6 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "25.4"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -75,6 +74,8 @@ class DownloaderApp(ctk.CTk):
         self.ytdlp_path = os.path.join("bin", f"yt-dlp{self.exe}").replace("\\", "/") # <- Dinâmico
         self.cookies_path_default = os.path.join("bin", "cookies.txt").replace("\\", "/")
         self.version_file = os.path.join("bin", "version.txt").replace("\\", "/")
+        
+        self.version = self.get_local_version()
         
         self.re_progress = re.compile(r'(\d+\.\d+)%')
         
@@ -1865,15 +1866,15 @@ class DownloaderApp(ctk.CTk):
                     ext_args = {"domains": self.valid_domains}
                     
                     if browser == "firefox" and not self.is_windows:
-                        flatpak_dir = os.path.expanduser("~/.var/app/org.mozilla.firefox/.mozilla/firefox/")
+                        fedora_dir = os.path.expanduser("~/.config/mozilla/firefox/")
                         
-                        if os.path.exists(flatpak_dir):
+                        if os.path.exists(fedora_dir):
                             newest_db = None
                             newest_time = 0
                             
-                            # Vasculha todas as subpastas dentro do diretório do Flatpak
-                            for folder_name in os.listdir(flatpak_dir):
-                                potential_db = os.path.join(flatpak_dir, folder_name, "cookies.sqlite")
+                            # Vasculha todas as subpastas dentro do diretório
+                            for folder_name in os.listdir(fedora_dir):
+                                potential_db = os.path.join(fedora_dir, folder_name, "cookies.sqlite")
                                 
                                 # Se o arquivo existir, verifica se é o mais recente
                                 if os.path.isfile(potential_db):
@@ -2103,9 +2104,11 @@ class DownloaderApp(ctk.CTk):
     def get_local_version(self):
         if os.path.exists(self.version_file):
             try:
-                with open(self.version_file, "r", encoding='utf-8') as f: return f.read().strip()
-            except Exception as e: self.add_to_log(f">>> Warning: Failed to read version.txt: {e}")
-        return "Version file not found"
+                with open(self.version_file, "r", encoding='utf-8') as f: 
+                    return f.read().strip()
+            except Exception as e: 
+                self.add_to_log(f">>> Warning: Failed to read version.txt: {e}")
+        return "Unknown"
 
     def show_about(self):
         self.about_win = ctk.CTkToplevel(self)
@@ -2175,8 +2178,11 @@ class DownloaderApp(ctk.CTk):
             response = requests.get(api_url, timeout=10)
             remote_v = response.json()['tag_name']
             
-            if remote_v not in local_v:
-                msg = f"{local_v}\nLatest version: {remote_v}\n\nDo you want to update?"
+            clean_remote_v = re.search(r'\d+(\.\d+)+', remote_v).group()
+            clean_local_v = re.search(r'\d+(\.\d+)+', local_v).group()
+            
+            if clean_remote_v != clean_local_v:
+                msg = f"Current version: {clean_local_v}\nLatest version: {clean_remote_v}\n\nDo you want to update?"
                 parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
                 
                 if not messagebox.askyesno("Update available", msg, parent=parent_win):
