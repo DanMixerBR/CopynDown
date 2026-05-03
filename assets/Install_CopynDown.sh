@@ -10,7 +10,6 @@ USER_DESKTOP=$(xdg-user-dir DESKTOP)
 chmod +x "$DIR/core/CopynDown"
 chmod +x "$DIR/core/bin/yt-dlp"
 chmod +x "$DIR/core/bin/ffmpeg"
-chmod +x "$DIR/core/bin/ffprobe"
 chmod +x "$DIR/core/bin/deno"
 
 # 3. Create the shortcut file injecting the absolute paths
