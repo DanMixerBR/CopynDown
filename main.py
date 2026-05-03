@@ -91,7 +91,7 @@ class DownloaderApp(ctk.CTk):
         
         self.DEF_AUTO_PASTE = True
         self.DEF_HIDE_OPTS = False
-        self.DEF_USE_COOKIES = False
+        self.DEF_USE_COOKIES = True
 
         self.config_data = {
             "General": {
@@ -1281,7 +1281,7 @@ class DownloaderApp(ctk.CTk):
             btn_frame = ctk.CTkFrame(self.queue_window, fg_color="transparent")
             btn_frame.pack(fill="x", padx=15, pady=(0, 15))
 
-            ctk.CTkButton(btn_frame, text="Clear Queue", width=100, height=30, font=("Segoe UI", 12, "bold"), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
+            ctk.CTkButton(btn_frame, text="Clear queue", width=100, height=30, font=("Segoe UI", 12, "bold"), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
 
             self.render_queue_list()
         else:
@@ -1697,10 +1697,41 @@ class DownloaderApp(ctk.CTk):
         ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
         ctk.CTkCheckBox(scroll_frame, text="Use cookies file", variable=v_use_cookies).pack(pady=4, anchor="w")
         
-        ctk.CTkLabel(scroll_frame, text="Cookies txt path:", font=("Segoe UI", 12)).pack(anchor="w")
-        cookie_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        cookie_frame.pack(pady=2, fill="x")
-        cookie_entry = ctk.CTkEntry(cookie_frame, fg_color="#21252b", border_color="#3a3f4b")
+        # =================================================================
+        # NOVA SESSÃO HÍBRIDA DE COOKIES (O PLANO MESTRE)
+        # =================================================================
+        cookie_container = ctk.CTkFrame(scroll_frame, fg_color="#21252b", corner_radius=10)
+        cookie_container.pack(fill="x", pady=(15, 5))
+        
+        ctk.CTkLabel(cookie_container, text="Cookie Extraction Method", font=("Segoe UI", 13, "bold")).pack(anchor="w", pady=(10, 5), padx=15)
+        
+        # Variável para controlar a tela
+        self.cookie_mode_var = ctk.StringVar(value="auto")
+        
+        radio_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
+        radio_frame.pack(fill="x", padx=15, pady=5)
+        
+        txt_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
+        auto_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
+
+        def update_cookie_ui():
+            if self.cookie_mode_var.get() == "txt":
+                auto_frame.pack_forget()
+                txt_frame.pack(fill="x", padx=15, pady=10)
+            else:
+                txt_frame.pack_forget()
+                auto_frame.pack(fill="x", padx=15, pady=10)
+                
+        ctk.CTkRadioButton(radio_frame, text="Auto-extract (Edge/Firefox/Brave)", variable=self.cookie_mode_var, value="auto", command=update_cookie_ui).pack(side="left", padx=(0, 20))
+        ctk.CTkRadioButton(radio_frame, text="Import from text file", variable=self.cookie_mode_var, value="txt", command=update_cookie_ui).pack(side="left")
+        
+
+        # --- MODO 1: TXT (A Extensão) ---
+        ctk.CTkLabel(txt_frame, text="1. Install 'Get cookies.txt LOCALLY' extension in your browser.\n2. Export the file and select it below:", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
+        
+        txt_path_frame = ctk.CTkFrame(txt_frame, fg_color="transparent")
+        txt_path_frame.pack(fill="x")
+        cookie_entry = ctk.CTkEntry(txt_path_frame, fg_color="#181a1f", border_color="#3a3f4b")
         cookie_entry.insert(0, self.config_data.get("General", {}).get("cookies_path", self.cookies_path_default))
         cookie_entry.configure(state="readonly")
         cookie_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
@@ -1708,19 +1739,23 @@ class DownloaderApp(ctk.CTk):
         def change_cookie_path():
             p = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")], parent=settings_win)
             format_and_insert_path(p, cookie_entry)
-        ctk.CTkButton(cookie_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=change_cookie_path).pack(side="right")
+            
+        ctk.CTkButton(txt_path_frame, text="Browse", width=60, fg_color="#181a1f", hover_color="#2c313a", command=change_cookie_path).pack(side="left")
         
-        # =================================================================
-        # NOVO: EXTRATOR AUTOMÁTICO DE COOKIES (NATIVO)
-        # =================================================================
-        ctk.CTkLabel(scroll_frame, text="Auto-extract cookies (May require admin privileges):", font=("Segoe UI", 12)).pack(anchor="w", pady=(10, 0))
-        extract_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        extract_frame.pack(pady=2, fill="x")
+        # Botão super útil para o usuário baixar a extensão direto da loja!
+        ctk.CTkButton(txt_path_frame, text="Get extension", width=100, fg_color="#1f538d", hover_color="#14375e", command=lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc")).pack(side="left", padx=(5, 0))
 
-        self.browser_menu = ctk.CTkOptionMenu(extract_frame, values=["Chrome", "Edge", "Firefox", "Brave", "Opera", "Chromium", "Vivaldi", "Safari"], fg_color="#21252b", button_color="#2c313a", width=120)
+        # --- MODO 2: AUTO (Rookiepy) ---
+        ctk.CTkLabel(auto_frame, text="Extracts directly from the browser's database.\nThe browser must be fully closed during extraction.", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
+        
+        extract_inner_frame = ctk.CTkFrame(auto_frame, fg_color="transparent")
+        extract_inner_frame.pack(fill="x")
+
+        # Menu limpo apenas com os navegadores que o Rookiepy ainda consegue ler!
+        self.browser_menu = ctk.CTkOptionMenu(extract_inner_frame, values=["Edge", "Firefox", "Brave", "Safari"], fg_color="#181a1f", button_color="#2c313a", width=120)
         self.browser_menu.pack(side="left", padx=(0, 10))
 
-        self.btn_extract = ctk.CTkButton(extract_frame, text="Extract & Save", width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
+        self.btn_extract = ctk.CTkButton(extract_inner_frame, text="Extract cookies", width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
         self.btn_extract.pack(side="left")
 
         def perform_extraction():
@@ -1734,30 +1769,22 @@ class DownloaderApp(ctk.CTk):
                     
                     self.safe_ui(lambda: self.add_to_log(f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies..."))
                     
-                    # Mapeia as funções de forma segura (Evita crash se o navegador não existir no OS)
+                    # Mapeia as funções do rookiepy
                     browsers = {
-                        "chrome": getattr(rookiepy, 'chrome', None),
                         "edge": getattr(rookiepy, 'edge', None),
                         "firefox": getattr(rookiepy, 'firefox', None),
                         "brave": getattr(rookiepy, 'brave', None),
-                        "opera": getattr(rookiepy, 'opera', None),
-                        "chromium": getattr(rookiepy, 'chromium', None),
-                        "vivaldi": getattr(rookiepy, 'vivaldi', None),
                         "safari": getattr(rookiepy, 'safari', None)
                     }
                     
-                    # Verifica se o navegador foi encontrado ou se é compatível com o sistema atual
                     if browser not in browsers or browsers[browser] is None:
                         raise ValueError(f"The browser '{browser.capitalize()}' is not supported on your current Operating System.")
                         
-                    # Extrai da RAM/Cópia SQLite ignorando o fato do navegador estar aberto!
-                    # Passamos os domínios específicos para agilizar e não capturar lixo
                     extracted_cookies = browsers[browser](domains=self.valid_domains)
                     
                     if not extracted_cookies:
                         raise Exception("No cookies found for the target domains. Are you logged in?")
 
-                    # Converte a lista em formato Netscape HTTP Cookie File e salva na pasta bin
                     with open(c_path, 'w', encoding='utf-8') as f:
                         f.write("# Netscape HTTP Cookie File\n")
                         f.write("# Generated by CopynDown Native Extractor\n\n")
@@ -1773,35 +1800,20 @@ class DownloaderApp(ctk.CTk):
                     
                     self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="✅ Success!", fg_color="#3fb950"))
                     self.safe_ui(lambda: self.add_to_log(f">>> Successfully generated valid cookies.txt at {c_path}"))
-                    
-                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract & Save", fg_color="#1f538d")))
+                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract cookies", fg_color="#1f538d")))
 
                 except Exception as e:
-                    erro_str = str(e).lower()
                     self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="❌ Error", fg_color="#a94442"))
-                    
-                    # Intercepta a trava de segurança moderna do Chromium
-                    if "admin" in erro_str or "appbound" in erro_str:
-                        aviso = (
-                            "Modern browsers (Chrome/Edge v130+) require Administrator privileges to extract cookies due to new security updates.\n\n"
-                            "To fix this:\n"
-                            "1. Close CopynDown.\n"
-                            "2. Right-click the program icon.\n"
-                            "3. Select 'Run as Administrator'.\n"
-                            "4. Try extracting again."
-                        )
-                        self.safe_ui(lambda: messagebox.showwarning("Admin Required", aviso, parent=settings_win))
-                    else:
-                        # Erros comuns (como navegador não instalado)
-                        self.safe_ui(lambda: messagebox.showerror("Extraction Error", f"Failed to extract cookies.\n\nDetails: {str(e)}", parent=settings_win))
-                        
+                    self.safe_ui(lambda: messagebox.showerror("Extraction Error", f"Failed to extract cookies.\n\nDetails: {str(e)}", parent=settings_win))
                     self.safe_ui(lambda: self.add_to_log(f">>> Cookie extraction error: {e}"))
-                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract & Save", fg_color="#1f538d")))
+                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract cookies", fg_color="#1f538d")))
 
-            # Roda em segundo plano para não congelar a janela de Configurações
             threading.Thread(target=thread_task, daemon=True).start()
 
         self.btn_extract.configure(command=perform_extraction)
+        
+        # Chama a função uma vez para carregar a UI correta assim que a janela abrir
+        update_cookie_ui()
         # =================================================================
         
         ctk.CTkLabel(scroll_frame, text="Media Embedding (Video & Audio)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
@@ -1810,7 +1822,7 @@ class DownloaderApp(ctk.CTk):
         ctk.CTkCheckBox(scroll_frame, text="Embed thumbnail (Cover art)", variable=v_vid_thumb).pack(pady=4, anchor="w")
         ctk.CTkCheckBox(scroll_frame, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta).pack(pady=4, anchor="w")
 
-        ctk.CTkLabel(scroll_frame, text="Subtitles (Video only)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
+        ctk.CTkLabel(scroll_frame, text="Subtitles (Video Only)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
         v_native_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("native_subs", False))
         v_auto_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("auto_subs", False))
         v_embed_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("embed_subs", False))
