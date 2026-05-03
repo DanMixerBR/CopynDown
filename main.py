@@ -45,7 +45,7 @@ class DownloaderApp(ctk.CTk):
         self.TAB_C_AUD = "Convert Audio"
         # ==========================================
 
-        self.version = "25.3"
+        self.version = "25.4"
         self.title(f"CopynDown")
         self.center_window(self, 830, 650)
         self.resizable(False, False)
@@ -324,16 +324,27 @@ class DownloaderApp(ctk.CTk):
         self.btn_show_logs.pack(side="right", padx=(0, 10))
 
     def browse_source(self):
-        # Cria os filtros de extensão para a janela do Windows/Linux
-        filetypes = [
-            ("Media Files", "*.mp4 *.mkv *.webm *.avi *.mov *.mp3 *.m4a *.wav *.flac *.ogg *.opus *.aac"),
-            ("Video Files", "*.mp4 *.mkv *.webm *.avi *.mov"),
-            ("Audio Files", "*.mp3 *.m4a *.wav *.flac *.ogg *.opus *.aac"),
-            ("All Files", "*.*")
-        ]
+        current_tab = self.current_category.get()
+        
+        # Strings de extensão perfeitamente ordenadas e espelhadas com os menus
+        ext_video = "*.mp4 *.mkv *.webm *.mov *.avi"
+        ext_audio = "*.m4a *.mp3 *.flac *.wav *.opus *.ogg"
+        
+        # Se for a aba de Áudio, o filtro de áudio ganha a prioridade (topo)
+        if current_tab == self.TAB_C_AUD:
+            filetypes = [
+                ("Audio Files", ext_audio),
+                ("Video Files", ext_video)
+            ]
+        # Caso contrário (aba de Vídeo), o filtro de vídeo fica no topo
+        else:
+            filetypes = [
+                ("Video Files", ext_video),
+                ("Audio Files", ext_audio)
+            ]
         
         # Adiciona o parâmetro filetypes na chamada do filedialog
-        file = filedialog.askopenfilename(title="Select Media File", filetypes=filetypes)
+        file = self.native_askopenfilename(self, title="Select Media File", filetypes=filetypes)
         
         if file:
             self.src_entry.delete(0, 'end')
@@ -1255,7 +1266,56 @@ class DownloaderApp(ctk.CTk):
         item_text = getattr(self, 'current_playlist_item', '')
         self.progress_label.configure(text=f"Downloading{item_text}... {int(p)}%", text_color="white")
         self.progress_bar.configure(progress_color="#1f538d")
+
+    def native_askdirectory(self, parent_win, title="Choose Directory"):
+        if self.is_windows:
+            return filedialog.askdirectory(parent=parent_win, title=title)
+            
+        # Linux - Tentativa 1: Zenity (Nativo do Ubuntu, Fedora, GNOME)
+        try:
+            res = subprocess.run(['zenity', '--file-selection', '--directory', f'--title={title}'], capture_output=True, text=True)
+            if res.returncode == 0: return res.stdout.strip()
+            if res.returncode == 1: return "" # Usuário clicou em Cancelar
+        except FileNotFoundError: pass
         
+        # Linux - Tentativa 2: kdialog (Nativo do KDE Plasma)
+        try:
+            res = subprocess.run(['kdialog', '--getexistingdirectory', '/', '--title', title], capture_output=True, text=True)
+            if res.returncode == 0: return res.stdout.strip()
+            if res.returncode == 1: return "" 
+        except FileNotFoundError: pass
+        
+        # Fallback de segurança: O dinossauro do Tkinter caso o Linux seja muito desconhecido
+        return filedialog.askdirectory(parent=parent_win, title=title)
+
+    def native_askopenfilename(self, parent_win, title="Select File", filetypes=None):
+        if self.is_windows:
+            return filedialog.askopenfilename(parent=parent_win, title=title, filetypes=filetypes)
+            
+        # Linux - Tentativa 1: Zenity
+        try:
+            cmd = ['zenity', '--file-selection', f'--title={title}']
+            # Adiciona os filtros de arquivo se existirem (Zenity usa formato: Nome | *.ext *.ext2)
+            if filetypes:
+                for name, exts in filetypes:
+                    cmd.append(f'--file-filter={name} | {exts}')
+                    
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0: return res.stdout.strip()
+            if res.returncode == 1: return ""
+        except FileNotFoundError: pass
+        
+        # Linux - Tentativa 2: kdialog
+        try:
+            cmd = ['kdialog', '--getopenfilename', '/', f'--title={title}']
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0: return res.stdout.strip()
+            if res.returncode == 1: return ""
+        except FileNotFoundError: pass
+        
+        # Fallback de segurança: Tkinter
+        return filedialog.askopenfilename(parent=parent_win, title=title, filetypes=filetypes)
+    
     def open_folder(self):
         real_path = os.path.expanduser(self.last_folder)
         if not os.path.exists(real_path): os.makedirs(real_path)
@@ -1688,7 +1748,7 @@ class DownloaderApp(ctk.CTk):
 
         # --- APLICAÇÃO NAS PASTAS (VÍDEO/ÁUDIO) ---
         def change_path(entry_widget):
-            p = filedialog.askdirectory(parent=settings_win)
+            p = self.native_askdirectory(settings_win, title="Select Output Folder")
             format_and_insert_path(p, entry_widget)
         
         ctk.CTkButton(vid_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(vid_entry)).pack(side="right")
@@ -1752,7 +1812,8 @@ class DownloaderApp(ctk.CTk):
         cookie_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
         def change_cookie_path():
-            p = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")], parent=settings_win)
+            filters = [("Text Files", "*.txt")]
+            p = self.native_askopenfilename(settings_win, title="Select Cookies File", filetypes=filters)
             format_and_insert_path(p, cookie_entry)
             
         ctk.CTkButton(txt_path_frame, text="Browse", width=60, fg_color="#181a1f", hover_color="#2c313a", command=change_cookie_path).pack(side="left")
@@ -1788,7 +1849,6 @@ class DownloaderApp(ctk.CTk):
                 try:
                     import rookiepy
                     
-                    # 2. Removido o Lambda: Passando os parâmetros diretos
                     self.safe_ui(self.add_to_log, f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies...")
                     
                     # Mapeia as funções do rookiepy
@@ -1801,8 +1861,35 @@ class DownloaderApp(ctk.CTk):
                     
                     if browser not in browsers or browsers[browser] is None:
                         raise ValueError(f"The browser '{browser.capitalize()}' is not supported on your current Operating System.")
+
+                    ext_args = {"domains": self.valid_domains}
+                    
+                    if browser == "firefox" and not self.is_windows:
+                        flatpak_dir = os.path.expanduser("~/.var/app/org.mozilla.firefox/.mozilla/firefox/")
                         
-                    extracted_cookies = browsers[browser](domains=self.valid_domains)
+                        if os.path.exists(flatpak_dir):
+                            newest_db = None
+                            newest_time = 0
+                            
+                            # Vasculha todas as subpastas dentro do diretório do Flatpak
+                            for folder_name in os.listdir(flatpak_dir):
+                                potential_db = os.path.join(flatpak_dir, folder_name, "cookies.sqlite")
+                                
+                                # Se o arquivo existir, verifica se é o mais recente
+                                if os.path.isfile(potential_db):
+                                    mod_time = os.path.getmtime(potential_db)
+                                    if mod_time > newest_time:
+                                        newest_time = mod_time
+                                        newest_db = potential_db
+                            
+                            # Se achou o banco de dados mais recente, injeta ele!
+                            if newest_db:
+                                ext_args["db_path"] = newest_db
+                                self.safe_ui(self.add_to_log, ">>> Fedora/Flatpak environment detected! Injecting custom database path...")
+                    # ==============================================================
+                    
+                    # Executa a extração
+                    extracted_cookies = browsers[browser](**ext_args)
                     
                     if not extracted_cookies:
                         raise Exception("No cookies found for the target domains. Are you logged in?")
