@@ -40,7 +40,8 @@ jobs:
           Remove-Item main.dist
           
           # 3. Copia seus arquivos leves do GitHub (icon.ico, logo.png, cookies.txt, version.txt)
-          Copy-Item -Path bin_windows\* -Destination release\core\bin -Recurse
+          Copy-Item -Path bin\* -Destination release\core\bin -Recurse
+          Copy-Item -Path assets\icon_windows.ico -Destination release\core\bin\icon.ico
           
           # 4. Baixa o yt-dlp.exe
           Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "release\core\bin\yt-dlp.exe"
@@ -101,7 +102,8 @@ jobs:
           rm -rf main.dist
           
           # 3. Copia seus arquivos leves do GitHub (icon.png, logo.png, cookies.txt, version.txt)
-          cp -r bin_linux/* release/core/bin/
+          cp -r bin/* release/core/bin/
+          cp assets/icon_linux.png release/core/bin/icon.png
           
           # 4. Baixa o yt-dlp (Linux)
           wget -O release/core/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux
