@@ -1020,14 +1020,29 @@ class DownloaderApp(ctk.CTk):
             
             # --- LÓGICA DE EXTRAÇÃO E TRAVA DE COMPATIBILIDADE ---
             if self.extract_audio_var.get():
-                if dst_fmt in ["mp3", "wav"]:
-                    # Trava Inteligente: Impede cópia pura para MP3/WAV. Força recodificação na melhor qualidade possível.
-                    ac_map = {"mp3": "libmp3lame", "wav": "pcm_s16le"}
+                # Expandimos a trava para todos os formatos que NÃO suportam cópia direta de AAC
+                if dst_fmt in ["mp3", "wav", "flac", "ogg", "opus"]:
+                    
+                    ac_map = {
+                        "mp3": "libmp3lame", 
+                        "wav": "pcm_s16le", 
+                        "flac": "flac", 
+                        "ogg": "libvorbis", 
+                        "opus": "libopus"
+                    }
+                    
                     ac = ac_map.get(dst_fmt)
                     cmd.extend(["-c:a", ac])
-                    if dst_fmt == "mp3": cmd.extend(["-b:a", "320k"])
+                    
+                    # Garante alta qualidade já que o usuário queria a extração original
+                    if dst_fmt == "mp3": 
+                        cmd.extend(["-b:a", "320k"])
+                    elif dst_fmt in ["ogg", "opus"]: 
+                        cmd.extend(["-b:a", "192k"])
+                        
                     self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced {ac} for {dst_fmt.upper()} compatibility during extraction.")
                 else:
+                    # Somente M4A vai passar por aqui, permitindo a cópia 100% original e instantânea
                     cmd.extend(["-c:a", "copy"])
                     
             # --- LÓGICA DE RECODIFICAÇÃO (Com bugs corrigidos!) ---
@@ -1755,7 +1770,9 @@ class DownloaderApp(ctk.CTk):
         self.browser_menu = ctk.CTkOptionMenu(extract_inner_frame, values=["Edge", "Firefox", "Brave", "Safari"], fg_color="#181a1f", button_color="#2c313a", width=120)
         self.browser_menu.pack(side="left", padx=(0, 10))
 
-        self.btn_extract = ctk.CTkButton(extract_inner_frame, text="Extract cookies", width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
+        ext_btn_text = "Extract cookies"
+
+        self.btn_extract = ctk.CTkButton(extract_inner_frame, text=ext_btn_text, width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
         self.btn_extract.pack(side="left")
 
         def perform_extraction():
@@ -1763,11 +1780,16 @@ class DownloaderApp(ctk.CTk):
             browser = self.browser_menu.get().lower()
             c_path = cookie_entry.get()
 
+            # Função ajudante (Evita o uso do lambda dentro do .after)
+            def reset_btn():
+                self.btn_extract.configure(text=ext_btn_text, fg_color="#1f538d")
+
             def thread_task():
                 try:
                     import rookiepy
                     
-                    self.safe_ui(lambda: self.add_to_log(f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies..."))
+                    # 2. Removido o Lambda: Passando os parâmetros diretos
+                    self.safe_ui(self.add_to_log, f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies...")
                     
                     # Mapeia as funções do rookiepy
                     browsers = {
@@ -1798,15 +1820,18 @@ class DownloaderApp(ctk.CTk):
                             value = c.get('value', '')
                             f.write(f"{domain}\t{include_sub}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n")
                     
-                    self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="✅ Success!", fg_color="#3fb950"))
-                    self.safe_ui(lambda: self.add_to_log(f">>> Successfully generated valid cookies.txt at {c_path}"))
-                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract cookies", fg_color="#1f538d")))
+                    # =================================================================
+                    # 3. Código Limpo: Passando *args e **kwargs diretamente para o UI
+                    # =================================================================
+                    self.safe_ui(self.btn_extract.configure, state="normal", text="✅ Success!", fg_color="#3fb950")
+                    self.safe_ui(self.add_to_log, f">>> Successfully generated valid cookies.txt at {c_path}")
+                    self.safe_ui(settings_win.after, 3000, reset_btn)
 
                 except Exception as e:
-                    self.safe_ui(lambda: self.btn_extract.configure(state="normal", text="❌ Error", fg_color="#a94442"))
-                    self.safe_ui(lambda: messagebox.showerror("Extraction Error", f"Failed to extract cookies.\n\nDetails: {str(e)}", parent=settings_win))
-                    self.safe_ui(lambda: self.add_to_log(f">>> Cookie extraction error: {e}"))
-                    self.safe_ui(lambda: settings_win.after(3000, lambda: self.btn_extract.configure(text="Extract cookies", fg_color="#1f538d")))
+                    self.safe_ui(self.btn_extract.configure, state="normal", text="❌ Error", fg_color="#a94442")
+                    self.safe_ui(messagebox.showerror, "Extraction Error", f"Failed to extract cookies.\n\nDetails: {str(e)}", parent=settings_win)
+                    self.safe_ui(self.add_to_log, f">>> Cookie extraction error: {e}")
+                    self.safe_ui(settings_win.after, 3000, reset_btn)
 
             threading.Thread(target=thread_task, daemon=True).start()
 
