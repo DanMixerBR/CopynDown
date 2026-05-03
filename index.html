@@ -220,7 +220,7 @@
             <img src="https://raw.githubusercontent.com/DanMixerBR/CopynDown/main/assets/Logo.png" alt="CopynDown Logo" class="hero-logo">
             
             <h1>CopynDown</h1>
-            <div class="version-badge">Version 25.4</div>
+            <div class="version-badge" id="app-version">Version ...</div>
             <p>A modern, fast, and cross-platform media downloader and converter built for high technical fidelity.</p>
             
             <div class="btn-group">
@@ -292,5 +292,25 @@
         </footer>
     </div>
 
+    <script>
+    // A URL raw exata que você forneceu, mas apontando para o arquivo version.txt
+    const urlVersao = "https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/version.txt";
+    
+    fetch(urlVersao)
+        .then(response => {
+            if (!response.ok) throw new Error("Rede não respondeu bem");
+            return response.text();
+        })
+        .then(versaoTxt => {
+            // Pega a div pelo ID e injeta o texto formatado
+            document.getElementById('app-version').innerText = `Version ${versaoTxt.trim()}`;
+        })
+        .catch(error => {
+            console.error("Erro ao buscar a versão:", error);
+            // Mantém um texto neutro se o GitHub demorar a responder ou der erro
+            document.getElementById('app-version').innerText = "Version --";
+        });
+    </script>
+    
 </body>
 </html>
