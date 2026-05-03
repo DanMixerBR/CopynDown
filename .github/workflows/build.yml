@@ -27,7 +27,7 @@ jobs:
       - name: Compilar com Nuitka (Modo Windows)
         run: |
           # O Nuitka já gera o CopynDown.exe dentro da pasta main.dist
-          python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --enable-plugin=tk-inter --windows-icon-from-ico=bin_windows/icon.ico --company-name="DanMixerBR" --product-name="CopynDown" --file-version="25.2.0.0" --product-version="25.2.0.0" --copyright="MIT License" --output-filename=CopynDown.exe main.py
+          python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --enable-plugin=tk-inter --windows-icon-from-ico=assets/icon_windows.ico --company-name="DanMixerBR" --product-name="CopynDown" --file-version="25.2.0.0" --product-version="25.2.0.0" --copyright="MIT License" --output-filename=CopynDown.exe main.py
 
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Windows.zip)
         shell: powershell
@@ -56,7 +56,7 @@ jobs:
           Expand-Archive -Path "deno.zip" -DestinationPath "release\core\bin\"
           
           # 7. Compila o Launcher em C# e compacta o ZIP final
-          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32icon:bin_windows\icon.ico /out:release\CopynDown.exe assets\launcher.cs
+          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32icon:assets\icon_windows.ico /out:release\CopynDown.exe assets\launcher.cs
           7z a -tzip -mx=9 CopynDown_Windows.zip .\release\*
 
       - name: Salvar o ZIP final
