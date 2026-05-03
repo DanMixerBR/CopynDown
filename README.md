@@ -67,8 +67,8 @@ CopynDown makes this easy with a built-in **Native Cookie Extractor**. You don't
 **How to extract and use your cookies:**
 1. Open your regular web browser and log in to the desired platform (e.g., youtube.com, instagram.com).
 2. Open **CopynDown** and click the **⚙ Settings** button.
-3. Scroll down to the **Auto-extract cookies** section.
-4. Select your web browser from the dropdown list and click **Extract cookies**.
+3. Scroll down to the **"Auto-extract cookies"** section.
+4. Select your web browser from the dropdown list and click **"Extract cookies"**.
 5. CopynDown will safely extract your current session directly from your browser and save it locally in the `bin` folder. 
 
 You can now download age-restricted and private content seamlessly!
