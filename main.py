@@ -1864,17 +1864,18 @@ class DownloaderApp(ctk.CTk):
                         raise ValueError(f"The browser '{browser.capitalize()}' is not supported on your current Operating System.")
 
                     ext_args = {"domains": self.valid_domains}
+                    extracted_cookies = None
                     
                     if browser == "firefox" and not self.is_windows:
-                        fedora_dir = os.path.expanduser("~/.config/mozilla/firefox/")
+                        linux_dir = os.path.expanduser("~/.config/mozilla/firefox/")
                         
-                        if os.path.exists(fedora_dir):
+                        if os.path.exists(linux_dir):
                             newest_db = None
                             newest_time = 0
                             
                             # Vasculha todas as subpastas dentro do diretório
-                            for folder_name in os.listdir(fedora_dir):
-                                potential_db = os.path.join(fedora_dir, folder_name, "cookies.sqlite")
+                            for folder_name in os.listdir(linux_dir):
+                                potential_db = os.path.join(linux_dir, folder_name, "cookies.sqlite")
                                 
                                 # Se o arquivo existir, verifica se é o mais recente
                                 if os.path.isfile(potential_db):
@@ -1885,12 +1886,12 @@ class DownloaderApp(ctk.CTk):
                             
                             # Se achou o banco de dados mais recente, injeta ele!
                             if newest_db:
-                                ext_args["db_path"] = newest_db
-                                self.safe_ui(self.add_to_log, ">>> Fedora/Flatpak environment detected! Injecting custom database path...")
+                                self.safe_ui(self.add_to_log, ">>> Linux custom path detected! Injecting database...")
+                                extracted_cookies = rookiepy.firefox_based(db_path=newest_db, domains=self.valid_domains)
                     # ==============================================================
                     
-                    # Executa a extração
-                    extracted_cookies = browsers[browser](**ext_args)
+                    if extracted_cookies is None:
+                        extracted_cookies = browsers[browser](**ext_args)
                     
                     if not extracted_cookies:
                         raise Exception("No cookies found for the target domains. Are you logged in?")
