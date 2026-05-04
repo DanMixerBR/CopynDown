@@ -1417,13 +1417,20 @@ class DownloaderApp(ctk.CTk):
 
     # --- NOVA FUNÇÃO PARA LIMPAR TUDO ---
     def clear_entire_queue(self):
-        self.download_queue.clear()
-        self.btn_queue.configure(text="📥 Queue (0)")
+        # 1. Se existe algo rodando, preservamos apenas o índice 0. Se não, limpamos tudo.
+        if getattr(self, 'is_queue_running', False) and self.download_queue:
+            self.download_queue = [self.download_queue[0]] 
+        else:
+            self.download_queue.clear()
+            
+        # 2. Atualizamos a UI
+        count = len(self.download_queue)
+        self.btn_queue.configure(text=f"📥 Queue ({count})")
         self.render_queue_list()
         
     def reset_queue_state(self):
-        self.clear_entire_queue()
         self.is_queue_running = False
+        self.clear_entire_queue()
         self.toggle_buttons("normal")
 
     def render_queue_list(self):
@@ -1452,54 +1459,59 @@ class DownloaderApp(ctk.CTk):
         # 4. Loop Inteligente: Atualiza os velhos ou cria os novos
         for index, task in enumerate(self.download_queue):
             name = task.get("name", "Media Task")
-            if len(name) > 60: name = name[:57] + "..." # Reduzi um pouco para caber as setas
+            if len(name) > 60: name = name[:57] + "..." 
+
+            # --- LÓGICA DO ITEM ATIVO ---
+            is_active = (index == 0 and getattr(self, 'is_queue_running', False))
+            
+            if is_active:
+                prefix = "1. [Converting]" if task.get("is_convert") else "1. [Downloading]"
+                display_text = f"{prefix} {name}"
+                state_remove = "disabled"
+                state_down = "disabled"
+                state_up = "disabled"
+            else:
+                display_text = f"{index+1}. {name}"
+                state_remove = "normal"
+                state_down = "normal" if index < len(self.download_queue)-1 else "disabled"
+                # Impede que o item 1 suba e interrompa o item 0 que já está rodando!
+                can_move_up = (index > 1) if getattr(self, 'is_queue_running', False) else (index > 0)
+                state_up = "normal" if can_move_up else "disabled"
+            # ----------------------------
 
             if index < len(existing_frames):
-                # ==========================================
-                # A. RECICLA o frame existente (0% Flicker)
-                # ==========================================
                 f = existing_frames[index]
                 if f.winfo_manager() != "pack":
                     f.pack(fill="x", pady=8, padx=5) 
                 
-                # Atualiza a Label (Índice 0)
                 lbl = f.winfo_children()[0]
-                lbl.configure(text=f"{index+1}. {name}")
+                lbl.configure(text=display_text)
                 task["label_widget"] = lbl
                 
-                # Atualiza o Botão X (Índice 1)
                 btn_remove = f.winfo_children()[1]
-                btn_remove.configure(command=lambda i=index: self.remove_from_queue(i))
+                btn_remove.configure(state=state_remove, command=lambda i=index: self.remove_from_queue(i))
 
-                # Atualiza o Botão Descer ▼ (Índice 2)
                 btn_down = f.winfo_children()[2]
-                btn_down.configure(state="normal" if index < len(self.download_queue)-1 else "disabled", command=lambda i=index: self.move_queue_item(i, 1))
+                btn_down.configure(state=state_down, command=lambda i=index: self.move_queue_item(i, 1))
 
-                # Atualiza o Botão Subir ▲ (Índice 3)
                 btn_up = f.winfo_children()[3]
-                btn_up.configure(state="normal" if index > 0 else "disabled", command=lambda i=index: self.move_queue_item(i, -1))
+                btn_up.configure(state=state_up, command=lambda i=index: self.move_queue_item(i, -1))
 
             else:
-                # ==========================================
-                # B. CRIA um novo frame com os novos botões
-                # ==========================================
                 f = ctk.CTkFrame(self.queue_scroll, fg_color="#181a1f", corner_radius=8)
                 f.pack(fill="x", pady=8, padx=5)
                 
-                # 1. CRIA OS WIDGETS PRIMEIRO (MANTÉM A ORDEM DA RECICLAGEM!)
-                lbl = ctk.CTkLabel(f, text=f"{index+1}. {name}", font=("Segoe UI", 12), anchor="w")
+                lbl = ctk.CTkLabel(f, text=display_text, font=("Segoe UI", 12), anchor="w")
                 task["label_widget"] = lbl
                 
-                btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", command=lambda i=index: self.remove_from_queue(i))
-                btn_down = ctk.CTkButton(f, text="▼", width=30, height=24, fg_color="#2c313a", state="normal" if index < len(self.download_queue)-1 else "disabled", command=lambda i=index: self.move_queue_item(i, 1))
-                btn_up = ctk.CTkButton(f, text="▲", width=30, height=24, fg_color="#2c313a", state="normal" if index > 0 else "disabled", command=lambda i=index: self.move_queue_item(i, -1))
+                btn_remove = ctk.CTkButton(f, text="X", width=30, height=24, fg_color="#a94442", hover_color="#803331", state=state_remove, command=lambda i=index: self.remove_from_queue(i))
+                btn_down = ctk.CTkButton(f, text="▼", width=30, height=24, fg_color="#2c313a", state=state_down, command=lambda i=index: self.move_queue_item(i, 1))
+                btn_up = ctk.CTkButton(f, text="▲", width=30, height=24, fg_color="#2c313a", state=state_up, command=lambda i=index: self.move_queue_item(i, -1))
 
-                # 2. EMPACOTA DA DIREITA PARA A ESQUERDA (Protege os botões!)
                 btn_remove.pack(side="right", padx=10)
                 btn_down.pack(side="right", padx=2)
                 btn_up.pack(side="right", padx=2)
                 
-                # 3. EMPACOTA O TEXTO POR ÚLTIMO (Preenchendo o espaço que sobrar)
                 lbl.pack(side="left", fill="x", expand=True, padx=10, pady=12)
 
         # 5. Esconde os frames que sobraram (se a fila diminuiu)
@@ -1587,14 +1599,23 @@ class DownloaderApp(ctk.CTk):
                         
                         # ATUALIZAÇÃO CIRÚRGICA: Sem piscar a tela, altera só o texto!
                         def update_label():
-                            if queue_item.get("label_widget") and queue_item["label_widget"].winfo_exists():
+                            lbl_widget = queue_item.get("label_widget")
+                            if lbl_widget and lbl_widget.winfo_exists():
                                 try:
-                                    # Calcula a posição caso o usuário tenha apagado algo
                                     idx = self.download_queue.index(queue_item)
-                                    display_name = new_name if len(new_name) <= 80 else new_name[:77] + "..."
-                                    queue_item["label_widget"].configure(text=f"{idx+1}. {display_name}")
+                                    if len(new_name) <= 80:
+                                        display_name = new_name
+                                    else:
+                                        display_name = new_name[:77] + "..."
+                                        
+                                    is_active = (idx == 0 and getattr(self, 'is_queue_running', False))
+                                    if is_active:
+                                        prefix = "1. [Converting]" if queue_item.get("is_convert") else "1. [Downloading]"
+                                        lbl_widget.configure(text=f"{prefix} {display_name}")
+                                    else:
+                                        lbl_widget.configure(text=f"{idx+1}. {display_name}")
                                 except ValueError:
-                                    pass # O item saiu da fila antes do nome carregar
+                                    pass
 
                         self.safe_ui(update_label)
                 except Exception:
@@ -1607,7 +1628,12 @@ class DownloaderApp(ctk.CTk):
         # 5. Inicia a engrenagem principal de download se ela estiver parada
         if not self.is_queue_running:
             self.process_next_in_queue()
-        
+    
+    def finish_current_task_and_continue(self):
+        if self.download_queue:
+            self.download_queue.pop(0) # Tira da fila o que acabou de terminar
+        self.process_next_in_queue() # Inicia o próximo
+    
     def process_next_in_queue(self):
         # Se a fila esvaziou, termina e libera os botões de configuração
         if not self.download_queue:
@@ -1616,7 +1642,7 @@ class DownloaderApp(ctk.CTk):
             return
 
         self.is_queue_running = True
-        current_task = self.download_queue.pop(0) # Puxa o próximo da fila
+        current_task = self.download_queue[0]
         
         # Atualiza a interface
         count = len(self.download_queue)
@@ -1720,7 +1746,7 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.progress_bar.set, 1)
                     
                     self.safe_ui(self.add_to_log, f">>> {msg}\n")
-                    self.safe_ui(self.process_next_in_queue)
+                    self.safe_ui(self.finish_current_task_and_continue)
 
                 elif error_detected:
                     msg = "Conversion Incomplete (Check Logs)" if is_convert else "Download Incomplete (Check Logs)"
@@ -1730,7 +1756,7 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.progress_bar.set, 1)
                     
                     self.safe_ui(self.add_to_log, f">>> {msg}\n")
-                    self.safe_ui(self.after, 3000, self.process_next_in_queue)
+                    self.safe_ui(self.after, 3000, self.finish_current_task_and_continue)
 
                 else:
                     self.safe_ui(self.status_error)
