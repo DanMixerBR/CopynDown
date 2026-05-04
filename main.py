@@ -88,7 +88,7 @@ class DownloaderApp(ctk.CTk):
             "kwai.com", "kw.ai"
         ]
         
-        self.full_logs = "--- Program Logs ---\n"
+        self.full_logs_list = ["--- Program Logs ---"]
         
         self.DEF_AUTO_PASTE = True
         self.DEF_HIDE_OPTS = False
@@ -121,7 +121,7 @@ class DownloaderApp(ctk.CTk):
         
         self.bind("<FocusIn>", self.on_focus)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
+        self.after(500, lambda: threading.Thread(target=self.check_ytdlp_updates, daemon=True).start())
         
         if not self.is_windows:
             # Em vez de 120 (força do Windows), usamos 1 (força do Linux)
@@ -213,7 +213,7 @@ class DownloaderApp(ctk.CTk):
         
         self.main_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Paste URL here", placeholder_text_color="#8a939e", height=38, font=("Segoe UI", 13), border_width=0, fg_color="transparent", bg_color="transparent", validate="key", validatecommand=self.vcmd)
         self.main_entry.pack(side="left", fill="x", expand=True, padx=(15, 5), pady=5)
-        self.main_entry.bind("<KeyRelease>", self.evaluate_ui_state)
+        self.main_entry.bind("<KeyRelease>", self.schedule_ui_evaluation)
         
         self.main_btn = ctk.CTkButton(self.input_frame, text="Paste", width=70, height=36, corner_radius=8, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e", command=self.paste_url_btn)
         self.main_btn.pack(side="right", padx=(0, 6), pady=6)
@@ -571,7 +571,14 @@ class DownloaderApp(ctk.CTk):
             self.switch_advanced.configure(state="disabled")
             if self.manual_selection_var.get():
                 self.manual_selection_var.set(False)
-
+    
+    def schedule_ui_evaluation(self, event=None):
+        # Cancela o timer anterior se o usuário ainda estiver digitando rápido
+        if getattr(self, 'ui_update_timer', None):
+            self.after_cancel(self.ui_update_timer)
+        # Só atualiza a tela de verdade 200 milissegundos após ele PARAR de digitar
+        self.ui_update_timer = self.after(200, self.evaluate_ui_state)
+    
     def build_base_cmd(self, is_json=False):
         cmd = [self.ytdlp_path, "-i"]
         gen_cfg = self.config_data.get("General", {})
@@ -646,7 +653,7 @@ class DownloaderApp(ctk.CTk):
             
             self.log_textbox = ctk.CTkTextbox(self.log_window, width=580, height=310, font=("Consolas", 11))
             self.log_textbox.pack(padx=10, pady=10, fill="both", expand=True)
-            self.log_textbox.insert("0.0", self.full_logs)
+            self.log_textbox.insert("0.0", "\n".join(self.full_logs_list) + "\n")
             self.log_textbox.see("end")
             
             log_btn_frame = ctk.CTkFrame(self.log_window, fg_color="transparent")
@@ -663,14 +670,26 @@ class DownloaderApp(ctk.CTk):
         self.add_to_log(">>> Logs copied to clipboard.")
 
     def clear_logs(self):
-        self.full_logs = ""
+        self.full_logs_list = ["--- Program Logs ---"]
         self.log_textbox.delete("1.0", "end")
         self.add_to_log(">>> Logs cleared.")
     
     def add_to_log(self, text):
-        self.full_logs += text + "\n"
+        # 1. Adiciona na lista (MUITO mais leve que concatenar strings)
+        self.full_logs_list.append(text)
+        
+        # 2. Trava de RAM: Mantém apenas as últimas 5000 linhas na memória oculta
+        if len(self.full_logs_list) > 5000:
+            self.full_logs_list = self.full_logs_list[-5000:]
+
         if self.log_window and self.log_window.winfo_exists():
             self.log_textbox.insert("end", text + "\n")
+            
+            # 3. Trava de UI: Impede o widget de texto de explodir e travar o PC
+            # Se passar de 2000 linhas visíveis, deleta a mais velha no topo
+            if int(self.log_textbox.index('end-1c').split('.')[0]) > 2000:
+                self.log_textbox.delete("1.0", "2.0")
+                
             self.log_textbox.see("end")
 
     def cancel_download(self):
@@ -919,6 +938,9 @@ class DownloaderApp(ctk.CTk):
         base_name = os.path.splitext(os.path.basename(src))[0]
         ext_final = self.menu_conv_2.get().lower()
         
+        # Captura a extensão original (ex: '.webm') para heurística de proteção
+        src_ext = os.path.splitext(src)[1].lower()
+        
         if not is_video and self.extract_audio_var.get():
             suffix = "extracted"
         else:
@@ -981,10 +1003,10 @@ class DownloaderApp(ctk.CTk):
             # ==============================================================
             
             # ==============================================================
-            # TRAVAS DE COMPATIBILIDADE INTELIGENTES (AUTO-FIX)
+            # TRAVAS DE COMPATIBILIDADE INTELIGENTES (AUTO-FIX V4)
             # ==============================================================
             if ext_final == "avi":
-                if vc == "copy": 
+                if vc == "copy" or vc == "libvpx-vp9":  # <- Bloqueia VP9 manual
                     vc = "libx264"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced H.264 codec for AVI compatibility.")
                 if ac in ["copy", "aac", "flac", "libopus"]: 
@@ -992,13 +1014,30 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced MP3 codec for AVI compatibility.")
                     
             elif ext_final == "webm":
-                # WebM NÃO aceita H.264/H.265 nem AAC/MP3/FLAC.
                 if vc in ["copy", "libx264", "libx265"]:
                     vc = "libvpx-vp9"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced VP9 codec for WEBM compatibility.")
                 if ac in ["copy", "aac", "libmp3lame", "flac"]:
                     ac = "libopus"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced Opus codec for WEBM compatibility.")
+                    
+            elif ext_final in ["mp4", "mov"]: # <- MOV e MP4 sofrem do mesmo mal
+                # Trava para escolhas manuais bizarras
+                if vc == "libvpx-vp9":
+                    vc = "libx264"
+                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 (VP9 is incompatible with {ext_final.upper()}).")
+                if ac == "libopus":
+                    ac = "aac"
+                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced AAC (Opus is incompatible with {ext_final.upper()}).")
+                    
+                # Trava do Copy
+                if src_ext in [".webm", ".mkv", ".ogg"]:
+                    if vc == "copy": 
+                        vc = "libx264"
+                        self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 to safely put WEBM/MKV into {ext_final.upper()}.")
+                    if ac == "copy": 
+                        ac = "aac"
+                        self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced AAC audio to safely put WEBM/MKV into {ext_final.upper()}.")
             # ==============================================================
             
             if vc == "none": cmd.append("-vn")
@@ -1032,27 +1071,31 @@ class DownloaderApp(ctk.CTk):
             
             # --- LÓGICA DE EXTRAÇÃO E TRAVA DE COMPATIBILIDADE ---
             if self.extract_audio_var.get():
-                # Expandimos a trava para todos os formatos que NÃO suportam cópia direta de AAC
-                if dst_fmt in ["mp3", "wav", "flac", "ogg", "opus"]:
-                    
+                # Ampliamos a lista para incluir M4A
+                if dst_fmt in ["mp3", "wav", "flac", "ogg", "opus", "m4a"]:
                     ac_map = {
                         "mp3": "libmp3lame", 
                         "wav": "pcm_s16le", 
                         "flac": "flac", 
                         "ogg": "libvorbis", 
-                        "opus": "libopus"
+                        "opus": "libopus",
+                        "m4a": "aac" # <- M4A adicionado!
                     }
-                    
                     ac = ac_map.get(dst_fmt)
-                    cmd.extend(["-c:a", ac])
                     
-                    # Garante alta qualidade já que o usuário queria a extração original
-                    if dst_fmt == "mp3": 
-                        cmd.extend(["-b:a", "320k"])
-                    elif dst_fmt in ["ogg", "opus"]: 
-                        cmd.extend(["-b:a", "192k"])
+                    # Heurística para M4A: Só permitimos "copy" se o original for garantido como MP4/M4A/AAC
+                    if dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".aac"]:
+                        cmd.extend(["-c:a", "copy"])
+                    else:
+                        cmd.extend(["-c:a", ac])
+                        if dst_fmt == "mp3": 
+                            cmd.extend(["-b:a", "320k"])
+                        elif dst_fmt in ["ogg", "opus", "m4a"]: 
+                            cmd.extend(["-b:a", "192k"])
                         
-                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced {ac} for {dst_fmt.upper()} compatibility during extraction.")
+                        # Se não era compatível para copy, avisa no log
+                        if not (dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".aac"]):
+                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced {ac} for {dst_fmt.upper()} compatibility during extraction.")
                 else:
                     # Somente M4A vai passar por aqui, permitindo a cópia 100% original e instantânea
                     cmd.extend(["-c:a", "copy"])
@@ -1067,7 +1110,7 @@ class DownloaderApp(ctk.CTk):
                 sample_rate = self.menu_conv_4.get()
                 channels = self.menu_conv_3.get()
                 
-                if bitrate != "Auto" and ac != "copy" and ac != "flac":
+                if bitrate != "Auto" and ac not in ["copy", "flac", "pcm_s16le"]: # <- WAV protegido!
                     # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
                     cmd.extend(["-b:a", bitrate.replace(" kbps", "k")])
                     
@@ -1120,11 +1163,19 @@ class DownloaderApp(ctk.CTk):
                 thumb_url = video_data.get('thumbnail', None)
                 video_title = video_data.get('title', 'Unknown Video')
 
-                self.safe_ui(build_ui_task, formats, thumb_url, video_title)
+                # ---> O DOWNLOAD DA IMAGEM AGORA FICA AQUI (NO FUNDO) <---
+                img_data = None
+                if thumb_url:
+                    try:
+                        r = requests.get(thumb_url, stream=True, timeout=5)
+                        if r.status_code == 200:
+                            img_data = Image.open(io.BytesIO(r.content))
+                    except: pass
+
+                self.safe_ui(build_ui_task, formats, img_data, video_title)
                 
             except subprocess.CalledProcessError as e:
                 self.safe_ui(handle_error, f"Failed to fetch formats:\n{e.output.strip() if e.output else 'Unknown error'}")
-            
             except Exception as e:
                 self.safe_ui(handle_error, f"Failed to parse data: {e}")
 
@@ -1135,7 +1186,7 @@ class DownloaderApp(ctk.CTk):
             self.evaluate_ui_state()
             self.status_error(error_msg)
 
-        def build_ui_task(formats, thumb_url, video_title):
+        def build_ui_task(formats, img_data, video_title): # <- Recebe o img_data pronto
             if not manual_win.winfo_exists(): return
             spinner.stop()
             loading_frame.destroy()
@@ -1146,13 +1197,11 @@ class DownloaderApp(ctk.CTk):
             header_frame = ctk.CTkFrame(manual_win, fg_color="transparent")
             header_frame.pack(pady=10, padx=20, fill="x")
 
-            if thumb_url:
+            # ---> RENDERIZAÇÃO IMEDIATA (SEM TRAVAR) <---
+            if img_data:
                 try:
-                    r = requests.get(thumb_url, stream=True, timeout=5)
-                    if r.status_code == 200:
-                        img_data = Image.open(io.BytesIO(r.content))
-                        ctk_img = ctk.CTkImage(light_image=img_data, dark_image=img_data, size=(160, 90))
-                        ctk.CTkLabel(header_frame, image=ctk_img, text="").pack(side="left", padx=(0, 15))
+                    ctk_img = ctk.CTkImage(light_image=img_data, dark_image=img_data, size=(160, 90))
+                    ctk.CTkLabel(header_frame, image=ctk_img, text="").pack(side="left", padx=(0, 15))
                 except Exception as e: self.add_to_log(f"Warning: Could not load thumbnail: {e}")
 
             ctk.CTkLabel(header_frame, text=video_title, font=("Segoe UI", 16, "bold"), wraplength=500, justify="left").pack(side="left", anchor="w", fill="x", expand=True)
