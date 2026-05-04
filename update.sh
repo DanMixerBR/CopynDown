@@ -20,6 +20,7 @@ unzip -o CopynDown_Linux.zip -d .. > /dev/null 2>&1
 chmod +x CopynDown
 chmod +x bin/yt-dlp
 chmod +x bin/ffmpeg
+chmod +x bin/ffprobe
 chmod +x bin/deno
 
 rm -f CopynDown_Linux.zip
