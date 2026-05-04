@@ -1638,6 +1638,8 @@ class DownloaderApp(ctk.CTk):
         # Se a fila esvaziou, termina e libera os botões de configuração
         if not self.download_queue:
             self.is_queue_running = False
+            self.btn_queue.configure(text="📥 Queue (0)")
+            self.render_queue_list()
             self.toggle_buttons("normal")
             return
 
