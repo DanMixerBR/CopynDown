@@ -2180,10 +2180,9 @@ class DownloaderApp(ctk.CTk):
             remote_v = response.json()['tag_name']
             
             clean_remote_v = re.search(r'\d+(\.\d+)+', remote_v).group()
-            clean_local_v = re.search(r'\d+(\.\d+)+', local_v).group()
             
-            if clean_remote_v != clean_local_v:
-                msg = f"Current version: {clean_local_v}\nLatest version: {clean_remote_v}\n\nDo you want to update?"
+            if clean_remote_v != local_v:
+                msg = f"Current version: {local_v}\nLatest version: {clean_remote_v}\n\nDo you want to update?"
                 parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
                 
                 if not messagebox.askyesno("Update available", msg, parent=parent_win):
