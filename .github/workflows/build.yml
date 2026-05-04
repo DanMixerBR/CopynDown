@@ -4,9 +4,9 @@ on:
   workflow_dispatch: 
     inputs:
       versao_tag:
-        description: 'Tag da Versão (ex: v25.3.0)'
+        description: 'Tag da Versão (ex: v2x.x.x)'
         required: true
-        default: 'v25.3.0'
+        default: 'v2x.x.x'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
