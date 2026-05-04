@@ -2,21 +2,13 @@
 
 # ======================================================================
 # Auto-Launch in Terminal
-# Verifica se NÃO está rodando interativamente (sem TTY)
+# Verifica se NÃO está rodando interativamente e abre o terminal correto
 # ======================================================================
 if [ ! -t 0 ]; then
-    # Procura pelos terminais padrão do Fedora (Ptyxis no F40, GNOME Console no F39, GNOME Terminal)
-    for term in ptyxis kgx gnome-terminal xterm; do
-        if command -v "$term" >/dev/null 2>&1; then
-            # gnome-terminal e ptyxis usam '--', kgx usa '-e'
-            if [ "$term" = "gnome-terminal" ] || [ "$term" = "ptyxis" ]; then
-                exec "$term" -- bash -c "\"$0\""
-            else
-                exec "$term" -e bash -c "\"$0\""
-            fi
-            exit 0
-        fi
-    done
+    command -v ptyxis >/dev/null && exec ptyxis -- bash -c "\"$0\""
+    command -v kgx >/dev/null && exec kgx -e bash -c "\"$0\""
+    command -v gnome-terminal >/dev/null && exec gnome-terminal -- bash -c "\"$0\""
+    command -v xterm >/dev/null && exec xterm -e bash -c "\"$0\""
 fi
 
 # ANSI Color Definitions
