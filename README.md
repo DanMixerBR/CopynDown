@@ -5,7 +5,7 @@
   <p><b>Developed with 💻 by DanMixerBR</b></p>
 <p>
     <a href="DONATE.md">
-      <img src="https://img.shields.io/badge/Donate-Support_CopynDown-red?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate">
+      <img src="https://img.shields.io/badge/Donate-Support_CopynDown-blue?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate">
     </a>
     <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License MIT">
     <img src="https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python">
