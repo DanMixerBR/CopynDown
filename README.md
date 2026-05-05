@@ -4,11 +4,9 @@
   <p>A modern, fast, and cross-platform media downloader and converter.</p>
   <p><b>Developed with 💻 by DanMixerBR</b></p>
 <p>
-    <a href="DONATE.md">
-      <img src="https://img.shields.io/badge/Donate-Support_CopynDown-blue?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate">
-    </a>
-    <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License MIT">
-    <img src="https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+    <a href="SUPPORT.md"><img src="https://img.shields.io/badge/Donate-Support_CopynDown-blue?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate"></a>
+    <a href="https://github.com/DanMixerBR/CopynDown?tab=MIT-1-ov-file"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License MIT"></a>
+    <a href="https://www.python.org/downloads/release/python-3120/"><img src="https://img.shields.io/badge/Python-3.x-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   </p>
 </div>
 
