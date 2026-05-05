@@ -3,6 +3,13 @@
   <h1>CopynDown</h1>
   <p>A modern, fast, and cross-platform media downloader and converter.</p>
   <p><b>Developed with 💻 by DanMixerBR</b></p>
+<p>
+    <a href="DONATE.md">
+      <img src="https://img.shields.io/badge/Donate-Support_CopynDown-8A05BE?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate">
+    </a>
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License MIT">
+    <img src="https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  </p>
 </div>
 
 ## 🌟 Features
