@@ -51,12 +51,12 @@
 ## 📥 Installation
 
 ### Windows
-1. Download the latest release of `CopynDown_Windows.zip` from the [Releases](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip) page.
+1. Download the latest release of [CopynDown_Windows.zip](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip).
 2. Extract the downloaded `.zip` file to your preferred folder.
 3. Double-click the `CopynDown.exe` file to run the application.
 
 ### Linux
-1. Download the latest release of `CopynDown_Linux.zip` from the [Releases](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip) page.
+1. Download the latest release of [CopynDown_Linux.zip](https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip).
 2. Extract the downloaded `.zip` file.
 3. Right-click the `Install_CopynDown.sh` and select **"Run as a program"** (or run it via terminal).
 4. Right-click `CopynDown` shortcut and select **"Allow Launching"** to run the application.
