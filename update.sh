@@ -43,7 +43,7 @@ echo "  Starting CopynDown..."
 echo -e "${G}-------------------------------------------------------${W}"
 echo ""
 
-nohup CopynDown >/dev/null 2>&1 &
+nohup ./CopynDown >/dev/null 2>&1 &
 disown
 
 sleep 5
