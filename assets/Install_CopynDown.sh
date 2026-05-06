@@ -38,4 +38,8 @@ echo "================================================="
 echo " Success! Shortcut added to Application Menu"
 echo " AND copied to your Desktop."
 echo "================================================="
+
+cd core
+nohup ./CopynDown >/dev/null 2>&1 &
+
 sleep 4
