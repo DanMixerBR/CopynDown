@@ -39,9 +39,12 @@ rm -f CopynDown_Linux.zip
 echo ""
 echo -e "${G}-------------------------------------------------------${W}"
 echo "  [SUCCESS] Update completed!"
-echo "  Please restart the app."
+echo "  Starting CopynDown..."
 echo -e "${G}-------------------------------------------------------${W}"
 echo ""
+
+nohup ./core/CopynDown >/dev/null 2>&1 &
+disown
 
 sleep 5
 
