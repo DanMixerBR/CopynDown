@@ -1,13 +1,13 @@
 <div align="center">
   <img src="assets/Logo.png" alt="CopynDown Logo" width="150">
   <h1>CopynDown</h1>
-  <p>A modern, fast, and cross-platform media downloader and converter.</p>
-  <p><b>Developed with 💻 by DanMixerBR</b></p>
-<p>
+  <p>
     <a href="DONATE.md"><img src="https://img.shields.io/badge/Donate-Support_CopynDown-blue?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Donate"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License MIT"></a>
     <a href="https://www.python.org/downloads/release/python-3120/"><img src="https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
   </p>
+  <p>A modern, fast, and cross-platform media downloader and converter.</p>
+  <p><b>Developed with 💻 by DanMixerBR</b></p>
 </div>
 
 ## 🌟 Features
