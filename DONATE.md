@@ -11,7 +11,7 @@ You can support the project directly via Pix. Just scan the QR Code below using 
 
 <div align="center">
   <br>
-  <img src=".github/nubank_qr.png" alt="Nubank Pix QR Code" width="200"/>
+  <img src="assets/nubank_qr.png" alt="Nubank Pix QR Code" width="200"/>
   <br>
   <br>
   <b>Link: https://nubank.com.br/cobrar/1ao69l/69f94fbd-6bb0-4f7b-a60b-0c1dce14d488</b>
