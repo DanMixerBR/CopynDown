@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/Logo.png" alt="CopynDown Logo" width="150">
+  <img src="assets/logo_c.png" alt="CopynDown Logo" width="150">
   <h1>CopynDown</h1>
   <p>
     <a href="https://github.com/DanMixerBR/CopynDown/releases/latest"><img src="https://img.shields.io/badge/version-25.4.0-blue.svg?style=for-the-badge"></a>
