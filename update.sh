@@ -46,6 +46,6 @@ echo ""
 nohup ./CopynDown >/dev/null 2>&1 &
 disown
 
-sleep 5
+sleep 2
 
 rm -- "$0"
