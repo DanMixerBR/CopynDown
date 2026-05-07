@@ -36,9 +36,9 @@ jobs:
           python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable `
           --enable-plugin=tk-inter --windows-icon-from-ico=assets/icon_windows.ico `
           --company-name="DanMixerBR" --product-name="CopynDown" `
-          --file-description="DanMixerBR" `
+          --file-description="CopynDown" --copyright="MIT License" `
           --file-version="$CLEAN_V" --product-version="$CLEAN_V" `
-          --copyright="MIT License" --output-filename=CopynDown.exe main.py
+          --output-filename=CopynDown.exe main.py
 
       - name: Atualizar version.txt localmente
         shell: bash
