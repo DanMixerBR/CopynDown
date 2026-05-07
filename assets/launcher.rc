@@ -1,5 +1,5 @@
 // Define o ícone do executável
-1 ICON "icon_windows.ico"
+1 ICON "assets/icon_windows.ico"
 
 // Define os Metadados
 1 VERSIONINFO
