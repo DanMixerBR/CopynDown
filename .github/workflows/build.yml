@@ -34,6 +34,10 @@ jobs:
           # O Nuitka já gera o CopynDown.exe dentro da pasta main.dist
           python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --enable-plugin=tk-inter --windows-icon-from-ico=assets/icon_windows.ico --company-name="DanMixerBR" --product-name="CopynDown" --file-version="25.2.0.0" --product-version="25.2.0.0" --copyright="MIT License" --output-filename=CopynDown.exe main.py
 
+      - name: Atualizar version.txt localmente
+        shell: bash
+        run: echo "${{ github.event.inputs.versao_tag }}" | tr -d 'A-Za-z' > bin/version.txt
+      
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Windows.zip)
         shell: powershell
         run: |
@@ -98,6 +102,10 @@ jobs:
           # O Nuitka já gera o CopynDown dentro da pasta main.dist
           python -m nuitka --assume-yes-for-downloads --standalone --enable-plugin=tk-inter -o CopynDown main.py
   
+      - name: Atualizar version.txt localmente
+        shell: bash
+        run: echo "${{ github.event.inputs.versao_tag }}" | tr -d 'A-Za-z' > bin/version.txt
+      
       - name: Estruturar Pastas e Baixar Ferramentas (CopynDown_Linux.zip)
         run: |
           # 1. Prepara a pasta core e a subpasta bin
@@ -165,12 +173,15 @@ jobs:
           echo "$HASH_WIN" > hash.txt
           echo "$HASH_WIN" > hash_v2.txt
           echo "$HASH_LINUX" >> hash_v2.txt
+
+          # NOVO: Atualiza o version.txt na pasta bin do repositório
+          echo "${{ github.event.inputs.versao_tag }}" | tr -d 'A-Za-z' > bin/version.txt
   
       - name: Salvar os Hashes direto no Repositório (Commit Automático)
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Atualização automática de hashes para a versão ${{ github.event.inputs.versao_tag }}"
-          file_pattern: "hash.txt hash_v2.txt"
+          file_pattern: "hash.txt hash_v2.txt bin/version.txt"
   
       - name: Criar a Página de Release
         uses: softprops/action-gh-release@v2
