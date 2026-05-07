@@ -612,7 +612,7 @@ class DownloaderApp(ctk.CTk):
         else: 
             cmd.extend([
                 "--newline",
-                "--sleep-interval", "2"         # Pausa segura entre itens da fila
+                "-t", "sleep"         # Pausa segura entre itens da fila
             ])
         return cmd
 
