@@ -71,8 +71,14 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" -OutFile "deno.zip"
           Expand-Archive -Path "deno.zip" -DestinationPath "release\core\bin\"
           
-          # 7. Compila o Launcher em C# e compacta o ZIP final
-          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32icon:assets\icon_windows.ico /out:release\CopynDown.exe assets\launcher.cs
+          # 7. Compila o Launcher em C (Nativo) e compacta o ZIP final
+          # Compila o arquivo de Recursos (Ícone + Metadados)
+          windres assets\launcher.rc -O coff -o launcher.res
+          
+          # Compila o código C unindo o arquivo de recursos. 
+          # -mwindows esconde a tela preta do CMD. -O3 aplica otimização máxima de velocidade.
+          gcc assets\launcher.c launcher.res -o release\CopynDown.exe -mwindows -O3
+          
           7z a -tzip -mx=9 CopynDown_Windows.zip .\release\*
 
       - name: Salvar o ZIP final
