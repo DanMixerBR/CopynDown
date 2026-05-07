@@ -2,26 +2,30 @@
 #include <string.h>
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    char exePath[MAX_PATH];
-    char coreDir[MAX_PATH]; // Nova variável para guardar o diretório de trabalho
+    char baseDir[MAX_PATH];
+    char coreDir[MAX_PATH];
+    char targetPath[MAX_PATH];
     
-    // Captura o caminho completo de onde o launcher está rodando
-    GetModuleFileName(NULL, exePath, MAX_PATH);
+    // Descobre onde o launcher está rodando
+    GetModuleFileName(NULL, baseDir, MAX_PATH);
+    char *lastSlash = strrchr(baseDir, '\\');
+    if (lastSlash) *lastSlash = '\0';
     
-    // Corta o "Launcher.exe" do final para descobrirmos a pasta raiz
-    char *lastSlash = strrchr(exePath, '\\');
-    if (lastSlash) {
-        *lastSlash = '\0';
-    }
-    
-    // 1. Cria o caminho exato da pasta "core" para ser o nosso Working Directory
-    strcpy(coreDir, exePath);
+    // Aponta para a pasta core (Path.Combine)
+    strcpy(coreDir, baseDir);
     strcat(coreDir, "\\core");
     
-    // 2. Anexa o caminho correto do executável principal
-    strcat(exePath, "\\core\\CopynDown.exe"); 
+    // Aponta para o executável real (Path.Combine)
+    strcpy(targetPath, coreDir);
+    strcat(targetPath, "\\CopynDown.exe");
     
-    // 3. A MÁGICA: Inicia o programa passando o 'coreDir' no penúltimo parâmetro!
-    ShellExecute(NULL, "open", exePath, NULL, coreDir, SW_SHOW);
+    // Se o arquivo existir, ele executa (O equivalente ao File.Exists)
+    if (GetFileAttributes(targetPath) != INVALID_FILE_ATTRIBUTES) {
+        
+        // Dispara o CMD oculto (SW_HIDE), passando o coreDir como base, 
+        // e chamando apenas o nome do arquivo, mantendo o Segredo do SmartScreen!
+        ShellExecute(NULL, "open", "cmd.exe", "/c start \"\" \"CopynDown.exe\"", coreDir, SW_HIDE);
+    }
+    
     return 0;
 }
