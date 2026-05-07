@@ -372,16 +372,30 @@ class DownloaderApp(ctk.CTk):
         
         # --- Limpeza Inteligente do Input ---
         is_convert = category in [self.TAB_C_VID, self.TAB_C_AUD]
+        
+        # Só altera o campo e os botões se estiver TROCANDO de Web (Save) para Local (Convert)
         if getattr(self, 'last_tab_is_convert', None) != is_convert:
+            
+            # 0. O TRUQUE: Tira o foco do campo para o CustomTkinter não bugar o placeholder
+            self.focus_set()
+            
+            # 1. Destrava o campo primeiro
+            self.main_entry.configure(state="normal") 
+            
+            # 2. Apaga o texto antigo
             self.main_entry.delete(0, 'end')
-        self.last_tab_is_convert = is_convert
+            
+            # 3. Define os novos textos (Placeholders e Botões)
+            if is_convert:
+                self.main_entry.configure(placeholder_text="Select source media file...")
+                self.main_btn.configure(text="Browse", fg_color="#34495e", hover_color="#2c3e50", command=self.browse_source)
+                # 4. Trava o campo APÓS o texto ter sido renderizado
+                self.main_entry.configure(state="readonly") 
+            else:
+                self.main_entry.configure(placeholder_text="Paste URL here")
+                self.main_btn.configure(text="Paste", fg_color="#1f538d", hover_color="#14375e", command=self.paste_url_btn)
 
-        if is_convert:
-            self.main_entry.configure(placeholder_text="Select source media file...")
-            self.main_btn.configure(text="Browse", fg_color="#34495e", hover_color="#2c3e50", command=self.browse_source)
-        else:
-            self.main_entry.configure(placeholder_text="Paste URL here")
-            self.main_btn.configure(text="Paste", fg_color="#1f538d", hover_color="#14375e", command=self.paste_url_btn)
+        self.last_tab_is_convert = is_convert
 
         # --- Painel Universal ---
         if category == self.TAB_VID:
@@ -593,8 +607,13 @@ class DownloaderApp(ctk.CTk):
             except Exception as e:
                 self.safe_ui(self.add_to_log, f"Warning: Error verifying cookies.txt ({e}). Continuing without cookies.")
         
-        if is_json: cmd.append("-J")
-        else: cmd.append("--newline")
+        if is_json: 
+            cmd.append("-J")
+        else: 
+            cmd.extend([
+                "--newline",
+                "--sleep-interval", "2"         # Pausa segura entre itens da fila
+            ])
         return cmd
 
     def apply_window_icon(self, window):
@@ -818,7 +837,7 @@ class DownloaderApp(ctk.CTk):
         if log_msg: self.add_to_log(log_msg)
 
     def status_error(self, log_msg=""):
-        self.set_terminal_state("Process Error!", log_msg)
+        self.set_terminal_state("Process Error! (Check Logs)", log_msg)
         
     def status_canceled(self, log_msg=">>> Process Canceled!"):
         self.set_terminal_state("Canceled!", log_msg)        
@@ -1582,19 +1601,31 @@ class DownloaderApp(ctk.CTk):
         if not is_convert and task_name.startswith("http"):
             def fetch_title_task():
                 try:
-                    # Pede pro yt-dlp apenas ler o título de forma rápida, sem baixar nada
+                    # Pede pro yt-dlp ler o JSON no modo "Plano" (Ignora extração pesada de vídeo)
                     title_cmd = [
                         self.ytdlp_path, 
-                        "--get-title", 
+                        "-J", 
+                        "--flat-playlist",  # A MÁGICA ESTÁ AQUI
                         "--no-warnings", 
-                        "--flat-playlist", 
-                        "--no-playlist", 
+                        "--playlist-items", "1", 
                         task_name
                     ]
                     result = subprocess.run(title_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                     
                     if result.returncode == 0 and result.stdout.strip():
-                        new_name = result.stdout.strip()
+                        info = json.loads(result.stdout.strip())
+                        
+                        # Lógica de captura refinada para o modo plano
+                        p_title = info.get('playlist_title') or info.get('playlist')
+                        is_playlist_url = "list=" in task_name.lower() or info.get('_type') == 'playlist'
+                        
+                        if p_title:
+                            new_name = f"[Playlist] {p_title}"
+                        elif is_playlist_url:
+                            new_name = f"[Playlist] {info.get('title', 'Unknown Title')}"
+                        else:
+                            new_name = info.get('title', 'Unknown Title')
+                            
                         queue_item["name"] = new_name
                         
                         # ATUALIZAÇÃO CIRÚRGICA: Sem piscar a tela, altera só o texto!
@@ -1751,14 +1782,22 @@ class DownloaderApp(ctk.CTk):
                     self.safe_ui(self.finish_current_task_and_continue)
 
                 elif error_detected:
-                    msg = "Conversion Incomplete (Check Logs)" if is_convert else "Download Incomplete (Check Logs)"
+                    # Verifica se é playlist
+                    is_playlist = getattr(self, 'current_playlist_item', '') != ""
                     
-                    self.safe_ui(self.progress_label.configure, text=msg, text_color="#d29922") # AMARELO/LARANJA
-                    self.safe_ui(self.progress_bar.configure, progress_color="#d29922")
-                    self.safe_ui(self.progress_bar.set, 1)
-                    
-                    self.safe_ui(self.add_to_log, f">>> {msg}\n")
-                    self.safe_ui(self.after, 3000, self.finish_current_task_and_continue)
+                    if is_convert or is_playlist:
+                        # Comportamento Laranja (Avisa que a Playlist/Conversão teve falhas parciais)
+                        msg = "Conversion Incomplete (Check Logs)" if is_convert else "Download Incomplete (Check Logs)"
+                        self.safe_ui(self.progress_label.configure, text=msg, text_color="#d29922")
+                        self.safe_ui(self.progress_bar.configure, progress_color="#d29922")
+                        self.safe_ui(self.progress_bar.set, 1)
+                        self.safe_ui(self.add_to_log, f">>> {msg}\n")
+                        self.safe_ui(self.after, 3000, self.finish_current_task_and_continue)
+                    else:
+                        # O seu comportamento desejado para vídeos únicos (Erro Vermelho Crítico)
+                        self.safe_ui(self.status_error)
+                        # Aguarda 3 segundos para o usuário ver o erro e continua a fila normalmente
+                        self.safe_ui(self.after, 3000, self.finish_current_task_and_continue)
 
                 else:
                     self.safe_ui(self.status_error)
