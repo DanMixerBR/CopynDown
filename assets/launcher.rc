@@ -1,0 +1,27 @@
+// Define o ícone do executável
+1 ICON "icon_windows.ico"
+
+// Define os Metadados
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4" // Código de idioma universal (Inglês)
+    BEGIN
+      VALUE "CompanyName", "DanMixerBR"
+      VALUE "FileDescription", "CopynDown Launcher"
+      VALUE "FileVersion", "1.0.0.0"
+      VALUE "InternalName", "CopynDown Launcher"
+      VALUE "LegalCopyright", "MIT License"
+      VALUE "OriginalFilename", "CopynDown.exe"
+      VALUE "ProductName", "CopynDown"
+      VALUE "ProductVersion", "1.0.0.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
