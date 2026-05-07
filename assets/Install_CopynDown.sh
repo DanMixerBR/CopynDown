@@ -43,4 +43,4 @@ cd core
 nohup ./CopynDown >/dev/null 2>&1 &
 disown
 
-sleep 4
+sleep 2
