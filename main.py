@@ -1732,10 +1732,12 @@ class DownloaderApp(ctk.CTk):
                             continue
                         
                         if is_convert and "time=" in clean:
-                            time_match = re.search(r"time=(\d{2}:\d{2}:\d{2})", clean)
-                            if time_match:
-                                self.safe_ui(self.progress_label.configure, text=f"Converting... (Time processed: {time_match.group(1)})", text_color="white")
-                                self.safe_ui(self.progress_bar.configure, progress_color="#1f538d")
+                            # Calcula o tempo REAL decorrido usando o nosso relógio global
+                            elapsed = int(time.time() - getattr(self, 'queue_start_time', time.time()))
+                            duration_str = f"{elapsed//60}m {elapsed%60}s" if elapsed >= 60 else f"{elapsed}s"
+                            
+                            self.safe_ui(self.progress_label.configure, text=f"Converting... (Elapsed time: {duration_str})", text_color="white")
+                            self.safe_ui(self.progress_bar.configure, progress_color="#1f538d")
 
                         if not is_convert and "Downloading item" in clean:
                             item_match = re.search(r"Downloading item (\d+ of \d+)", clean)
