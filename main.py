@@ -1458,6 +1458,7 @@ class DownloaderApp(ctk.CTk):
         
     def reset_queue_state(self):
         self.is_queue_running = False
+        self.queue_start_time = None
         self.clear_entire_queue()
         self.toggle_buttons("normal")
 
@@ -1678,11 +1679,16 @@ class DownloaderApp(ctk.CTk):
         # Se a fila esvaziou, termina e libera os botões de configuração
         if not self.download_queue:
             self.is_queue_running = False
+            self.queue_start_time = None
             self.btn_queue.configure(text="📥 Queue (0)")
             self.render_queue_list()
             self.toggle_buttons("normal")
             return
 
+        # INICIA O RELÓGIO GERAL: Se for o primeiro item, ele grava a hora atual
+        if not getattr(self, 'queue_start_time', None):
+            self.queue_start_time = time.time()
+        
         self.is_queue_running = True
         current_task = self.download_queue[0]
         
@@ -1698,7 +1704,6 @@ class DownloaderApp(ctk.CTk):
         self.is_cancelling = False
         self.toggle_buttons("disabled")
         
-        start_process_time = time.time()
         self.current_playlist_item = "" 
         
         if is_convert:
@@ -1778,10 +1783,17 @@ class DownloaderApp(ctk.CTk):
 
                 elif self.current_process.returncode == 0 and not error_detected:
                     end_process_time = time.time()
-                    duration = int(end_process_time - start_process_time)
+                    # Calcula usando o relógio global da fila
+                    duration = int(end_process_time - self.queue_start_time)
                     duration_str = f"{duration//60}m {duration%60}s" if duration >= 60 else f"{duration}s"
 
-                    msg = f"Conversion Complete! (Total time: {duration_str})" if is_convert else f"Download Complete! (Total time: {duration_str})"
+                    # Verifica se é o último item da fila para dar a mensagem correta
+                    is_last_item = len(self.download_queue) <= 1
+                    
+                    if is_convert:
+                        msg = f"Conversion Complete! (Total time: {duration_str})"
+                    else:
+                        msg = f"Download Complete! (Total time: {duration_str})"
                         
                     self.safe_ui(self.progress_label.configure, text=msg, text_color="#3fb950") # VERDE
                     self.safe_ui(self.progress_bar.configure, progress_color="#3fb950")
