@@ -348,8 +348,16 @@ class DownloaderApp(ctk.CTk):
         file = self.native_askopenfilename(self, title="Select Media File", filetypes=filetypes)
         
         if file:
+            # 1. Destrava a caixa de texto
+            self.src_entry.configure(state="normal")
+            
+            # 2. Apaga o placeholder e insere o caminho do arquivo
             self.src_entry.delete(0, 'end')
             self.src_entry.insert(0, file.replace("\\", "/"))
+            
+            # 3. Tranca a caixa novamente para proteção
+            self.src_entry.configure(state="readonly")
+            
             self.evaluate_ui_state()
 
     def select_pill(self, category):
