@@ -1735,7 +1735,7 @@ class DownloaderApp(ctk.CTk):
                             time_match = re.search(r"time=(\d{2}:\d{2}:\d{2})", clean)
                             if time_match:
                                 self.safe_ui(self.progress_label.configure, text=f"Converting... (Time processed: {time_match.group(1)})", text_color="white")
-                                self.progress_bar.configure(progress_color="#1f538d")
+                                self.safe_ui(self.progress_bar.configure, progress_color="#1f538d")
 
                         if not is_convert and "Downloading item" in clean:
                             item_match = re.search(r"Downloading item (\d+ of \d+)", clean)
