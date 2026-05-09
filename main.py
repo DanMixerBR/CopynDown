@@ -1116,9 +1116,9 @@ class DownloaderApp(ctk.CTk):
                         cmd.extend(["-c:a", "copy"])
                     else:
                         cmd.extend(["-c:a", ac])
-                        if dst_fmt == "mp3": 
-                            cmd.extend(["-b:a", "320k"])
-                        elif dst_fmt in ["ogg", "opus", "m4a"]: 
+                        if dst_fmt in ["mp3", "ogg"]: 
+                            cmd.extend(["-q:a", "2"])
+                        elif dst_fmt in ["m4a", "opus"]: 
                             cmd.extend(["-b:a", "192k"])
                         
                         # Se não era compatível para copy, avisa no log
@@ -1141,7 +1141,13 @@ class DownloaderApp(ctk.CTk):
                 if bitrate != "Auto" and ac not in ["copy", "flac", "pcm_s16le"]: # <- WAV protegido!
                     # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
                     cmd.extend(["-b:a", bitrate.replace(" kbps", "k")])
-                    
+                elif bitrate == "Auto":
+                    # Lógica inteligente para o "Auto"
+                    if ac in ["libmp3lame", "libvorbis"]:
+                        cmd.extend(["-q:a", "2"]) # MP3 e OGG usam VBR Transparente
+                    elif ac in ["aac", "libopus"]:
+                        cmd.extend(["-b:a", "192k"]) # AAC e Opus usam CBR
+                        
                 if sample_rate != "Original" and ac != "copy":
                     cmd.extend(["-ar", sample_rate.replace(" Hz", "")])
                     
