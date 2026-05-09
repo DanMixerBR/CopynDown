@@ -1,7 +1,7 @@
 ========================================================================
                  COPYNDOWN - TECHNICAL SPECIFICATIONS
 ========================================================================
-Version: 25
+Version: 2.6.0
 Engines: yt-dlp, FFmpeg
 ========================================================================
 
@@ -83,7 +83,7 @@ all devices, CopynDown applies the following automatic overwrites:
 - FFmpeg cannot scale resolutions using the 'Copy' codec. If the user requests a resolution change while 'Original' is selected, CopynDown forces 'libx264' (or 'libvpx-vp9' for WEBM) to ensure the resize operation succeeds without crashing.
 
 # AVI Compatibility Lock
-- If target is AVI and Video Codec is 'Copy' -> Forces 'libx264'
+- If target is AVI and Video Codec is 'Copy' or 'VP9' -> Forces 'libx264'
 - If target is AVI and Audio Codec is incompatible (AAC/FLAC/Opus/Copy) -> Forces 'libmp3lame'
 
 # WEBM Compatibility Lock
@@ -91,7 +91,13 @@ all devices, CopynDown applies the following automatic overwrites:
 - If target is WEBM and Audio Codec is AAC/MP3/FLAC/Copy -> Forces 'libopus'
 - If user attempts to download WEBM format with '1080p (H.264)' -> Forces '1080p (AV1/VP9)'
 
+# MP4 & MOV Compatibility Lock
+- If target is MP4/MOV and Video Codec is 'VP9' -> Forces 'libx264'
+- If target is MP4/MOV and Audio Codec is 'Opus' -> Forces 'AAC'
+- Safe Copy: If source is WEBM/MKV/OGG and user attempts to 'Copy' into MP4/MOV -> Forces H.264/AAC re-encoding to prevent container corruption.
+
 # Extract Original Audio Lock
 - If user extracts pure audio into MP3 container -> Forces re-encoding to 320kbps MP3
 - If user extracts pure audio into WAV container -> Forces re-encoding to pcm_s16le
-*(Pure copy into these containers from random sources often breaks container headers).*
+- If user extracts pure audio into M4A container -> Safely 'Copies' ONLY if source is MP4/M4A/AAC. Otherwise, forces AAC re-encoding.
+*(Pure copy into strict containers from random sources often breaks headers).*
