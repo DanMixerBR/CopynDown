@@ -1,0 +1,17 @@
+========================================= 
+VMAF QUALITY REPORT - COPYNDOWN 
+Date/Time: 10/05/2026  6:51:15,42 
+========================================= 
+ 
+Test: original.mp4 [h264] vs converted.mkv [hevc] 
+ - VMAF score: 97.598532 
+ 
+Test: original.mp4 [h264] vs converted.webm [vp9] 
+ - VMAF score: 99.107027 
+ 
+Test: original.mp4 [h264] vs converted.mov [h264] 
+ - VMAF score: 99.046714 
+ 
+Test: original.mp4 [h264] vs converted.avi [h264] 
+ - VMAF score: 99.046714 
+ 
