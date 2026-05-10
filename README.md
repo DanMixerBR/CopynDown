@@ -103,6 +103,17 @@ It is completely safe to bypass this warning. To do so:
 
 *Note: You will only need to do this once. If you want to verify the safety of the application, feel free to inspect the open-source code in this repository.*
 
+## 🛡️ Security & Transparency
+
+To ensure the safety of our users, every release is scanned for malware. Since the application is compiled from Python, some antivirus may trigger false positives. You can verify the latest scan results below:
+
+| Platform | Status | Analysis Link |
+| :--- | :--- | :--- |
+| **Windows (.zip)** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-3fb950?logo=virustotal) | [View Scan Report](https://www.virustotal.com/gui/file/cc2f4cbb4d0e33d4cfff559f2df5e1436e2bcb33ed6943ae7b73c2ba539736df/detection) |
+| **Linux (.zip)** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-3fb950?logo=virustotal) | [View Scan Report](https://www.virustotal.com/gui/file/9358c1d84220729cf7525da8b7d5a98889e11a33b4d5ed75a609f0881aefd15c/detection) |
+
+> **Note:** If you encounter a "SmartScreen" warning on Windows, it is due to the lack of a paid EV Code Signing certificate. The project is fully open-source, and you can review the code at any time.
+
 ## 🛠️ Build from Source
 
 If you are a developer and want to run CopynDown directly from the Python source code:
