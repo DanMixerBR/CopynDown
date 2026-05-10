@@ -1111,7 +1111,7 @@ class DownloaderApp(ctk.CTk):
                     }
                     ac = ac_map.get(dst_fmt)
                     
-                   # --- LÓGICA DE EXTRAÇÃO INTELIGENTE (SAFE SMART COPY) ---
+                    # --- LÓGICA DE EXTRAÇÃO INTELIGENTE (SAFE SMART COPY) ---
                     if dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".mov"]:
                         cmd.extend(["-c:a", "copy"])
                     elif dst_fmt == "opus" and src_ext in [".webm", ".opus"]:
@@ -2393,7 +2393,9 @@ class DownloaderApp(ctk.CTk):
                     
                     self.safe_ui(self.add_to_log, "Hash verification (OK).")
                 else:
-                    self.safe_ui(self.add_to_log, "Warning: Could not download hash_v2.txt")
+                    if os.path.exists(zip_path): 
+                        os.remove(zip_path)
+                    raise Exception("ERROR: Security verification failed. Could not download hash_v2.txt.")
                     
                 self.safe_ui(self.progress_label.configure, text="Updating... 75%", text_color="white")
                 self.safe_ui(self.progress_bar.set, 0.75)
