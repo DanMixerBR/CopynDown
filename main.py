@@ -851,18 +851,17 @@ class DownloaderApp(ctk.CTk):
     def status_canceled(self, log_msg=">>> Process Canceled!"):
         self.set_terminal_state("Canceled!", log_msg)        
         
-    def status_update_error(self, filename=None, size_mb=None, custom_msg=None):
-        # FIX: Define o fallback seguro dependendo do sistema operacional
-        fallback_name = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
+    def handle_update_failure(self, error_msg):
+        """Método unificado para relatar falhas na atualização."""
+        # Define o estado visual no terminal do app
+        self.set_terminal_state("Update Failed!", error_msg)
+        self.safe_ui(self.schedule_reset)
         
-        f_name = filename if filename else fallback_name
-        f_size = f"{size_mb:.1f} MB" if size_mb is not None else "Unknown size"
-        error_msg = custom_msg if custom_msg else f"ERROR: The file '{f_name}' ({f_size}) appears corrupted.\nDeleted for safety."
-        
-        self.set_terminal_state("Update Aborted!", error_msg)
-        
+        # Define a janela pai correta para o popup não 'sumir'
         parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
-        self.safe_ui(messagebox.showerror, "Aborted", error_msg, parent=parent_win)
+        
+        # Mostra o erro para o usuário
+        self.safe_ui(messagebox.showerror, "Update Error", error_msg, parent=parent_win)
            
 
     def add_subtitle_args(self, base_cmd, cfg):
@@ -2369,7 +2368,7 @@ class DownloaderApp(ctk.CTk):
                 # 2. Agora, com o arquivo já fechado, podemos apagar se der erro!
                 if corrupt_file is not None:
                     if os.path.exists(zip_path): os.remove(zip_path)
-                    raise Exception("ERROR: File structure is corrupted.")
+                    raise Exception(f"ERROR: The file '{zip_platform}' structure is corrupted.")
                 
                 self.safe_ui(self.add_to_log, "File structure verified (OK).")
                 
@@ -2389,13 +2388,13 @@ class DownloaderApp(ctk.CTk):
                     if sha256_hash.hexdigest().lower() not in expected_hashes:
                         if os.path.exists(zip_path): 
                             os.remove(zip_path)
-                        raise Exception(f"ERROR: Hash mismatch!")
+                        raise Exception(f"Security Error: '{zip_platform}' failed Hash verification!")
                     
                     self.safe_ui(self.add_to_log, "Hash verification (OK).")
                 else:
                     if os.path.exists(zip_path): 
                         os.remove(zip_path)
-                    raise Exception("ERROR: Security verification failed. Could not download hash_v2.txt.")
+                    raise Exception(f"Security Error: Could not download hash_v2.txt to verify '{zip_platform}'. Update aborted to ensure safety.")
                     
                 self.safe_ui(self.progress_label.configure, text="Updating... 75%", text_color="white")
                 self.safe_ui(self.progress_bar.set, 0.75)
@@ -2462,15 +2461,8 @@ class DownloaderApp(ctk.CTk):
                 self.safe_ui(self.reset_status)
         except Exception as e:
             self.is_updating = False
-            err_text = str(e)
-            if "File structure" in err_text or "Hash mismatch" in err_text:
-                self.safe_ui(self.status_update_error, zip_platform, None, custom_msg=err_text)
-            else:
-                self.safe_ui(self.set_terminal_state, "Update Failed!", f"ERROR: {err_text}")
-                self.safe_ui(self.schedule_reset, 7000)
-                
-                parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
-                self.safe_ui(messagebox.showerror, "Error", e, parent=parent_win)
+            # Chama o método unificado passando a mensagem de erro
+            self.safe_ui(self.handle_update_failure, str(e))
         finally:
             if hasattr(self, 'about_win') and self.about_win.winfo_exists(): 
                 self.safe_ui(self.btn_update_app.configure, state="normal", text="Check for updates")
