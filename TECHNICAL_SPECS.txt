@@ -55,10 +55,10 @@ used by CopynDown's engines for downloading and converting media.
 - None:  -vn        | (Drops video stream)
 
 [AUDIO CODECS (-c:a)]
-- AAC:   aac          | Params: -b:a 192k
-- MP3:   libmp3lame   | Params: -b:a 192k (or 320k for audio extraction)
-- Opus:  libopus      | Params: -b:a 192k
-- Ogg:   libvorbis    | Params: (Varies based on target bitrate)
+- AAC:   aac          | Params: -b:a 192k (CBR)
+- MP3:   libmp3lame   | Params: -q:a 2 (VBR - Transparent Quality)
+- Opus:  libopus      | Params: -b:a 192k (CBR)
+- Ogg:   libvorbis    | Params: -q:a 2 (VBR - Transparent Quality)
 - FLAC:  flac         | (Lossless, no bitrate specified)
 - WAV:   pcm_s16le    | (Uncompressed)
 - Copy:  copy         | (No re-encoding)
@@ -97,7 +97,8 @@ all devices, CopynDown applies the following automatic overwrites:
 - Safe Copy: If source is WEBM/MKV/OGG and user attempts to 'Copy' into MP4/MOV -> Forces H.264/AAC re-encoding to prevent container corruption.
 
 # Extract Original Audio Lock
-- If user extracts pure audio into MP3 container -> Forces re-encoding to 320kbps MP3
+- If user extracts pure audio into MP3 or Ogg container -> Forces re-encoding to VBR (-q:a 2)
 - If user extracts pure audio into WAV container -> Forces re-encoding to pcm_s16le
-- If user extracts pure audio into M4A container -> Safely 'Copies' ONLY if source is MP4/M4A/AAC. Otherwise, forces AAC re-encoding.
+- If user extracts pure audio into M4A container -> Safely 'Copies' ONLY if source is MP4/M4A/AAC.
+Otherwise, forces AAC re-encoding (-b:a 192k).
 *(Pure copy into strict containers from random sources often breaks headers).*
