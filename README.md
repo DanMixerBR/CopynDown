@@ -110,7 +110,7 @@ To ensure the safety of our users, every release is scanned for malware. Since t
 | Platform | Status | Analysis Link |
 | :--- | :--- | :--- |
 | **Windows (.zip)** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-3fb950?logo=virustotal) | [View Scan Report](https://www.virustotal.com/gui/file/0c4290e7c0671575960c98c4fa0f63e1747d6d0d97ceb9fe48507992fafa2daa/detection) |
-| **Linux (.zip)** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-3fb950?logo=virustotal) | [View Scan Report](https://www.virustotal.com/gui/file/9358c1d84220729cf7525da8b7d5a98889e11a33b4d5ed75a609f0881aefd15c/detection) |
+| **Linux (.zip)** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-3fb950?logo=virustotal) | [View Scan Report](https://www.virustotal.com/gui/file/3ce9d4bda5030ba91002ea0533cd7cc7d6d88be0bbe62ff567c5ec9b45c95d83/detection) |
 
 > **Note:** If you encounter a "SmartScreen" warning on Windows, it is due to the lack of a paid EV Code Signing certificate. The project is fully open-source, and you can review the code at any time.
 
