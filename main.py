@@ -2357,6 +2357,13 @@ class DownloaderApp(ctk.CTk):
                     r = requests.get(download_url_linux, timeout=30)
                 with open(zip_path, 'wb') as f: f.write(r.content)
                 
+                # --- TRAVA DE SEGURANÇA: TAMANHO MÍNIMO (CopynDown: 100MB) ---
+                zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
+                if zip_size_mb < 100.0:
+                    if os.path.exists(zip_path): os.remove(zip_path)
+                    raise Exception(f"ERROR: The file '{zip_platform}' is suspiciously small ({zip_size_mb:.1f} MB). Update aborted.")
+                # -------------------------------------------------------------
+                
                 self.safe_ui(self.progress_label.configure, text="Updating... 50%", text_color="white")
                 self.safe_ui(self.progress_bar.set, 0.5)
                 self.safe_ui(self.add_to_log, "Verifying update file...")
