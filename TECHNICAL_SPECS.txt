@@ -102,11 +102,12 @@ all devices, CopynDown applies the following automatic overwrites:
 # MP4 & MOV Compatibility Lock
 - If target is MP4/MOV and Video Codec is 'VP9' -> Forces 'libx264'
 - If target is MP4/MOV and Audio Codec is 'Opus' -> Forces 'AAC'
-- Safe Copy: If source is WEBM/MKV/OGG and user attempts to 'Copy' into MP4/MOV -> Forces H.264/AAC re-encoding to prevent container corruption.
+- Safe Copy: If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces H.264/AAC re-encoding to prevent container corruption.
 
 # Extract Original Audio Lock
 - If user extracts pure audio into MP3 or Ogg container -> Forces re-encoding to VBR (-q:a 2)
-- If user extracts pure audio into WAV container -> Forces re-encoding to pcm_s16le
+- If user extracts pure audio into Opus container -> Forces re-encoding to CBR (-b:a 192k)
+- If user extracts pure audio into WAV or FLAC container -> Forces uncompressed/lossless re-encoding
 - If user extracts pure audio into M4A container -> Safely 'Copies' ONLY if source is MP4/M4A/AAC.
 Otherwise, forces AAC re-encoding (-b:a 192k).
 *(Pure copy into strict containers from random sources often breaks headers).*
