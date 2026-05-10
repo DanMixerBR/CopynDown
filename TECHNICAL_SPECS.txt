@@ -16,6 +16,9 @@ used by CopynDown's engines for downloading and converting media.
 - Ignore errors: -i
 - Output Template (Social Media*): %(uploader)s [%(id)s].%(ext)s
 - Output Template (Standard): %(title)s.%(ext)s
+- Anti-Ban / Rate Limit: --newline --sleep-interval 2 --max-sleep-interval 5
+- Cookies (If enabled): --cookies [PATH]
+- Background Fetch (Title/JSON): -J --flat-playlist --no-warnings --playlist-items 1
 * Social media includes Instagram, TikTok, Kwai, Twitter/X, Facebook, Reddit, LinkedIn, Pinterest, and Snapchat.
 
 [VIDEO DOWNLOAD ARGUMENTS]
@@ -36,7 +39,11 @@ used by CopynDown's engines for downloading and converting media.
 - Audio Format:  --audio-format [EXT]
 - Quality (128k/192k/320k): --audio-quality [BITRATE]
 - Embed Thumbnail: --embed-thumbnail (Except for WAV)
-- Embed Metadata:  --embed-metadata --parse-metadata "%(playlist_index|)s:%(track_number)s" (Except for WAV)
+- Embed Metadata:  --embed-metadata (Except for WAV)
+- Advanced Parsing: 
+   1. --parse-metadata "%(playlist_index|)s:%(track_number)s"
+   2. --parse-metadata "%(release_year,release_date,date,upload_date).4s:%(meta_date)s"
+   3. --parse-metadata "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
 
 
 ------------------------------------------------------------------------
@@ -55,16 +62,17 @@ used by CopynDown's engines for downloading and converting media.
 - None:  -vn        | (Drops video stream)
 
 [AUDIO CODECS (-c:a)]
-- AAC:   aac          | Params: -b:a 192k (CBR)
-- MP3:   libmp3lame   | Params: -q:a 2 (VBR - Transparent Quality)
-- Opus:  libopus      | Params: -b:a 192k (CBR)
-- Ogg:   libvorbis    | Params: -q:a 2 (VBR - Transparent Quality)
-- FLAC:  flac         | (Lossless, no bitrate specified)
-- WAV:   pcm_s16le    | (Uncompressed)
+- AAC:   aac          | Params: -b:a 192k (Video Conv / Audio Conv 'Auto')
+- Opus:  libopus      | Params: -b:a 192k (Video Conv / Audio Conv 'Auto')
+- MP3:   libmp3lame   | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
+- Ogg:   libvorbis    | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
+- FLAC:  flac         | (Lossless, ignores bitrate)
+- WAV:   pcm_s16le    | (Uncompressed, ignores bitrate)
 - Copy:  copy         | (No re-encoding)
 - None:  -an          | (Drops audio stream)
 
 [AUDIO MODIFIERS]
+- Bitrate (-b:a): Auto, 320k, 256k, 192k, 128k (Audio conversions only)
 - Channels (-ac): 2 (Stereo) or 1 (Mono)
 - Sample Rate (-ar): 48000 or 44100
 
