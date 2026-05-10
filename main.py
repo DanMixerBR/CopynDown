@@ -1111,8 +1111,10 @@ class DownloaderApp(ctk.CTk):
                     }
                     ac = ac_map.get(dst_fmt)
                     
-                    # Heurística para M4A: Só permitimos "copy" se o original for garantido como MP4/M4A/AAC
-                    if dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".aac"]:
+                   # --- LÓGICA DE EXTRAÇÃO INTELIGENTE (SAFE SMART COPY) ---
+                    if dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".mov"]:
+                        cmd.extend(["-c:a", "copy"])
+                    elif dst_fmt == "opus" and src_ext in [".webm", ".opus"]:
                         cmd.extend(["-c:a", "copy"])
                     else:
                         cmd.extend(["-c:a", ac])
