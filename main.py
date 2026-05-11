@@ -2433,176 +2433,171 @@ class DownloaderApp(ctk.CTk):
         self.btn_update_app.configure(state="disabled", text="Checking...")
         self.is_updating = True 
         self.reset_status("Checking for updates...")
-        threading.Thread(target=self.perform_github_update, daemon=True).start()
+        
+        # FASE 1: Vai pros bastidores apenas checar a versão
+        threading.Thread(target=self.check_github_version_task, daemon=True).start()
 
-    def perform_github_update(self):
+    def check_github_version_task(self):
         api_url = "https://api.github.com/repos/DanMixerBR/CopynDown/releases/latest"
-        download_url_windows = "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip"
-        download_url_linux = "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip"
-        
-        # ===================================================
-        # [LINUX/MAC FIX] DETECTAR QUAL SCRIPT BAIXAR
-        # ===================================================
-        script_ext = "bat" if self.is_windows else "sh"
-        script_url = f"https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/update.{script_ext}"
-        hash_url = "https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/hash_v2.txt"
-        zip_platform = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
-        
         try:
             local_v = self.get_local_version()
             response = requests.get(api_url, timeout=10)
             remote_v = response.json()['tag_name']
-            
             clean_remote_v = re.search(r'\d+(\.\d+)+', remote_v).group()
             
             if clean_remote_v != local_v:
-                msg = f"Current version: {local_v}\nLatest version: {clean_remote_v}\n\nDo you want to update?"
-                parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
-                
-                if not messagebox.askyesno("Update available", msg, parent=parent_win):
-                    self.is_updating = False
-                    self.safe_ui(self.reset_status)
-                    return
-                
-                if hasattr(self, 'about_win') and self.about_win.winfo_exists(): 
-                    self.safe_ui(self.about_win.destroy)
-                    
-                self.safe_ui(self.toggle_buttons, "disabled", is_downloading=False)
-
-                dir_app = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
-                script_path = os.path.join(dir_app, f"update.{script_ext}")
-                zip_path = os.path.join(dir_app, zip_platform)
-                
-                if os.path.exists(zip_path): os.remove(zip_path)
-                    
-                self.safe_ui(self.progress_label.configure, text="Updating... 25%", text_color="white")
-                self.safe_ui(self.progress_bar.set, 0.25)
-                self.safe_ui(self.add_to_log, "\n>>> Downloading update file...")
-                
-                if self.is_windows: 
-                    r = requests.get(download_url_windows, timeout=30)
-                else:
-                    r = requests.get(download_url_linux, timeout=30)
-                with open(zip_path, 'wb') as f: f.write(r.content)
-                
-                # --- TRAVA DE SEGURANÇA: TAMANHO MÍNIMO (CopynDown: 100MB) ---
-                zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
-                if zip_size_mb < 100.0:
-                    if os.path.exists(zip_path): os.remove(zip_path)
-                    raise Exception(f"ERROR: The file '{zip_platform}' is suspiciously small ({zip_size_mb:.1f} MB). Update aborted.")
-                # -------------------------------------------------------------
-                
-                self.safe_ui(self.progress_label.configure, text="Updating... 50%", text_color="white")
-                self.safe_ui(self.progress_bar.set, 0.5)
-                self.safe_ui(self.add_to_log, "Verifying update file...")
-                
-                # 1. Abre, testa e fecha o arquivo automaticamente
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    corrupt_file = zf.testzip()
-                
-                # 2. Agora, com o arquivo já fechado, podemos apagar se der erro!
-                if corrupt_file is not None:
-                    if os.path.exists(zip_path): os.remove(zip_path)
-                    raise Exception(f"ERROR: The file '{zip_platform}' structure is corrupted.")
-                
-                self.safe_ui(self.add_to_log, "File structure verified (OK).")
-                
-                r_hash = requests.get(hash_url, timeout=10)
-                if r_hash.status_code == 200:
-                    expected_hashes = [
-                        line.strip().lower().replace("sha256:", "") 
-                        for line in r_hash.text.splitlines() 
-                        if line.strip()
-                    ]
-                    
-                    sha256_hash = hashlib.sha256()
-                    with open(zip_path, "rb") as f:
-                        for byte_block in iter(lambda: f.read(4096), b""): 
-                            sha256_hash.update(byte_block)
-                            
-                    if sha256_hash.hexdigest().lower() not in expected_hashes:
-                        if os.path.exists(zip_path): 
-                            os.remove(zip_path)
-                        raise Exception(f"Security Error: '{zip_platform}' failed Hash verification!")
-                    
-                    self.safe_ui(self.add_to_log, "Hash verification (OK).")
-                else:
-                    if os.path.exists(zip_path): 
-                        os.remove(zip_path)
-                    raise Exception(f"Security Error: Could not download hash_v2.txt to verify '{zip_platform}'. Update aborted to ensure safety.")
-                    
-                self.safe_ui(self.progress_label.configure, text="Updating... 75%", text_color="white")
-                self.safe_ui(self.progress_bar.set, 0.75)
-                self.safe_ui(self.add_to_log, "Downloading update script...")
-                
-                r_script = requests.get(script_url, timeout=10)
-                if r_script.status_code == 200:
-                    with open(script_path, 'wb') as f: f.write(r_script.content)
-                else: 
-                    raise Exception(f"Could not download update.{script_ext} from GitHub.")
-                
-                self.safe_ui(self.progress_label.configure, text="Update Ready! (100%)", text_color="#3fb950")
-                self.safe_ui(self.progress_bar.configure, progress_color="#3fb950")
-                self.safe_ui(self.progress_bar.set, 1)
-                self.safe_ui(self.add_to_log, ">>> Update downloaded and verified successfully!")
-                
-                parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
-                messagebox.showinfo("Success", "Update Ready! The app will close to complete the update.", parent=parent_win)
-                
-                # ===================================================
-                # [LINUX/MAC FIX] RODAR BASH EM VEZ DE CMD
-                # ===================================================
-                if os.path.exists(script_path):
-                    if self.is_windows:
-                        subprocess.Popen(['cmd.exe', '/c', script_path], creationflags=0x00000010)
-                    else:
-                        os.chmod(script_path, 0o755) # Dá permissão de execução
-                        
-                        # 1. Limpa o ambiente para o terminal não herdar as bibliotecas pesadas do Nuitka
-                        limpo_env = os.environ.copy()
-                        limpo_env.pop("LD_LIBRARY_PATH", None)
-                        limpo_env.pop("GTK_PATH", None)
-                        
-                        # Comando exato que o terminal vai executar
-                        comando_bash = f'cd "{dir_app}" && bash update.sh'
-                        
-                        # 2. Lista dos terminais mais famosos do Linux (Garante compatibilidade universal)
-                        terminais = [
-                            ['x-terminal-emulator', '-e'], # Padrão Debian/Ubuntu/Mint
-                            ['gnome-terminal', '--'],      # Ubuntu antigo
-                            ['konsole', '-e'],             # Kubuntu/KDE
-                            ['xfce4-terminal', '-x']       # Xubuntu/XFCE
-                        ]
-                        
-                        abriu_terminal = False
-                        for term in terminais:
-                            try:
-                                # 3. O start_new_session=True DESCOLA o terminal do app. O app pode morrer, o terminal vive!
-                                subprocess.Popen(term + ['bash', '-c', comando_bash], env=limpo_env, start_new_session=True)
-                                abriu_terminal = True
-                                break
-                            except Exception:
-                                continue
-                                
-                        if not abriu_terminal:
-                            # Fallback silencioso só em último caso extremo
-                            subprocess.Popen(['bash', script_path], env=limpo_env, start_new_session=True)
-                            
-                    os._exit(0)
+                # O SEGREDO DO ASKYYESNO: Envia a pergunta para a Interface Principal com segurança
+                self.safe_ui(self.prompt_user_update, local_v, clean_remote_v)
             else:
                 self.is_updating = False
                 parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
                 self.safe_ui(messagebox.showinfo, "Up to date", "You are already using the latest version.", parent=parent_win)
                 self.safe_ui(self.reset_status)
+                self.safe_ui(self.btn_update_app.configure, state="normal", text="Check for updates")
+                self.safe_ui(self.toggle_buttons, "normal")
+
         except Exception as e:
             self.is_updating = False
-            # Chama o método unificado passando a mensagem de erro
             self.safe_ui(self.handle_update_failure, str(e))
-        finally:
+            self.safe_ui(self.btn_update_app.configure, state="normal", text="Check for updates")
+
+    def prompt_user_update(self, local_v, clean_remote_v):
+        # FASE 2: Pergunta na UI Principal (Trava a tela até o usuário responder)
+        msg = f"Current version: {local_v}\nLatest version: {clean_remote_v}\n\nDo you want to update?"
+        parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
+        
+        if messagebox.askyesno("Update available", msg, parent=parent_win):
             if hasattr(self, 'about_win') and self.about_win.winfo_exists(): 
-                self.safe_ui(self.btn_update_app.configure, state="normal", text="Check for updates")
-            if not self.is_updating:
-                self.safe_ui(self.toggle_buttons, "normal")
+                self.about_win.destroy()
+            self.toggle_buttons("disabled", is_downloading=False)
+            
+            # Se aceitou, volta para os bastidores para fazer o trabalho pesado!
+            threading.Thread(target=self.download_and_install_task, daemon=True).start()
+        else:
+            self.is_updating = False
+            self.reset_status()
+            self.btn_update_app.configure(state="normal", text="Check for updates")
+
+    def download_and_install_task(self):
+        # FASE 3: O Download Robusto (Bastidores)
+        download_url_windows = "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip"
+        download_url_linux = "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip"
+        script_ext = "bat" if self.is_windows else "sh"
+        script_url = f"https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/update.{script_ext}"
+        hash_url = "https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/hash_v2.txt"
+        zip_platform = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
+        
+        dir_app = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+        script_path = os.path.join(dir_app, f"update.{script_ext}")
+        zip_path = os.path.join(dir_app, zip_platform)
+        
+        try:
+            if os.path.exists(zip_path): os.remove(zip_path)
+                
+            self.safe_ui(self.progress_label.configure, text="Updating... 25%", text_color="white")
+            self.safe_ui(self.progress_bar.set, 0.25)
+            self.safe_ui(self.add_to_log, "\n>>> Downloading update file...")
+            
+            target_url = download_url_windows if self.is_windows else download_url_linux
+            
+            # OTIMIZAÇÃO DE RAM: Download em "Stream" (pedaços de 8KB) em vez de jogar tudo na memória!
+            r = requests.get(target_url, stream=True, timeout=30)
+            r.raise_for_status()
+            with open(zip_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk: f.write(chunk)
+            
+            zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
+            if zip_size_mb < 100.0:
+                if os.path.exists(zip_path): os.remove(zip_path)
+                raise Exception(f"ERROR: The file '{zip_platform}' is suspiciously small ({zip_size_mb:.1f} MB). Update aborted.")
+            
+            self.safe_ui(self.progress_label.configure, text="Updating... 50%", text_color="white")
+            self.safe_ui(self.progress_bar.set, 0.5)
+            self.safe_ui(self.add_to_log, "Verifying update file...")
+            
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                corrupt_file = zf.testzip()
+            
+            if corrupt_file is not None:
+                if os.path.exists(zip_path): os.remove(zip_path)
+                raise Exception(f"ERROR: The file '{zip_platform}' structure is corrupted.")
+            
+            self.safe_ui(self.add_to_log, "File structure verified (OK).")
+            
+            r_hash = requests.get(hash_url, timeout=10)
+            if r_hash.status_code == 200:
+                expected_hashes = [line.strip().lower().replace("sha256:", "") for line in r_hash.text.splitlines() if line.strip()]
+                sha256_hash = hashlib.sha256()
+                with open(zip_path, "rb") as f:
+                    for byte_block in iter(lambda: f.read(4096), b""): 
+                        sha256_hash.update(byte_block)
+                        
+                if sha256_hash.hexdigest().lower() not in expected_hashes:
+                    if os.path.exists(zip_path): os.remove(zip_path)
+                    raise Exception(f"Security Error: '{zip_platform}' failed Hash verification!")
+                
+                self.safe_ui(self.add_to_log, "Hash verification (OK).")
+            else:
+                if os.path.exists(zip_path): os.remove(zip_path)
+                raise Exception(f"Security Error: Could not download hash_v2.txt to verify '{zip_platform}'.")
+                
+            self.safe_ui(self.progress_label.configure, text="Updating... 75%", text_color="white")
+            self.safe_ui(self.progress_bar.set, 0.75)
+            self.safe_ui(self.add_to_log, "Downloading update script...")
+            
+            r_script = requests.get(script_url, timeout=10)
+            if r_script.status_code == 200:
+                with open(script_path, 'wb') as f: f.write(r_script.content)
+            else: 
+                raise Exception(f"Could not download update.{script_ext} from GitHub.")
+            
+            self.safe_ui(self.progress_label.configure, text="Update Ready! (100%)", text_color="#3fb950")
+            self.safe_ui(self.progress_bar.configure, progress_color="#3fb950")
+            self.safe_ui(self.progress_bar.set, 1)
+            self.safe_ui(self.add_to_log, ">>> Update downloaded and verified successfully!")
+            
+            # =====================================================================
+            # O SEGREDO DO SHOWINFO: Empacotamos o encerramento JUNTO com a mensagem!
+            # =====================================================================
+            def finish_update_and_restart():
+                parent_win = self.about_win if (hasattr(self, 'about_win') and self.about_win.winfo_exists()) else self
+                messagebox.showinfo("Success", "Update Ready! The app will close to complete the update.", parent=parent_win)
+                
+                if os.path.exists(script_path):
+                    if self.is_windows:
+                        subprocess.Popen(['cmd.exe', '/c', script_path], creationflags=0x00000010)
+                    else:
+                        os.chmod(script_path, 0o755) 
+                        limpo_env = os.environ.copy()
+                        limpo_env.pop("LD_LIBRARY_PATH", None)
+                        limpo_env.pop("GTK_PATH", None)
+                        comando_bash = f'cd "{dir_app}" && bash update.sh'
+                        terminais = [['x-terminal-emulator', '-e'], ['gnome-terminal', '--'], ['konsole', '-e'], ['xfce4-terminal', '-x']]
+                        
+                        abriu_terminal = False
+                        for term in terminais:
+                            try:
+                                subprocess.Popen(term + ['bash', '-c', comando_bash], env=limpo_env, start_new_session=True)
+                                abriu_terminal = True
+                                break
+                            except Exception: continue
+                                
+                        if not abriu_terminal:
+                            subprocess.Popen(['bash', script_path], env=limpo_env, start_new_session=True)
+                
+                # Só fecha o programa DEPOIS que a messagebox e o terminal rodarem!
+                os._exit(0)
+
+            # Envia a ordem final para a UI
+            self.safe_ui(finish_update_and_restart)
+            # =====================================================================
+
+        except Exception as e:
+            self.is_updating = False
+            self.safe_ui(self.handle_update_failure, str(e))
+            self.safe_ui(self.btn_update_app.configure, state="normal", text="Check for updates")
+            self.safe_ui(self.toggle_buttons, "normal")
 
 if __name__ == "__main__":
     app = DownloaderApp()
