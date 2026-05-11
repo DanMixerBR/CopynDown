@@ -192,7 +192,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Atualização automática de hashes para a versão ${{ github.event.inputs.versao_tag }}"
-          file_pattern: hash_v2.txt bin/version.txt"
+          file_pattern: "hash_v2.txt bin/version.txt"
   
       - name: Criar a Página de Release
         uses: softprops/action-gh-release@v2
