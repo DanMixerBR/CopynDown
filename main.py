@@ -99,7 +99,14 @@ class DownloaderApp(ctk.CTk):
                 "auto_paste": self.DEF_AUTO_PASTE, "use_cookies": self.DEF_USE_COOKIES, 
                 "cookies_path": self.cookies_path_default, "hide_options": self.DEF_HIDE_OPTS,
                 "video_path": "~/Videos/CopynDown",
-                "audio_path": "~/Music/CopynDown"
+                "audio_path": "~/Music/CopynDown",
+                "prefer_video": False,
+                "max_retries": "10",
+                "file_template": "Title (Default)",
+                "delay_mode": "Playlist Only",
+                "sleep_min": "2",
+                "sleep_max": "5",
+                "sleep_req": "1"
             },
             self.TAB_VID: {"thumb": True, "meta": False, "native_subs": False, "auto_subs": False, "embed_subs": False, "langs": "en", "trans_langs": "none"},
             self.TAB_AUD: {"thumb": True, "meta": True}
@@ -318,10 +325,10 @@ class DownloaderApp(ctk.CTk):
         self.btn_queue = ctk.CTkButton(footer, text="📥 Queue (0)", width=110, height=35, font=util_font, command=self.show_queue, **btn_style)
         self.btn_queue.pack(side="left", padx=(10, 0))
 
-        self.btn_about = ctk.CTkButton(footer, text="About", width=80, height=35, font=util_font, command=self.show_about, **btn_style)
+        self.btn_about = ctk.CTkButton(footer, text="ℹ About", width=80, height=35, font=util_font, command=self.show_about, **btn_style)
         self.btn_about.pack(side="right")
 
-        self.btn_show_logs = ctk.CTkButton(footer, text="View logs", width=100, height=35, font=util_font, command=self.show_logs, **btn_style)
+        self.btn_show_logs = ctk.CTkButton(footer, text="📄 View logs", width=100, height=35, font=util_font, command=self.show_logs, **btn_style)
         self.btn_show_logs.pack(side="right", padx=(0, 10))
 
     def browse_source(self):
@@ -601,7 +608,7 @@ class DownloaderApp(ctk.CTk):
         # Só atualiza a tela de verdade 200 milissegundos após ele PARAR de digitar
         self.ui_update_timer = self.after(200, self.evaluate_ui_state)
     
-    def build_base_cmd(self, is_json=False):
+    def build_base_cmd(self, is_json=False, url=""):
         cmd = [self.ytdlp_path, "-i"]
         gen_cfg = self.config_data.get("General", {})
         
@@ -618,11 +625,27 @@ class DownloaderApp(ctk.CTk):
         if is_json: 
             cmd.append("-J")
         else: 
-            cmd.extend([
-                "--newline",
-                "--sleep-interval", "2",         # Pausa segura entre itens da fila
-                "--max-sleep-interval", "5"
-            ])
+            cmd.append("--newline")
+            
+            cmd.extend(["--retries", str(gen_cfg.get("max_retries", "10"))])
+            
+            if gen_cfg.get("prefer_video", False):
+                cmd.append("--no-playlist")
+                
+            delay_mode = gen_cfg.get("delay_mode", "Playlist Only")
+            is_playlist_url = "list=" in url.lower() if url else False
+            
+            apply_delay = False
+            if delay_mode == "All Downloads": apply_delay = True
+            elif delay_mode == "Playlist Only" and is_playlist_url: apply_delay = True
+                
+            if apply_delay:
+                cmd.extend([
+                    "--sleep-interval", str(gen_cfg.get("sleep_min", "2")),
+                    "--max-sleep-interval", str(gen_cfg.get("sleep_max", "5")),
+                    "--sleep-requests", str(gen_cfg.get("sleep_req", "1"))
+                ])
+                
         return cmd
 
     def apply_window_icon(self, window):
@@ -889,9 +912,16 @@ class DownloaderApp(ctk.CTk):
         if any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"]):
             out_tmpl = "%(uploader)s [%(id)s].%(ext)s"
         else:
-            out_tmpl = "%(title)s.%(ext)s"
+            tmpl_choice = self.config_data.get("General", {}).get("file_template", "Title (Default)")
+            tmpl_map = {
+                "Title (Default)": "%(title)s.%(ext)s",
+                "Title + Video ID": "%(title)s [%(id)s].%(ext)s",
+                "Title + Format ID": "%(title)s [%(format_id)s].%(ext)s",
+                "Title + Resolution": "%(title)s [%(resolution)s].%(ext)s"
+            }
+            out_tmpl = tmpl_map.get(tmpl_choice, "%(title)s.%(ext)s")
         
-        base_cmd = self.build_base_cmd()
+        base_cmd = self.build_base_cmd(url=url)
         vfmt = self.format_menu.get().lower()
         
         if cfg["thumb"] and (self.manual_selection_var.get() or vfmt != "webm"): 
@@ -932,7 +962,7 @@ class DownloaderApp(ctk.CTk):
         real_path = os.path.expanduser(self.config_data["General"]["audio_path"])
         afmt, q = self.format_menu.get().lower(), self.quality_menu.get()
         
-        base_cmd = self.build_base_cmd() + ["-x"]
+        base_cmd = self.build_base_cmd(url=url) + ["-x"]
         if not self.manual_selection_var.get(): base_cmd.extend(["--audio-format", afmt])
         
         if cfg["thumb"] and (self.manual_selection_var.get() or afmt != "wav"): base_cmd.append("--embed-thumbnail")
@@ -1190,7 +1220,8 @@ class DownloaderApp(ctk.CTk):
 
         def fetch_data_task():
             try:
-                cmd_json = self.build_base_cmd(is_json=True) + ["--no-playlist", url]
+                # CORREÇÃO 3: Adicionado '--no-warnings' para evitar que mensagens quebrem o JSON
+                cmd_json = self.build_base_cmd(is_json=True) + ["--no-warnings", "--no-playlist", url]
                 output = subprocess.check_output(cmd_json, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                 
                 video_data = json.loads(output)
@@ -1198,16 +1229,8 @@ class DownloaderApp(ctk.CTk):
                 thumb_url = video_data.get('thumbnail', None)
                 video_title = video_data.get('title', 'Unknown Video')
 
-                # ---> O DOWNLOAD DA IMAGEM AGORA FICA AQUI (NO FUNDO) <---
-                img_data = None
-                if thumb_url:
-                    try:
-                        r = requests.get(thumb_url, stream=True, timeout=5)
-                        if r.status_code == 200:
-                            img_data = Image.open(io.BytesIO(r.content))
-                    except: pass
-
-                self.safe_ui(build_ui_task, formats, img_data, video_title)
+                # CORREÇÃO 1: Não processamos a imagem aqui. Mandamos a URL bruta direto para a UI.
+                self.safe_ui(build_ui_task, formats, thumb_url, video_title)
                 
             except subprocess.CalledProcessError as e:
                 self.safe_ui(handle_error, f"Failed to fetch formats:\n{e.output.strip() if e.output else 'Unknown error'}")
@@ -1221,7 +1244,7 @@ class DownloaderApp(ctk.CTk):
             self.evaluate_ui_state()
             self.status_error(error_msg)
 
-        def build_ui_task(formats, img_data, video_title): # <- Recebe o img_data pronto
+        def build_ui_task(formats, thumb_url, video_title):
             if not manual_win.winfo_exists(): return
             spinner.stop()
             loading_frame.destroy()
@@ -1232,12 +1255,30 @@ class DownloaderApp(ctk.CTk):
             header_frame = ctk.CTkFrame(manual_win, fg_color="transparent")
             header_frame.pack(pady=10, padx=20, fill="x")
 
-            # ---> RENDERIZAÇÃO IMEDIATA (SEM TRAVAR) <---
-            if img_data:
-                try:
-                    ctk_img = ctk.CTkImage(light_image=img_data, dark_image=img_data, size=(160, 90))
-                    ctk.CTkLabel(header_frame, image=ctk_img, text="").pack(side="left", padx=(0, 15))
-                except Exception as e: self.add_to_log(f"Warning: Could not load thumbnail: {e}")
+            # Label de placeholder para a imagem não empurrar os textos quando aparecer
+            img_label = ctk.CTkLabel(header_frame, text="Loading\nThumbnail...", width=160, height=90, fg_color="#21252b", corner_radius=8, font=("Segoe UI", 12))
+            img_label.pack(side="left", padx=(0, 15))
+
+            # CORREÇÃO 1 e 2: A imagem é baixada agora, em uma mini-thread própria, com User-Agent!
+            if thumb_url:
+                def fetch_img():
+                    try:
+                        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                        r = requests.get(thumb_url, stream=True, timeout=5, headers=headers)
+                        if r.status_code == 200:
+                            # 1. Faz o trabalho pesado na Thread (Baixa e decodifica os bytes)
+                            img_data = Image.open(io.BytesIO(r.content))
+                            
+                            # 2. Empacota a criação gráfica e a atualização para a Thread Principal
+                            def apply_image():
+                                if img_label.winfo_exists():
+                                    ctk_img = ctk.CTkImage(light_image=img_data, dark_image=img_data, size=(160, 90))
+                                    img_label.configure(image=ctk_img, text="", fg_color="transparent")
+                                    
+                            # 3. Envia para a via expressa segura!
+                            self.safe_ui(apply_image)
+                    except: pass
+                threading.Thread(target=fetch_img, daemon=True).start()
 
             ctk.CTkLabel(header_frame, text=video_title, font=("Segoe UI", 16, "bold"), wraplength=500, justify="left").pack(side="left", anchor="w", fill="x", expand=True)
 
@@ -1259,15 +1300,19 @@ class DownloaderApp(ctk.CTk):
             ctk.CTkRadioButton(scroll_video, text="None", variable=self.selected_vid, value="none").pack(anchor="w", pady=5, padx=5)
             ctk.CTkRadioButton(scroll_audio, text="None", variable=self.selected_aud, value="none").pack(anchor="w", pady=5, padx=5)
 
+            # CORREÇÃO 4: Filtra o lixo ANTES de injetar na interface gráfica pesada
             for f in formats:
                 fmt_id = f.get('format_id', 'N/A')
                 ext = f.get('ext', 'N/A')
                 vcodec = f.get('vcodec', 'none')
                 acodec = f.get('acodec', 'none')
+                
+                # Exclui manifestos, storyboards e arquivos ocultos vazios
+                if 'mhtml' in ext or 'sb' in ext or (vcodec == 'none' and acodec == 'none'): 
+                    continue
+
                 filesize = f.get('filesize') or f.get('filesize_approx') or 0
                 size_mb = f"{filesize / (1024 * 1024):.1f} MB" if filesize else "Unknown size"
-                
-                if 'mhtml' in ext or 'sb' in ext: continue
 
                 if vcodec == 'none' and acodec != 'none':
                     ctk.CTkRadioButton(scroll_audio, text=f"ID: {fmt_id} | {ext.upper()} | {acodec} | {size_mb}", variable=self.selected_aud, value=fmt_id).pack(anchor="w", pady=5, padx=5)
@@ -1520,18 +1565,30 @@ class DownloaderApp(ctk.CTk):
                 if f.winfo_manager() != "pack":
                     f.pack(fill="x", pady=8, padx=5) 
                 
-                lbl = f.winfo_children()[0]
-                lbl.configure(text=display_text)
+                # Desempacota os widgets de forma ultra-rápida (ordem: Label, Btn Remove, Btn Down, Btn Up)
+                lbl, btn_remove, btn_down, btn_up = f.winfo_children()
                 task["label_widget"] = lbl
                 
-                btn_remove = f.winfo_children()[1]
-                btn_remove.configure(state=state_remove, command=lambda i=index: self.remove_from_queue(i))
+                # --- O SEGREDO DA PERFORMANCE (State Diffing) ---
+                # Só executa o .configure() (que é uma operação gráfica pesada) se o dado realmente mudou
+                if lbl.cget("text") != display_text:
+                    lbl.configure(text=display_text)
+                    
+                if btn_remove.cget("state") != state_remove:
+                    btn_remove.configure(state=state_remove)
+                    
+                if btn_down.cget("state") != state_down:
+                    btn_down.configure(state=state_down)
+                    
+                if btn_up.cget("state") != state_up:
+                    btn_up.configure(state=state_up)
+                # -------------------------------------------------
 
-                btn_down = f.winfo_children()[2]
-                btn_down.configure(state=state_down, command=lambda i=index: self.move_queue_item(i, 1))
-
-                btn_up = f.winfo_children()[3]
-                btn_up.configure(state=state_up, command=lambda i=index: self.move_queue_item(i, -1))
+                # Os comandos (commands) devem ser sempre re-atrelados, 
+                # pois o botão físico (ex: botão da linha 2) pode estar controlando um item diferente agora
+                btn_remove.configure(command=lambda i=index: self.remove_from_queue(i))
+                btn_down.configure(command=lambda i=index: self.move_queue_item(i, 1))
+                btn_up.configure(command=lambda i=index: self.move_queue_item(i, -1))
 
             else:
                 f = ctk.CTkFrame(self.queue_scroll, fg_color="#181a1f", corner_radius=8)
@@ -1851,7 +1908,7 @@ class DownloaderApp(ctk.CTk):
 
         settings_win = ctk.CTkToplevel(self)
         self.apply_window_icon(settings_win)
-        settings_win.title("Global Settings")
+        settings_win.title("Settings")
         self.center_window(settings_win, 500, 620)
         settings_win.transient(self)
         settings_win.grab_set()
@@ -1859,12 +1916,22 @@ class DownloaderApp(ctk.CTk):
         settings_win.resizable(False, False)
         settings_win.configure(fg_color="#181a1f")
         
-        ctk.CTkLabel(settings_win, text="Global Settings", font=("Segoe UI", 16, "bold")).pack(pady=(15, 5))
+        ctk.CTkLabel(settings_win, text="Settings", font=("Segoe UI", 16, "bold")).pack(pady=(15, 5))
 
         scroll_frame = ctk.CTkScrollableFrame(settings_win, fg_color="transparent")
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        ctk.CTkLabel(scroll_frame, text="General", font=("Segoe UI", 13, "bold")).pack(pady=(5, 5), anchor="w")
+        
+        v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
+        v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
+        v_prefer_video = ctk.BooleanVar(value=self.config_data.get("General", {}).get("prefer_video", False))
+        
+        ctk.CTkCheckBox(scroll_frame, text="Auto-paste URLs", variable=v_auto_paste).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(scroll_frame, text="Prefer video over playlist (If URL contains both)", variable=v_prefer_video).pack(pady=4, anchor="w")
 
-        ctk.CTkLabel(scroll_frame, text="Output Folders", font=("Segoe UI", 13, "bold")).pack(pady=(5, 5), anchor="w")
+        ctk.CTkLabel(scroll_frame, text="Outputs", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
         
         ctk.CTkLabel(scroll_frame, text="Video output folder:", font=("Segoe UI", 12)).pack(anchor="w")
         vid_path_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
@@ -1909,14 +1976,86 @@ class DownloaderApp(ctk.CTk):
         aud_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
         ctk.CTkButton(aud_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(aud_entry)).pack(side="right")
-
-        ctk.CTkLabel(scroll_frame, text="General Options", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
         
-        v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
-        v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
+        tmpl_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        tmpl_frame.pack(fill="x", pady=(10, 5))
+        ctk.CTkLabel(tmpl_frame, text="Filename template:").pack(side="left", padx=(0, 10))
+        tmpl_menu = ctk.CTkOptionMenu(tmpl_frame, values=["Title (Default)", "Title + Video ID", "Title + Format ID", "Title + Resolution"], fg_color="#21252b", button_color="#2c313a", width=200)
+        tmpl_menu.set(self.config_data.get("General", {}).get("file_template", "Title (Default)"))
+        tmpl_menu.pack(side="left")
+        
+        ctk.CTkLabel(scroll_frame, text="Embedding", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        v_vid_thumb = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("thumb", True))
+        v_aud_meta = ctk.BooleanVar(value=self.config_data.get(self.TAB_AUD, {}).get("meta", True))
+        ctk.CTkCheckBox(scroll_frame, text="Embed thumbnail (Cover art)", variable=v_vid_thumb).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(scroll_frame, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta).pack(pady=4, anchor="w")
+
+        ctk.CTkLabel(scroll_frame, text="Subtitles", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        v_native_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("native_subs", False))
+        v_auto_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("auto_subs", False))
+        v_embed_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("embed_subs", False))
+        
+        def check_subtitle_state():
+            if v_native_subs.get() or v_auto_subs.get(): chk_embed.configure(state="normal")
+            else:
+                chk_embed.configure(state="disabled")
+                v_embed_subs.set(False)
+                
+        chk_native = ctk.CTkCheckBox(scroll_frame, text="Download standard subtitles", variable=v_native_subs, command=check_subtitle_state)
+        chk_native.pack(pady=4, anchor="w")
+        chk_auto = ctk.CTkCheckBox(scroll_frame, text="Download auto-generated subtitles", variable=v_auto_subs, command=check_subtitle_state)
+        chk_auto.pack(pady=4, anchor="w")
+        chk_embed = ctk.CTkCheckBox(scroll_frame, text="Embed subtitles into video", variable=v_embed_subs)
+        chk_embed.pack(pady=4, anchor="w")
+        check_subtitle_state()
+        
+        langs_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        langs_frame.pack(fill="x", pady=10)
+        
+        ctk.CTkLabel(langs_frame, text="Original language:").grid(row=0, column=0, padx=(0, 10), pady=2, sticky="w")
+        lang_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys())[1:], fg_color="#21252b", button_color="#2c313a") 
+        lang_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("langs", "en"), "English"))
+        lang_selector.grid(row=1, column=0, padx=(0, 10), pady=2, sticky="w")
+
+        ctk.CTkLabel(langs_frame, text="Translate to:").grid(row=0, column=1, padx=(10, 0), pady=2, sticky="w")
+        trans_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys()), fg_color="#21252b", button_color="#2c313a")
+        trans_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("trans_langs", "none"), "None"))
+        trans_selector.grid(row=1, column=1, padx=(10, 0), pady=2, sticky="w")
+        
+        ctk.CTkLabel(scroll_frame, text="Network & Auth", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        
+        net_frame1 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        net_frame1.pack(fill="x", pady=2)
+        ctk.CTkLabel(net_frame1, text="Max retries:").pack(side="left", padx=(0, 10))
+        retries_entry = ctk.CTkEntry(net_frame1, width=60, fg_color="#21252b", border_color="#3a3f4b")
+        retries_entry.insert(0, self.config_data.get("General", {}).get("max_retries", "10"))
+        retries_entry.pack(side="left")
+
+        net_frame2 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        net_frame2.pack(fill="x", pady=(10, 2))
+        ctk.CTkLabel(net_frame2, text="Delay mode:").pack(side="left", padx=(0, 10))
+        delay_menu = ctk.CTkOptionMenu(net_frame2, values=["None", "Playlist Only", "All Downloads"], fg_color="#21252b", button_color="#2c313a", width=140)
+        delay_menu.set(self.config_data.get("General", {}).get("delay_mode", "Playlist Only"))
+        delay_menu.pack(side="left")
+
+        net_frame3 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        net_frame3.pack(fill="x", pady=(5, 5))
+        ctk.CTkLabel(net_frame3, text="Sleep intervals (Sec):  Min").pack(side="left", padx=(0, 5))
+        min_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        min_entry.insert(0, self.config_data.get("General", {}).get("sleep_min", "2"))
+        min_entry.pack(side="left")
+        
+        ctk.CTkLabel(net_frame3, text="Max").pack(side="left", padx=(10, 5))
+        max_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        max_entry.insert(0, self.config_data.get("General", {}).get("sleep_max", "5"))
+        max_entry.pack(side="left")
+        
+        ctk.CTkLabel(net_frame3, text="Requests").pack(side="left", padx=(10, 5))
+        req_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        req_entry.insert(0, self.config_data.get("General", {}).get("sleep_req", "1"))
+        req_entry.pack(side="left")
+
         v_use_cookies = ctk.BooleanVar(value=self.config_data.get("General", {}).get("use_cookies", self.DEF_USE_COOKIES))
-        ctk.CTkCheckBox(scroll_frame, text="Auto-paste URLs", variable=v_auto_paste).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
         ctk.CTkCheckBox(scroll_frame, text="Use cookies file", variable=v_use_cookies).pack(pady=4, anchor="w")
         
         # =================================================================
@@ -1969,7 +2108,7 @@ class DownloaderApp(ctk.CTk):
         ctk.CTkButton(txt_path_frame, text="Get extension", width=100, fg_color="#1f538d", hover_color="#14375e", command=lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc")).pack(side="left", padx=(5, 0))
 
         # --- MODO 2: AUTO (Rookiepy) ---
-        ctk.CTkLabel(auto_frame, text="Extracts directly from the browser's database.\nThe browser must be fully closed during extraction.", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(auto_frame, text="Note: May require closing the browser or running the app as Administrator.", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
         
         extract_inner_frame = ctk.CTkFrame(auto_frame, fg_color="transparent")
         extract_inner_frame.pack(fill="x")
@@ -2075,44 +2214,6 @@ class DownloaderApp(ctk.CTk):
         # Chama a função uma vez para carregar a UI correta assim que a janela abrir
         update_cookie_ui()
         # =================================================================
-        
-        ctk.CTkLabel(scroll_frame, text="Media Embedding (Video & Audio)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
-        v_vid_thumb = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("thumb", True))
-        v_aud_meta = ctk.BooleanVar(value=self.config_data.get(self.TAB_AUD, {}).get("meta", True))
-        ctk.CTkCheckBox(scroll_frame, text="Embed thumbnail (Cover art)", variable=v_vid_thumb).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta).pack(pady=4, anchor="w")
-
-        ctk.CTkLabel(scroll_frame, text="Subtitles (Video Only)", font=("Segoe UI", 13, "bold")).pack(pady=(35, 5), anchor="w")
-        v_native_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("native_subs", False))
-        v_auto_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("auto_subs", False))
-        v_embed_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("embed_subs", False))
-        
-        def check_subtitle_state():
-            if v_native_subs.get() or v_auto_subs.get(): chk_embed.configure(state="normal")
-            else:
-                chk_embed.configure(state="disabled")
-                v_embed_subs.set(False)
-                
-        chk_native = ctk.CTkCheckBox(scroll_frame, text="Download standard subtitles", variable=v_native_subs, command=check_subtitle_state)
-        chk_native.pack(pady=4, anchor="w")
-        chk_auto = ctk.CTkCheckBox(scroll_frame, text="Download auto-generated subtitles", variable=v_auto_subs, command=check_subtitle_state)
-        chk_auto.pack(pady=4, anchor="w")
-        chk_embed = ctk.CTkCheckBox(scroll_frame, text="Embed subtitles into video", variable=v_embed_subs)
-        chk_embed.pack(pady=4, anchor="w")
-        check_subtitle_state()
-        
-        langs_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        langs_frame.pack(fill="x", pady=10)
-        
-        ctk.CTkLabel(langs_frame, text="Original language:").grid(row=0, column=0, padx=(0, 10), pady=2, sticky="w")
-        lang_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys())[1:], fg_color="#21252b", button_color="#2c313a") 
-        lang_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("langs", "en"), "English"))
-        lang_selector.grid(row=1, column=0, padx=(0, 10), pady=2, sticky="w")
-
-        ctk.CTkLabel(langs_frame, text="Translate to:").grid(row=0, column=1, padx=(10, 0), pady=2, sticky="w")
-        trans_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys()), fg_color="#21252b", button_color="#2c313a")
-        trans_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("trans_langs", "none"), "None"))
-        trans_selector.grid(row=1, column=1, padx=(10, 0), pady=2, sticky="w")
 
         def restore_defaults():
             vid_entry.configure(state="normal")
@@ -2130,30 +2231,55 @@ class DownloaderApp(ctk.CTk):
             cookie_entry.insert(0, self.cookies_path_default)
             cookie_entry.configure(state="readonly")
 
+            # --- Reseta Opções Gerais Antigas ---
             v_auto_paste.set(self.DEF_AUTO_PASTE)
             v_use_cookies.set(self.DEF_USE_COOKIES)
             v_hide_options.set(self.DEF_HIDE_OPTS)
-            
             v_vid_thumb.set(True)
             v_aud_meta.set(True)
-            
             v_native_subs.set(False)
             v_auto_subs.set(False)
             v_embed_subs.set(False)
             lang_selector.set("English")
             trans_selector.set("None")
             check_subtitle_state()
+
+            # --- NOVO: Reseta Opções de Network e Outputs ---
+            v_prefer_video.set(False)
+            tmpl_menu.set("Title (Default)")
+            delay_menu.set("Playlist Only")
+            
+            # Limpa e injeta os valores padrão das caixas de texto
+            entries_to_reset = [
+                (retries_entry, "10"),
+                (min_entry, "2"),
+                (max_entry, "5"),
+                (req_entry, "1")
+            ]
+            
+            for entry_widget, default_val in entries_to_reset:
+                entry_widget.delete(0, 'end')
+                entry_widget.insert(0, default_val)
             
         def save():
+            # 1. Salva as configurações Gerais e da nova aba Network
             self.config_data["General"].update({
                 "video_path": vid_entry.get(),
                 "audio_path": aud_entry.get(),
                 "auto_paste": v_auto_paste.get(), 
                 "use_cookies": v_use_cookies.get(), 
                 "cookies_path": cookie_entry.get(), 
-                "hide_options": v_hide_options.get()
+                "hide_options": v_hide_options.get(),
+                "prefer_video": v_prefer_video.get(),
+                "max_retries": retries_entry.get(),
+                "file_template": tmpl_menu.get(),
+                "delay_mode": delay_menu.get(),
+                "sleep_min": min_entry.get(),
+                "sleep_max": max_entry.get(),
+                "sleep_req": req_entry.get()
             })
             
+            # 2. Salva as configurações exclusivas de Vídeo (Legendas e Thumb)
             self.config_data[self.TAB_VID].update({
                 "thumb": v_vid_thumb.get(),
                 "native_subs": v_native_subs.get(), 
@@ -2163,16 +2289,18 @@ class DownloaderApp(ctk.CTk):
                 "trans_langs": lang_map.get(trans_selector.get(), "none")
             })
             
+            # 3. Salva as configurações exclusivas de Áudio (Metadados e Thumb)
             self.config_data[self.TAB_AUD].update({
                 "thumb": v_vid_thumb.get(), 
                 "meta": v_aud_meta.get()
             })
             
+            # 4. Aplica as mudanças no sistema
             self.save_config()
             self.update_folder_context()
             self.evaluate_ui_state()
             settings_win.destroy()
-            self.add_to_log(f">>> Global Settings saved successfully.")
+            self.add_to_log(">>> Settings saved successfully.")
 
         btn_frame = ctk.CTkFrame(settings_win, fg_color="transparent")
         btn_frame.pack(pady=10, fill="x", padx=10)
