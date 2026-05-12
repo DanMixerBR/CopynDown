@@ -46,8 +46,8 @@ class DownloaderApp(ctk.CTk):
         # ==========================================
 
         self.title(f"CopynDown")
-        self.center_window(self, 830, 650)
-        self.resizable(False, False)
+        self.center_window(self, 850, 650)
+        self.resizable(True, True)
         self.configure(fg_color="#181a1f") 
 
         self.status_id = None
@@ -106,7 +106,8 @@ class DownloaderApp(ctk.CTk):
                 "delay_mode": "Playlist Only",
                 "sleep_min": "2",
                 "sleep_max": "5",
-                "sleep_req": "1"
+                "sleep_req": "1",
+                "conv_profile": "Fast"
             },
             self.TAB_VID: {"thumb": True, "meta": False, "native_subs": False, "auto_subs": False, "embed_subs": False, "langs": "en", "trans_langs": "none"},
             self.TAB_AUD: {"thumb": True, "meta": True}
@@ -172,7 +173,7 @@ class DownloaderApp(ctk.CTk):
             
 
         title_group = ctk.CTkFrame(top_bar, fg_color="transparent")
-        title_group.pack(side="left", padx=(0, 20))
+        title_group.pack(side="left")
 
         if self.logo_img:
             ctk.CTkLabel(title_group, image=self.logo_img, text="").pack(side="left", padx=(0, 8))
@@ -187,7 +188,7 @@ class DownloaderApp(ctk.CTk):
         self.lbl_version.pack(anchor="w", pady=(0, 2), padx=(1, 0))
 
         self.nav_frame = ctk.CTkFrame(top_bar, fg_color="#21252b", corner_radius=20, height=40)
-        self.nav_frame.pack(side="left", padx=(10, 0))
+        self.nav_frame.pack(side="left", expand=True)
 
         self.pills = {}
         categories = [self.TAB_VID, self.TAB_AUD, self.TAB_C_VID, self.TAB_C_AUD]
@@ -244,22 +245,22 @@ class DownloaderApp(ctk.CTk):
 
         self.lbl_1 = ctk.CTkLabel(self.options_frame, text="Quality", font=("Segoe UI", 12), text_color="gray")
         self.lbl_1.grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.menu_1 = ctk.CTkOptionMenu(self.options_frame, values=["1080p (H.264)", "720p"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_1 = ctk.CTkOptionMenu(self.options_frame, values=["1080p (H.264)", "720p"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e")
         self.menu_1.grid(row=1, column=0, sticky="ew", padx=(0, 20), pady=(0, 15))
 
         self.lbl_2 = ctk.CTkLabel(self.options_frame, text="Format", font=("Segoe UI", 12), text_color="gray")
         self.lbl_2.grid(row=0, column=1, sticky="w", pady=(0, 5))
-        self.menu_2 = ctk.CTkOptionMenu(self.options_frame, values=["MP4", "MKV", "WEBM"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_2 = ctk.CTkOptionMenu(self.options_frame, values=["MP4", "MKV", "WEBM"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e")
         self.menu_2.grid(row=1, column=1, sticky="ew", pady=(0, 15))
 
         self.lbl_3 = ctk.CTkLabel(self.options_frame, text="Video Codec", font=("Segoe UI", 12), text_color="gray")
         self.lbl_3.grid(row=2, column=0, sticky="w", pady=(0, 5))
-        self.menu_3 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_3 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "H.264", "H.265", "VP9"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e")
         self.menu_3.grid(row=3, column=0, sticky="ew", padx=(0, 20))
 
         self.lbl_4 = ctk.CTkLabel(self.options_frame, text="Audio Codec", font=("Segoe UI", 12), text_color="gray")
         self.lbl_4.grid(row=2, column=1, sticky="w", pady=(0, 5))
-        self.menu_4 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50")
+        self.menu_4 = ctk.CTkOptionMenu(self.options_frame, values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"], height=35, font=("Segoe UI", 12), corner_radius=8, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e")
         self.menu_4.grid(row=3, column=1, sticky="ew")
 
         # Mais apelidos mágicos!
@@ -403,7 +404,7 @@ class DownloaderApp(ctk.CTk):
             # 3. Define os novos textos (Placeholders e Botões)
             if is_convert:
                 self.main_entry.configure(placeholder_text="Select source media file...")
-                self.main_btn.configure(text="Browse", fg_color="#34495e", hover_color="#2c3e50", command=self.browse_source)
+                self.main_btn.configure(text="Browse", fg_color="#2c3e50", hover_color="#34495e", command=self.browse_source)
                 # 4. Trava o campo APÓS o texto ter sido renderizado
                 self.main_entry.configure(state="readonly") 
             else:
@@ -695,9 +696,10 @@ class DownloaderApp(ctk.CTk):
     def show_logs(self):
         if self.log_window is None or not self.log_window.winfo_exists():
             self.log_window = ctk.CTkToplevel(self)
+            if self.is_windows:
+                self.log_window.attributes("-alpha", 0.0)
             self.apply_window_icon(self.log_window)
             self.log_window.title("Execution Logs")
-            self.center_window(self.log_window, 600, 400)
             self.log_window.transient(self)
             self.log_window.resizable(False, False)
             self.log_window.configure(fg_color="#181a1f")
@@ -710,8 +712,12 @@ class DownloaderApp(ctk.CTk):
             log_btn_frame = ctk.CTkFrame(self.log_window, fg_color="transparent")
             log_btn_frame.pack(fill="x", padx=10, pady=(0, 10))
             
-            ctk.CTkButton(log_btn_frame, text="Copy All", width=100, height=28, fg_color="#1f538d", hover_color="#14375e", command=self.copy_logs).pack(side="left", padx=(0, 10))
-            ctk.CTkButton(log_btn_frame, text="Clear Log", width=100, height=28, fg_color="#2c313a", hover_color="#a94442", command=self.clear_logs).pack(side="left")
+            ctk.CTkButton(log_btn_frame, text="Clear log", width=100, height=28, fg_color="#2c313a", hover_color="#a94442", command=self.clear_logs).pack(side="left")
+            ctk.CTkButton(log_btn_frame, text="Copy all", font=("Segoe UI", 12, "bold"), width=100, height=28, fg_color="#1f538d", hover_color="#14375e", command=self.copy_logs).pack(side="left", padx=(10, 0))
+            self.log_window.update_idletasks()
+            self.center_window(self.log_window, 600, 400)
+            if self.is_windows:
+                self.log_window.attributes("-alpha", 1.0)
         else:
             self.log_window.deiconify()
 
@@ -877,7 +883,7 @@ class DownloaderApp(ctk.CTk):
     def handle_update_failure(self, error_msg):
         """Método unificado para relatar falhas na atualização."""
         # Define o estado visual no terminal do app
-        self.set_terminal_state("Update Failed!", error_msg)
+        self.set_terminal_state("Update Failed!", f"ERROR: {error_msg}")
         self.safe_ui(self.schedule_reset)
         
         # Define a janela pai correta para o popup não 'sumir'
@@ -1097,6 +1103,9 @@ class DownloaderApp(ctk.CTk):
                         self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced AAC audio to safely put WEBM/MKV into {ext_final.upper()}.")
             # ==============================================================
             
+            # Puxa a preferência do perfil de conversão salvo nas configurações
+            profile = gen_cfg.get("conv_profile", "Fast")
+            
             if vc == "none": cmd.append("-vn")
             else:
                 cmd.extend(["-c:v", vc])
@@ -1104,19 +1113,33 @@ class DownloaderApp(ctk.CTk):
                 if scale_filter:
                     cmd.extend(["-vf", scale_filter])
                 
-                if vc == "libvpx-vp9":
-                    cmd.extend(["-crf", "20", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
-                
-                elif vc == "libx264":
-                    # Adicionado pix_fmt para máxima compatibilidade universal
-                    cmd.extend(["-crf", "18", "-preset", "faster", "-pix_fmt", "yuv420p"])
+                # === LÓGICA DE VELOCIDADE (Fast vs Balanced) ===
+                if profile == "Fast":
+                    if vc == "libvpx-vp9":
+                        cmd.extend(["-crf", "18", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
                     
-                elif vc == "libx265":
-                    # Adicionado pix_fmt para máxima compatibilidade universal
-                    cmd.extend(["-crf", "22", "-preset", "faster", "-tag:v", "hvc1"])
-                
-                elif vc != "copy": 
-                    cmd.extend(["-crf", "18"])
+                    elif vc == "libx264":
+                        cmd.extend(["-crf", "18", "-preset", "faster", "-pix_fmt", "yuv420p"])
+                    
+                    elif vc == "libx265":
+                        cmd.extend(["-crf", "18", "-preset", "faster", "-tag:v", "hvc1"])
+                        
+                    elif vc != "copy": 
+                        cmd.extend(["-crf", "18"])
+                        
+                else: # Modo Balanced
+                    if vc == "libvpx-vp9":
+                        cmd.extend(["-crf", "18", "-b:v", "0", "-row-mt", "1", "-cpu-used", "2"])
+                    
+                    elif vc == "libx264":
+                        cmd.extend(["-crf", "18", "-preset", "medium", "-pix_fmt", "yuv420p"])
+                    
+                    elif vc == "libx265":
+                        cmd.extend(["-crf", "18", "-preset", "medium", "-tag:v", "hvc1"])
+                        
+                    elif vc != "copy": 
+                        cmd.extend(["-crf", "18"])
+                # ===============================================
                 
             if ac == "none": cmd.append("-an")
             else:
@@ -1192,12 +1215,12 @@ class DownloaderApp(ctk.CTk):
     def open_manual_selection(self, url, base_cmd, output_template, container_options):
         self.is_busy = True
         manual_win = ctk.CTkToplevel(self)
+        if self.is_windows:
+            manual_win.attributes("-alpha", 0.0)
         self.apply_window_icon(manual_win)
         manual_win.title("Manual Format Selection")
-        self.center_window(manual_win, 750, 550)
         manual_win.resizable(False, False)
         manual_win.transient(self)
-        manual_win.grab_set()
         self.apply_modal_fix(manual_win)
         manual_win.configure(fg_color="#181a1f")
 
@@ -1326,7 +1349,7 @@ class DownloaderApp(ctk.CTk):
             footer_frame.pack(pady=15, padx=20, fill="x")
 
             ctk.CTkLabel(footer_frame, text="Output Format:").pack(side="left", padx=5)
-            self.format_adv = ctk.CTkOptionMenu(footer_frame, values=container_options, fg_color="#21252b", button_color="#2c313a")
+            self.format_adv = ctk.CTkOptionMenu(footer_frame, values=container_options, fg_color="#21252b", button_color="#2c3e50", button_hover_color="#34495e")
             self.format_adv.set(container_options[0])
             if len(container_options) == 1:
                 self.format_adv.configure(state="disabled")
@@ -1364,8 +1387,14 @@ class DownloaderApp(ctk.CTk):
                 self.evaluate_ui_state()
                 self.run_command(cmd, task_name=url)
 
-            ctk.CTkButton(footer_frame, text="Download selected", font=("Segoe UI", 12, "bold"), fg_color="#1f538d", command=start, height=35).pack(side="right", padx=5)
+            ctk.CTkButton(footer_frame, text="Download selected", font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e", command=start, height=35).pack(side="right", padx=5)
 
+        manual_win.update_idletasks()
+        self.center_window(manual_win, 750, 550)
+        if self.is_windows:
+            manual_win.attributes("-alpha", 1.0)
+        manual_win.after(100, lambda: manual_win.grab_set() if manual_win.winfo_exists() else None)
+        
         threading.Thread(target=fetch_data_task, daemon=True).start()
 
     def handle_unified_download(self):
@@ -1466,9 +1495,10 @@ class DownloaderApp(ctk.CTk):
     def show_queue(self):
         if self.queue_window is None or not self.queue_window.winfo_exists():
             self.queue_window = ctk.CTkToplevel(self)
+            if self.is_windows:
+                self.queue_window.attributes("-alpha", 0.0)
             self.apply_window_icon(self.queue_window)
             self.queue_window.title("Process Queue")
-            self.center_window(self.queue_window, 550, 400)
             self.queue_window.transient(self)
             self.queue_window.resizable(False, False)
             self.queue_window.configure(fg_color="#181a1f")
@@ -1486,9 +1516,15 @@ class DownloaderApp(ctk.CTk):
             btn_frame = ctk.CTkFrame(self.queue_window, fg_color="transparent")
             btn_frame.pack(fill="x", padx=15, pady=(0, 15))
 
-            ctk.CTkButton(btn_frame, text="Clear queue", width=100, height=30, font=("Segoe UI", 12, "bold"), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
+            ctk.CTkButton(btn_frame, text="Clear queue", width=100, height=30, font=("Segoe UI", 12), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
 
             self.render_queue_list()
+            
+            self.queue_window.update_idletasks()
+            self.center_window(self.queue_window, 550, 470)
+            if self.is_windows:
+                self.queue_window.attributes("-alpha", 1.0)
+            
         else:
             # Se a janela já existe na memória, apenas trazemos ela de volta
             self.queue_window.deiconify()
@@ -1527,7 +1563,7 @@ class DownloaderApp(ctk.CTk):
             for widget in self.queue_scroll.winfo_children():
                 if widget != self.empty_label:
                     widget.pack_forget()
-            self.empty_label.pack(pady=20)
+            self.empty_label.pack(expand=True, pady=130)
             return
             
         # Esconde a mensagem de vazia se houver itens
@@ -1903,94 +1939,148 @@ class DownloaderApp(ctk.CTk):
         threading.Thread(target=task, daemon=True).start()
 
     def show_settings(self):
+        # =========================================================
+        # DESIGN SYSTEM (Padronização de Fontes)
+        # =========================================================
+        FONT_TITLE = ("Segoe UI", 14, "bold")
+        FONT_TEXT = ("Segoe UI", 12)
+        FONT_BROWSE = ("Segoe UI", 12, "bold")
+        FONT_BTN = ("Segoe UI", 12, "bold")
+
         lang_map = {"None": "none", "English": "en", "Portuguese": "pt", "Spanish": "es", "French": "fr", "German": "de", "Italian": "it", "Japanese": "ja", "Korean": "ko", "Russian": "ru"}
         reverse_lang_map = {v: k for k, v in lang_map.items()}
 
         settings_win = ctk.CTkToplevel(self)
+        if self.is_windows:
+            settings_win.attributes("-alpha", 0.0)
         self.apply_window_icon(settings_win)
         settings_win.title("Settings")
-        self.center_window(settings_win, 500, 620)
-        settings_win.transient(self)
-        settings_win.grab_set()
-        self.apply_modal_fix(settings_win)
         settings_win.resizable(False, False)
+        settings_win.transient(self)
+        self.apply_modal_fix(settings_win)
         settings_win.configure(fg_color="#181a1f")
         
-        ctk.CTkLabel(settings_win, text="Settings", font=("Segoe UI", 16, "bold")).pack(pady=(15, 5))
+        ctk.CTkLabel(settings_win, text="Settings", font=("Segoe UI", 16, "bold")).pack(pady=0)
 
-        scroll_frame = ctk.CTkScrollableFrame(settings_win, fg_color="transparent")
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        ctk.CTkLabel(scroll_frame, text="General", font=("Segoe UI", 13, "bold")).pack(pady=(5, 5), anchor="w")
+        # =========================================================
+        # SISTEMA DE 4 ABAS (ESTILO PÍLULAS)
+        # =========================================================
+        # 1. O fundo principal (cartão cinza)
+        main_card = ctk.CTkFrame(settings_win, fg_color="#21252b", corner_radius=10)
+        main_card.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # 2. A barra de navegação "inset" no topo do cartão
+        nav_frame = ctk.CTkFrame(main_card, fg_color="#181a1f", corner_radius=20, height=40)
+        nav_frame.pack(pady=15)
+
+        # 3. Os 4 frames de conteúdo (que vão alternar) mantendo os mesmos nomes!
+        frame_gen = ctk.CTkFrame(main_card, fg_color="transparent")
+        frame_media = ctk.CTkFrame(main_card, fg_color="transparent")
+        frame_conv = ctk.CTkFrame(main_card, fg_color="transparent")
+        frame_net = ctk.CTkFrame(main_card, fg_color="transparent")
+
+        tabs_dict = {
+            "General": frame_gen,
+            "Media": frame_media,
+            "Conversion": frame_conv,
+            "Network": frame_net
+        }
+        tab_buttons = {}
+
+        def select_settings_tab(selected_name):
+            # Esconde todos os frames e reseta as cores dos botões
+            for name, frame in tabs_dict.items():
+                frame.pack_forget()
+                tab_buttons[name].configure(fg_color="transparent", text_color="gray", hover_color="#282c34")
+
+            # Exibe apenas o frame selecionado e acende o botão azul
+            tabs_dict[selected_name].pack(fill="both", expand=True, padx=20, pady=(10, 20))
+            tab_buttons[selected_name].configure(fg_color="#1f538d", text_color="white", hover_color="#14375e")
+
+        # 4. Criando os botões soltos (Pílulas) dinamicamente
+        for name in tabs_dict.keys():
+            btn = ctk.CTkButton(
+                nav_frame, text=name, width=80, height=30, corner_radius=15,
+                font=FONT_BTN, fg_color="transparent", text_color="gray",
+                hover_color="#282c34", command=lambda n=name: select_settings_tab(n)
+            )
+            btn.pack(side="left", padx=3, pady=3)
+            tab_buttons[name] = btn
+
+        # Inicia a janela com a primeira aba pré-selecionada
+        select_settings_tab("General")
+
+        # =========================================================
+        # ABA 1: GENERAL & OUTPUTS
+        # =========================================================
+        ctk.CTkLabel(frame_gen, text="General Options", font=FONT_TITLE).pack(pady=(0, 5), anchor="w")
         
         v_auto_paste = ctk.BooleanVar(value=self.config_data.get("General", {}).get("auto_paste", self.DEF_AUTO_PASTE))
         v_hide_options = ctk.BooleanVar(value=self.config_data.get("General", {}).get("hide_options", self.DEF_HIDE_OPTS))
         v_prefer_video = ctk.BooleanVar(value=self.config_data.get("General", {}).get("prefer_video", False))
         
-        ctk.CTkCheckBox(scroll_frame, text="Auto-paste URLs", variable=v_auto_paste).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Hide UI options before pasting URL", variable=v_hide_options).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Prefer video over playlist (If URL contains both)", variable=v_prefer_video).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_gen, text="Auto-paste URLs", variable=v_auto_paste, font=FONT_TEXT).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_gen, text="Hide UI options before pasting URL", variable=v_hide_options, font=FONT_TEXT).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_gen, text="Prefer video over playlist (If URL contains both)", variable=v_prefer_video, font=FONT_TEXT).pack(pady=4, anchor="w")
 
-        ctk.CTkLabel(scroll_frame, text="Outputs", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        ctk.CTkLabel(frame_gen, text="Outputs", font=FONT_TITLE).pack(pady=(25, 5), anchor="w")
         
-        ctk.CTkLabel(scroll_frame, text="Video output folder:", font=("Segoe UI", 12)).pack(anchor="w")
-        vid_path_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        ctk.CTkLabel(frame_gen, text="Video output folder:", font=FONT_TEXT).pack(anchor="w")
+        vid_path_frame = ctk.CTkFrame(frame_gen, fg_color="transparent")
         vid_path_frame.pack(pady=2, fill="x")
-        vid_entry = ctk.CTkEntry(vid_path_frame, fg_color="#21252b", border_color="#3a3f4b")
+        
+        vid_entry = ctk.CTkEntry(vid_path_frame, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         vid_entry.insert(0, self.config_data.get("General", {}).get("video_path", "~/Videos/CopynDown"))
         vid_entry.configure(state="readonly")
         vid_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
         def format_and_insert_path(p, entry_widget):
-            if not p: return  # Se o usuário cancelar a janela, não faz nada
-            
+            if not p: return 
             p = p.replace("\\", "/")
             home = os.path.expanduser("~").replace("\\", "/")
             app_dir = os.path.abspath(".").replace("\\", "/")
-            
-            # Regra 1: Se estiver dentro da pasta do app (útil para o cookies.txt)
-            if p.startswith(app_dir): 
-                p = p[len(app_dir):].lstrip("/")
-            # Regra 2: Se estiver na pasta do usuário (útil para salvar mídias)
-            elif p.startswith(home): 
-                p = "~" + p[len(home):]
-                
+            if p.startswith(app_dir): p = p[len(app_dir):].lstrip("/")
+            elif p.startswith(home): p = "~" + p[len(home):]
             entry_widget.configure(state="normal")
             entry_widget.delete(0, 'end')
             entry_widget.insert(0, p)
             entry_widget.configure(state="readonly")
 
-        # --- APLICAÇÃO NAS PASTAS (VÍDEO/ÁUDIO) ---
         def change_path(entry_widget):
             p = self.native_askdirectory(settings_win, title="Select Output Folder")
             format_and_insert_path(p, entry_widget)
         
-        ctk.CTkButton(vid_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(vid_entry)).pack(side="right")
+        ctk.CTkButton(vid_path_frame, text="Browse", width=60, font=FONT_BROWSE, fg_color="#2c3e50", hover_color="#34495e", command=lambda: change_path(vid_entry)).pack(side="right")
 
-        ctk.CTkLabel(scroll_frame, text="Audio output folder:", font=("Segoe UI", 12)).pack(anchor="w", pady=(10, 0))
-        aud_path_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        ctk.CTkLabel(frame_gen, text="Audio output folder:", font=FONT_TEXT).pack(anchor="w", pady=(10, 0))
+        aud_path_frame = ctk.CTkFrame(frame_gen, fg_color="transparent")
         aud_path_frame.pack(pady=2, fill="x")
-        aud_entry = ctk.CTkEntry(aud_path_frame, fg_color="#21252b", border_color="#3a3f4b")
+        
+        aud_entry = ctk.CTkEntry(aud_path_frame, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         aud_entry.insert(0, self.config_data.get("General", {}).get("audio_path", "~/Music/CopynDown"))
         aud_entry.configure(state="readonly")
         aud_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        ctk.CTkButton(aud_path_frame, text="Browse", width=60, fg_color="#21252b", hover_color="#2c313a", command=lambda: change_path(aud_entry)).pack(side="right")
+        ctk.CTkButton(aud_path_frame, text="Browse", width=60, font=FONT_BROWSE, fg_color="#2c3e50", hover_color="#34495e", command=lambda: change_path(aud_entry)).pack(side="right")
         
-        tmpl_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        tmpl_frame = ctk.CTkFrame(frame_gen, fg_color="transparent")
         tmpl_frame.pack(fill="x", pady=(10, 5))
-        ctk.CTkLabel(tmpl_frame, text="Filename template:").pack(side="left", padx=(0, 10))
-        tmpl_menu = ctk.CTkOptionMenu(tmpl_frame, values=["Title (Default)", "Title + Video ID", "Title + Format ID", "Title + Resolution"], fg_color="#21252b", button_color="#2c313a", width=200)
+        ctk.CTkLabel(tmpl_frame, text="Filename template:", font=FONT_TEXT).pack(side="left", padx=(0, 10))
+        
+        tmpl_menu = ctk.CTkOptionMenu(tmpl_frame, values=["Title (Default)", "Title + Video ID", "Title + Format ID", "Title + Resolution"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=200)
         tmpl_menu.set(self.config_data.get("General", {}).get("file_template", "Title (Default)"))
         tmpl_menu.pack(side="left")
-        
-        ctk.CTkLabel(scroll_frame, text="Embedding", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+
+        # =========================================================
+        # ABA 2: MEDIA (Embedding & Subtitles)
+        # =========================================================
+        ctk.CTkLabel(frame_media, text="Embedding", font=FONT_TITLE).pack(pady=(0, 5), anchor="w")
         v_vid_thumb = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("thumb", True))
         v_aud_meta = ctk.BooleanVar(value=self.config_data.get(self.TAB_AUD, {}).get("meta", True))
-        ctk.CTkCheckBox(scroll_frame, text="Embed thumbnail (Cover art)", variable=v_vid_thumb).pack(pady=4, anchor="w")
-        ctk.CTkCheckBox(scroll_frame, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_media, text="Embed thumbnail (Cover art)", variable=v_vid_thumb, font=FONT_TEXT).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_media, text="Embed metadata (Artist, Title, etc)", variable=v_aud_meta, font=FONT_TEXT).pack(pady=4, anchor="w")
 
-        ctk.CTkLabel(scroll_frame, text="Subtitles", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        ctk.CTkLabel(frame_media, text="Subtitles", font=FONT_TITLE).pack(pady=(25, 5), anchor="w")
         v_native_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("native_subs", False))
         v_auto_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("auto_subs", False))
         v_embed_subs = ctk.BooleanVar(value=self.config_data.get(self.TAB_VID, {}).get("embed_subs", False))
@@ -2001,77 +2091,96 @@ class DownloaderApp(ctk.CTk):
                 chk_embed.configure(state="disabled")
                 v_embed_subs.set(False)
                 
-        chk_native = ctk.CTkCheckBox(scroll_frame, text="Download standard subtitles", variable=v_native_subs, command=check_subtitle_state)
+        chk_native = ctk.CTkCheckBox(frame_media, text="Download standard subtitles", variable=v_native_subs, font=FONT_TEXT, command=check_subtitle_state)
         chk_native.pack(pady=4, anchor="w")
-        chk_auto = ctk.CTkCheckBox(scroll_frame, text="Download auto-generated subtitles", variable=v_auto_subs, command=check_subtitle_state)
+        chk_auto = ctk.CTkCheckBox(frame_media, text="Download auto-generated subtitles", variable=v_auto_subs, font=FONT_TEXT, command=check_subtitle_state)
         chk_auto.pack(pady=4, anchor="w")
-        chk_embed = ctk.CTkCheckBox(scroll_frame, text="Embed subtitles into video", variable=v_embed_subs)
+        chk_embed = ctk.CTkCheckBox(frame_media, text="Embed subtitles into video", variable=v_embed_subs, font=FONT_TEXT)
         chk_embed.pack(pady=4, anchor="w")
         check_subtitle_state()
         
-        langs_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        langs_frame = ctk.CTkFrame(frame_media, fg_color="transparent")
         langs_frame.pack(fill="x", pady=10)
         
-        ctk.CTkLabel(langs_frame, text="Original language:").grid(row=0, column=0, padx=(0, 10), pady=2, sticky="w")
-        lang_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys())[1:], fg_color="#21252b", button_color="#2c313a") 
+        ctk.CTkLabel(langs_frame, text="Original language:", font=FONT_TEXT).grid(row=0, column=0, padx=(0, 10), pady=2, sticky="w")
+        lang_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys())[1:], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e") 
         lang_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("langs", "en"), "English"))
         lang_selector.grid(row=1, column=0, padx=(0, 10), pady=2, sticky="w")
 
-        ctk.CTkLabel(langs_frame, text="Translate to:").grid(row=0, column=1, padx=(10, 0), pady=2, sticky="w")
-        trans_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys()), fg_color="#21252b", button_color="#2c313a")
+        ctk.CTkLabel(langs_frame, text="Translate to:", font=FONT_TEXT).grid(row=0, column=1, padx=(10, 0), pady=2, sticky="w")
+        trans_selector = ctk.CTkOptionMenu(langs_frame, values=list(lang_map.keys()), font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e")
         trans_selector.set(reverse_lang_map.get(self.config_data.get(self.TAB_VID, {}).get("trans_langs", "none"), "None"))
         trans_selector.grid(row=1, column=1, padx=(10, 0), pady=2, sticky="w")
+
+        # =========================================================
+        # ABA 3: CONVERSION (Profile)
+        # =========================================================
+        ctk.CTkLabel(frame_conv, text="Conversion Profile", font=FONT_TITLE).pack(pady=(0, 5), anchor="w")
         
-        ctk.CTkLabel(scroll_frame, text="Network & Auth", font=("Segoe UI", 13, "bold")).pack(pady=(25, 5), anchor="w")
+        prof_frame = ctk.CTkFrame(frame_conv, fg_color="transparent")
+        prof_frame.pack(fill="x", pady=2)
         
-        net_frame1 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        prof_menu = ctk.CTkOptionMenu(prof_frame, values=["Fast", "Balanced"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=140)
+        prof_menu.set(self.config_data.get("General", {}).get("conv_profile", "Fast"))
+        prof_menu.pack(side="left")
+        
+        # A quebra de linha manual para proteger o texto!
+        legend_text = (
+            "• Fast: Prioritizes speed. Finishes in minutes, ideal for daily use,\n  but generates slightly larger files.\n\n"
+            "• Balanced: Prioritizes file size. Takes twice as long to convert,\n  but generates smaller files maintaining quality."
+        )
+        ctk.CTkLabel(frame_conv, text=legend_text, font=FONT_TEXT, text_color="gray", justify="left").pack(anchor="w", pady=(10, 15), padx=0)
+
+        # =========================================================
+        # ABA 4: NETWORK & AUTH (Delay & Cookies)
+        # =========================================================
+        ctk.CTkLabel(frame_net, text="Network Options", font=FONT_TITLE).pack(pady=(0, 5), anchor="w")
+        
+        net_frame1 = ctk.CTkFrame(frame_net, fg_color="transparent")
         net_frame1.pack(fill="x", pady=2)
-        ctk.CTkLabel(net_frame1, text="Max retries:").pack(side="left", padx=(0, 10))
-        retries_entry = ctk.CTkEntry(net_frame1, width=60, fg_color="#21252b", border_color="#3a3f4b")
+        ctk.CTkLabel(net_frame1, text="Max retries:", font=FONT_TEXT).pack(side="left", padx=(0, 10))
+        
+        retries_entry = ctk.CTkEntry(net_frame1, width=60, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         retries_entry.insert(0, self.config_data.get("General", {}).get("max_retries", "10"))
         retries_entry.pack(side="left")
 
-        net_frame2 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        net_frame2 = ctk.CTkFrame(frame_net, fg_color="transparent")
         net_frame2.pack(fill="x", pady=(10, 2))
-        ctk.CTkLabel(net_frame2, text="Delay mode:").pack(side="left", padx=(0, 10))
-        delay_menu = ctk.CTkOptionMenu(net_frame2, values=["None", "Playlist Only", "All Downloads"], fg_color="#21252b", button_color="#2c313a", width=140)
+        ctk.CTkLabel(net_frame2, text="Delay mode:", font=FONT_TEXT).pack(side="left", padx=(0, 10))
+        
+        delay_menu = ctk.CTkOptionMenu(net_frame2, values=["None", "Playlist Only", "All Downloads"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=140)
         delay_menu.set(self.config_data.get("General", {}).get("delay_mode", "Playlist Only"))
         delay_menu.pack(side="left")
 
-        net_frame3 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        net_frame3 = ctk.CTkFrame(frame_net, fg_color="transparent")
         net_frame3.pack(fill="x", pady=(5, 5))
-        ctk.CTkLabel(net_frame3, text="Sleep intervals (Sec):  Min").pack(side="left", padx=(0, 5))
-        min_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        ctk.CTkLabel(net_frame3, text="Sleep intervals (Sec):  Min", font=FONT_TEXT).pack(side="left", padx=(0, 5))
+        
+        min_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         min_entry.insert(0, self.config_data.get("General", {}).get("sleep_min", "2"))
         min_entry.pack(side="left")
         
-        ctk.CTkLabel(net_frame3, text="Max").pack(side="left", padx=(10, 5))
-        max_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        ctk.CTkLabel(net_frame3, text="Max", font=FONT_TEXT).pack(side="left", padx=(10, 5))
+        max_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         max_entry.insert(0, self.config_data.get("General", {}).get("sleep_max", "5"))
         max_entry.pack(side="left")
         
-        ctk.CTkLabel(net_frame3, text="Requests").pack(side="left", padx=(10, 5))
-        req_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#21252b", border_color="#3a3f4b")
+        ctk.CTkLabel(net_frame3, text="Requests", font=FONT_TEXT).pack(side="left", padx=(10, 5))
+        req_entry = ctk.CTkEntry(net_frame3, width=40, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         req_entry.insert(0, self.config_data.get("General", {}).get("sleep_req", "1"))
         req_entry.pack(side="left")
 
         v_use_cookies = ctk.BooleanVar(value=self.config_data.get("General", {}).get("use_cookies", self.DEF_USE_COOKIES))
-        ctk.CTkCheckBox(scroll_frame, text="Use cookies file", variable=v_use_cookies).pack(pady=4, anchor="w")
+        ctk.CTkCheckBox(frame_net, text="Use cookies file", variable=v_use_cookies, font=FONT_TEXT).pack(pady=(15, 4), anchor="w")
         
-        # =================================================================
-        # NOVA SESSÃO HÍBRIDA DE COOKIES (O PLANO MESTRE)
-        # =================================================================
-        cookie_container = ctk.CTkFrame(scroll_frame, fg_color="#21252b", corner_radius=10)
-        cookie_container.pack(fill="x", pady=(15, 5))
+        cookie_container = ctk.CTkFrame(frame_net, fg_color="#21252b", corner_radius=10)
+        cookie_container.pack(fill="x", pady=(10, 5))
         
-        ctk.CTkLabel(cookie_container, text="Cookie Extraction Method", font=("Segoe UI", 13, "bold")).pack(anchor="w", pady=(10, 5), padx=15)
+        ctk.CTkLabel(cookie_container, text="Cookie Extraction Method", font=FONT_TITLE).pack(anchor="w", pady=(10, 5), padx=15)
         
-        # Variável para controlar a tela
         self.cookie_mode_var = ctk.StringVar(value="auto")
-        
         radio_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
         radio_frame.pack(fill="x", padx=15, pady=5)
-        
         txt_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
         auto_frame = ctk.CTkFrame(cookie_container, fg_color="transparent")
 
@@ -2083,16 +2192,17 @@ class DownloaderApp(ctk.CTk):
                 txt_frame.pack_forget()
                 auto_frame.pack(fill="x", padx=15, pady=10)
                 
-        ctk.CTkRadioButton(radio_frame, text="Auto-extract (Edge/Firefox/Brave)", variable=self.cookie_mode_var, value="auto", command=update_cookie_ui).pack(side="left", padx=(0, 20))
-        ctk.CTkRadioButton(radio_frame, text="Import from text file", variable=self.cookie_mode_var, value="txt", command=update_cookie_ui).pack(side="left")
-        
+        ctk.CTkRadioButton(radio_frame, text="Auto-extract (Edge/Firefox/Brave)", variable=self.cookie_mode_var, value="auto", font=FONT_TEXT, command=update_cookie_ui).pack(side="left", padx=(0, 20))
+        ctk.CTkRadioButton(radio_frame, text="Import from text file", variable=self.cookie_mode_var, value="txt", font=FONT_TEXT, command=update_cookie_ui).pack(side="left")
 
-        # --- MODO 1: TXT (A Extensão) ---
-        ctk.CTkLabel(txt_frame, text="1. Install 'Get cookies.txt LOCALLY' extension in your browser.\n2. Export the file and select it below:", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
+        # Texto quebrado manualmente para NUNCA cortar!
+        txt_note = "1. Install 'Get cookies.txt LOCALLY' extension in your browser.\n2. Export the file and select it below:"
+        ctk.CTkLabel(txt_frame, text=txt_note, justify="left", text_color="gray", font=FONT_TEXT).pack(anchor="w", pady=(0, 10), padx=5)
         
         txt_path_frame = ctk.CTkFrame(txt_frame, fg_color="transparent")
         txt_path_frame.pack(fill="x")
-        cookie_entry = ctk.CTkEntry(txt_path_frame, fg_color="#181a1f", border_color="#3a3f4b")
+        
+        cookie_entry = ctk.CTkEntry(txt_path_frame, fg_color="#181a1f", border_color="#3a3f4b", font=FONT_TEXT)
         cookie_entry.insert(0, self.config_data.get("General", {}).get("cookies_path", self.cookies_path_default))
         cookie_entry.configure(state="readonly")
         cookie_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
@@ -2102,24 +2212,21 @@ class DownloaderApp(ctk.CTk):
             p = self.native_askopenfilename(settings_win, title="Select Cookies File", filetypes=filters)
             format_and_insert_path(p, cookie_entry)
             
-        ctk.CTkButton(txt_path_frame, text="Browse", width=60, fg_color="#181a1f", hover_color="#2c313a", command=change_cookie_path).pack(side="left")
-        
-        # Botão super útil para o usuário baixar a extensão direto da loja!
-        ctk.CTkButton(txt_path_frame, text="Get extension", width=100, fg_color="#1f538d", hover_color="#14375e", command=lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc")).pack(side="left", padx=(5, 0))
+        ctk.CTkButton(txt_path_frame, text="Browse", width=60, font=FONT_BROWSE, fg_color="#2c3e50", hover_color="#34495e", command=change_cookie_path).pack(side="left")
+        ctk.CTkButton(txt_path_frame, text="Get extension", width=100, font=FONT_BROWSE, fg_color="#1f538d", hover_color="#14375e", command=lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc")).pack(side="left", padx=(5, 0))
 
-        # --- MODO 2: AUTO (Rookiepy) ---
-        ctk.CTkLabel(auto_frame, text="Note: May require closing the browser or running the app as Administrator.", justify="left", text_color="gray").pack(anchor="w", pady=(0, 10))
+        # Texto quebrado manualmente para NUNCA cortar!
+        auto_note = "Note: May require closing the browser or running the app as Administrator."
+        ctk.CTkLabel(auto_frame, text=auto_note, justify="left", text_color="gray", font=FONT_TEXT).pack(anchor="w", pady=(0, 10), padx=0)
         
         extract_inner_frame = ctk.CTkFrame(auto_frame, fg_color="transparent")
         extract_inner_frame.pack(fill="x")
 
-        # Menu limpo apenas com os navegadores que o Rookiepy ainda consegue ler!
-        self.browser_menu = ctk.CTkOptionMenu(extract_inner_frame, values=["Edge", "Firefox", "Brave", "Safari"], fg_color="#181a1f", button_color="#2c313a", width=120)
+        self.browser_menu = ctk.CTkOptionMenu(extract_inner_frame, values=["Edge", "Firefox", "Brave", "Safari"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=120)
         self.browser_menu.pack(side="left", padx=(0, 10))
 
         ext_btn_text = "Extract cookies"
-
-        self.btn_extract = ctk.CTkButton(extract_inner_frame, text=ext_btn_text, width=100, font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e")
+        self.btn_extract = ctk.CTkButton(extract_inner_frame, text=ext_btn_text, width=100, font=FONT_BTN, fg_color="#1f538d", hover_color="#14375e")
         self.btn_extract.pack(side="left")
 
         def perform_extraction():
@@ -2127,17 +2234,14 @@ class DownloaderApp(ctk.CTk):
             browser = self.browser_menu.get().lower()
             c_path = cookie_entry.get()
 
-            # Função ajudante (Evita o uso do lambda dentro do .after)
             def reset_btn():
                 self.btn_extract.configure(text=ext_btn_text, fg_color="#1f538d")
 
             def thread_task():
                 try:
                     import rookiepy
-                    
                     self.safe_ui(self.add_to_log, f">>> Bypassing browser locks and extracting {browser.capitalize()} cookies...")
                     
-                    # Mapeia as funções do rookiepy
                     browsers = {
                         "edge": getattr(rookiepy, 'edge', None),
                         "firefox": getattr(rookiepy, 'firefox', None),
@@ -2153,27 +2257,19 @@ class DownloaderApp(ctk.CTk):
                     
                     if browser == "firefox" and not self.is_windows:
                         linux_dir = os.path.expanduser("~/.config/mozilla/firefox/")
-                        
                         if os.path.exists(linux_dir):
                             newest_db = None
                             newest_time = 0
-                            
-                            # Vasculha todas as subpastas dentro do diretório
                             for folder_name in os.listdir(linux_dir):
                                 potential_db = os.path.join(linux_dir, folder_name, "cookies.sqlite")
-                                
-                                # Se o arquivo existir, verifica se é o mais recente
                                 if os.path.isfile(potential_db):
                                     mod_time = os.path.getmtime(potential_db)
                                     if mod_time > newest_time:
                                         newest_time = mod_time
                                         newest_db = potential_db
-                            
-                            # Se achou o banco de dados mais recente, injeta ele!
                             if newest_db:
                                 self.safe_ui(self.add_to_log, ">>> Linux custom path detected! Injecting database...")
                                 extracted_cookies = rookiepy.firefox_based(db_path=newest_db, domains=self.valid_domains)
-                    # ==============================================================
                     
                     if extracted_cookies is None:
                         extracted_cookies = browsers[browser](**ext_args)
@@ -2194,9 +2290,6 @@ class DownloaderApp(ctk.CTk):
                             value = c.get('value', '')
                             f.write(f"{domain}\t{include_sub}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n")
                     
-                    # =================================================================
-                    # 3. Código Limpo: Passando *args e **kwargs diretamente para o UI
-                    # =================================================================
                     self.safe_ui(self.btn_extract.configure, state="normal", text="✅ Success!", fg_color="#3fb950")
                     self.safe_ui(self.add_to_log, f">>> Successfully generated valid cookies.txt at {c_path}")
                     self.safe_ui(settings_win.after, 3000, reset_btn)
@@ -2210,11 +2303,11 @@ class DownloaderApp(ctk.CTk):
             threading.Thread(target=thread_task, daemon=True).start()
 
         self.btn_extract.configure(command=perform_extraction)
-        
-        # Chama a função uma vez para carregar a UI correta assim que a janela abrir
         update_cookie_ui()
-        # =================================================================
 
+        # =========================================================
+        # BOTÕES DE AÇÃO GERAIS
+        # =========================================================
         def restore_defaults():
             vid_entry.configure(state="normal")
             vid_entry.delete(0, 'end')
@@ -2231,7 +2324,6 @@ class DownloaderApp(ctk.CTk):
             cookie_entry.insert(0, self.cookies_path_default)
             cookie_entry.configure(state="readonly")
 
-            # --- Reseta Opções Gerais Antigas ---
             v_auto_paste.set(self.DEF_AUTO_PASTE)
             v_use_cookies.set(self.DEF_USE_COOKIES)
             v_hide_options.set(self.DEF_HIDE_OPTS)
@@ -2243,26 +2335,24 @@ class DownloaderApp(ctk.CTk):
             lang_selector.set("English")
             trans_selector.set("None")
             check_subtitle_state()
+            
+            prof_menu.set("Fast")
 
-            # --- NOVO: Reseta Opções de Network e Outputs ---
             v_prefer_video.set(False)
             tmpl_menu.set("Title (Default)")
             delay_menu.set("Playlist Only")
             
-            # Limpa e injeta os valores padrão das caixas de texto
             entries_to_reset = [
                 (retries_entry, "10"),
                 (min_entry, "2"),
                 (max_entry, "5"),
                 (req_entry, "1")
             ]
-            
             for entry_widget, default_val in entries_to_reset:
                 entry_widget.delete(0, 'end')
                 entry_widget.insert(0, default_val)
             
         def save():
-            # 1. Salva as configurações Gerais e da nova aba Network
             self.config_data["General"].update({
                 "video_path": vid_entry.get(),
                 "audio_path": aud_entry.get(),
@@ -2276,10 +2366,10 @@ class DownloaderApp(ctk.CTk):
                 "delay_mode": delay_menu.get(),
                 "sleep_min": min_entry.get(),
                 "sleep_max": max_entry.get(),
-                "sleep_req": req_entry.get()
+                "sleep_req": req_entry.get(),
+                "conv_profile": prof_menu.get()
             })
             
-            # 2. Salva as configurações exclusivas de Vídeo (Legendas e Thumb)
             self.config_data[self.TAB_VID].update({
                 "thumb": v_vid_thumb.get(),
                 "native_subs": v_native_subs.get(), 
@@ -2289,13 +2379,11 @@ class DownloaderApp(ctk.CTk):
                 "trans_langs": lang_map.get(trans_selector.get(), "none")
             })
             
-            # 3. Salva as configurações exclusivas de Áudio (Metadados e Thumb)
             self.config_data[self.TAB_AUD].update({
                 "thumb": v_vid_thumb.get(), 
                 "meta": v_aud_meta.get()
             })
             
-            # 4. Aplica as mudanças no sistema
             self.save_config()
             self.update_folder_context()
             self.evaluate_ui_state()
@@ -2304,8 +2392,18 @@ class DownloaderApp(ctk.CTk):
 
         btn_frame = ctk.CTkFrame(settings_win, fg_color="transparent")
         btn_frame.pack(pady=10, fill="x", padx=10)
-        ctk.CTkButton(btn_frame, text="Restore defaults", font=("Segoe UI", 12, "bold"), fg_color="#2c313a", hover_color="#a94442", command=restore_defaults).pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="Save settings", font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e", command=save).pack(side="right", padx=10)
+        
+        # Botões destrutivos/neutros em cinza, botões de salvar em Azul!
+        ctk.CTkButton(btn_frame, text="Restore defaults", font=FONT_TEXT, fg_color="#2c313a", hover_color="#a94442", command=restore_defaults).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Save settings", font=FONT_BTN, fg_color="#1f538d", hover_color="#14375e", command=save).pack(side="right", padx=10)
+        
+        settings_win.update_idletasks()
+        self.center_window(settings_win, 570, 570)
+        
+        if self.is_windows:
+            settings_win.attributes("-alpha", 1.0)
+            
+        settings_win.after(100, lambda: settings_win.grab_set() if settings_win.winfo_exists() else None)
 
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -2387,13 +2485,12 @@ class DownloaderApp(ctk.CTk):
 
     def show_about(self):
         self.about_win = ctk.CTkToplevel(self)
+        if self.is_windows:
+            self.about_win.attributes("-alpha", 0.0)
         self.apply_window_icon(self.about_win)
         self.about_win.title("About CopynDown")
-        self.center_window(self.about_win, 640, 500)
-        
         self.about_win.resizable(False, False)
         self.about_win.transient(self)
-        self.about_win.grab_set()
         self.apply_modal_fix(self.about_win)
         self.about_win.configure(fg_color="#181a1f")
         
@@ -2425,9 +2522,15 @@ class DownloaderApp(ctk.CTk):
         btn_frame = ctk.CTkFrame(self.about_win, fg_color="transparent")
         btn_frame.pack(pady=15)
         
-        ctk.CTkButton(btn_frame, text="GitHub", fg_color="#1f538d", hover_color="#14375e", width=120, command=lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown")).pack(side="left", padx=10)
-        self.btn_update_app = ctk.CTkButton(btn_frame, text="Check for updates", width=120, command=self.start_github_update, fg_color="#21252b", hover_color="#2c313a")
+        ctk.CTkButton(btn_frame, text="GitHub", fg_color="#21252b", hover_color="#2c313a", width=120, command=lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown")).pack(side="left", padx=10)
+        self.btn_update_app = ctk.CTkButton(btn_frame, text="Check for updates", width=120, font=("Segoe UI", 12, "bold"), command=self.start_github_update, fg_color="#1f538d", hover_color="#14375e")
         self.btn_update_app.pack(side="left", padx=10)
+        
+        self.about_win.update_idletasks()
+        self.center_window(self.about_win, 640, 500)
+        if self.is_windows:
+            self.about_win.attributes("-alpha", 1.0)
+        self.about_win.after(100, lambda: self.about_win.grab_set() if self.about_win.winfo_exists() else None)
 
     def start_github_update(self):
         self.btn_update_app.configure(state="disabled", text="Checking...")
