@@ -696,10 +696,9 @@ class DownloaderApp(ctk.CTk):
     def show_logs(self):
         if self.log_window is None or not self.log_window.winfo_exists():
             self.log_window = ctk.CTkToplevel(self)
-            if self.is_windows:
-                self.log_window.attributes("-alpha", 0.0)
             self.apply_window_icon(self.log_window)
             self.log_window.title("Execution Logs")
+            self.center_window(self.log_window, 600, 400)
             self.log_window.transient(self)
             self.log_window.resizable(False, False)
             self.log_window.configure(fg_color="#181a1f")
@@ -714,10 +713,6 @@ class DownloaderApp(ctk.CTk):
             
             ctk.CTkButton(log_btn_frame, text="Clear log", width=100, height=28, fg_color="#2c313a", hover_color="#a94442", command=self.clear_logs).pack(side="left")
             ctk.CTkButton(log_btn_frame, text="Copy all", font=("Segoe UI", 12, "bold"), width=100, height=28, fg_color="#1f538d", hover_color="#14375e", command=self.copy_logs).pack(side="left", padx=(10, 0))
-            self.log_window.update_idletasks()
-            self.center_window(self.log_window, 600, 400)
-            if self.is_windows:
-                self.log_window.attributes("-alpha", 1.0)
         else:
             self.log_window.deiconify()
 
@@ -1219,10 +1214,10 @@ class DownloaderApp(ctk.CTk):
     def open_manual_selection(self, url, base_cmd, output_template, container_options):
         self.is_busy = True
         manual_win = ctk.CTkToplevel(self)
-        if self.is_windows:
-            manual_win.attributes("-alpha", 0.0)
         self.apply_window_icon(manual_win)
         manual_win.title("Manual Format Selection")
+        self.center_window(manual_win, 750, 550)
+        manual_win.grab_set()
         manual_win.resizable(False, False)
         manual_win.transient(self)
         self.apply_modal_fix(manual_win)
@@ -1392,12 +1387,6 @@ class DownloaderApp(ctk.CTk):
                 self.run_command(cmd, task_name=url)
 
             ctk.CTkButton(footer_frame, text="Download selected", font=("Segoe UI", 12, "bold"), fg_color="#1f538d", hover_color="#14375e", command=start, height=35).pack(side="right", padx=5)
-
-        manual_win.update_idletasks()
-        self.center_window(manual_win, 750, 550)
-        if self.is_windows:
-            manual_win.attributes("-alpha", 1.0)
-        manual_win.after(100, lambda: manual_win.grab_set() if manual_win.winfo_exists() else None)
         
         threading.Thread(target=fetch_data_task, daemon=True).start()
 
@@ -1499,10 +1488,9 @@ class DownloaderApp(ctk.CTk):
     def show_queue(self):
         if self.queue_window is None or not self.queue_window.winfo_exists():
             self.queue_window = ctk.CTkToplevel(self)
-            if self.is_windows:
-                self.queue_window.attributes("-alpha", 0.0)
             self.apply_window_icon(self.queue_window)
             self.queue_window.title("Process Queue")
+            self.center_window(self.queue_window, 550, 470)
             self.queue_window.transient(self)
             self.queue_window.resizable(False, False)
             self.queue_window.configure(fg_color="#181a1f")
@@ -1523,11 +1511,6 @@ class DownloaderApp(ctk.CTk):
             ctk.CTkButton(btn_frame, text="Clear queue", width=100, height=30, font=("Segoe UI", 12), fg_color="#2c313a", hover_color="#a94442", command=self.clear_entire_queue).pack(side="right")
 
             self.render_queue_list()
-            
-            self.queue_window.update_idletasks()
-            self.center_window(self.queue_window, 550, 470)
-            if self.is_windows:
-                self.queue_window.attributes("-alpha", 1.0)
             
         else:
             # Se a janela já existe na memória, apenas trazemos ela de volta
@@ -1955,10 +1938,10 @@ class DownloaderApp(ctk.CTk):
         reverse_lang_map = {v: k for k, v in lang_map.items()}
 
         settings_win = ctk.CTkToplevel(self)
-        if self.is_windows:
-            settings_win.attributes("-alpha", 0.0)
         self.apply_window_icon(settings_win)
         settings_win.title("Settings")
+        self.center_window(settings_win, 570, 570)
+        settings_win.grab_set()
         settings_win.resizable(False, False)
         settings_win.transient(self)
         self.apply_modal_fix(settings_win)
@@ -2402,14 +2385,6 @@ class DownloaderApp(ctk.CTk):
         # Botões destrutivos/neutros em cinza, botões de salvar em Azul!
         ctk.CTkButton(btn_frame, text="Restore defaults", font=FONT_TEXT, fg_color="#2c313a", hover_color="#a94442", command=restore_defaults).pack(side="left", padx=10)
         ctk.CTkButton(btn_frame, text="Save settings", font=FONT_BTN, fg_color="#1f538d", hover_color="#14375e", command=save).pack(side="right", padx=10)
-        
-        settings_win.update_idletasks()
-        self.center_window(settings_win, 570, 570)
-        
-        if self.is_windows:
-            settings_win.attributes("-alpha", 1.0)
-            
-        settings_win.after(100, lambda: settings_win.grab_set() if settings_win.winfo_exists() else None)
 
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -2495,10 +2470,10 @@ class DownloaderApp(ctk.CTk):
 
     def show_about(self):
         self.about_win = ctk.CTkToplevel(self)
-        if self.is_windows:
-            self.about_win.attributes("-alpha", 0.0)
         self.apply_window_icon(self.about_win)
         self.about_win.title("About CopynDown")
+        self.center_window(self.about_win, 640, 500)
+        self.about_win.grab_set()
         self.about_win.resizable(False, False)
         self.about_win.transient(self)
         self.apply_modal_fix(self.about_win)
@@ -2537,12 +2512,6 @@ class DownloaderApp(ctk.CTk):
         btn_state = "disabled" if self.is_busy else "normal"
         self.btn_update_app = ctk.CTkButton(btn_frame, text="Check for updates", width=120, font=("Segoe UI", 12, "bold"), command=self.start_github_update, fg_color="#1f538d", hover_color="#14375e", state=btn_state)
         self.btn_update_app.pack(side="left", padx=10)
-        
-        self.about_win.update_idletasks()
-        self.center_window(self.about_win, 640, 500)
-        if self.is_windows:
-            self.about_win.attributes("-alpha", 1.0)
-        self.about_win.after(100, lambda: self.about_win.grab_set() if self.about_win.winfo_exists() else None)
 
     def start_github_update(self):
         self.btn_update_app.configure(state="disabled", text="Checking...")
