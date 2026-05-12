@@ -14,9 +14,15 @@ used by CopynDown's engines for downloading and converting media.
 
 [GLOBAL ARGUMENTS]
 - Ignore errors: -i
+- Output Templates (Standard - User Selectable):
+  * Title (Default):      %(title)s.%(ext)s
+  * Title + Video ID:     %(title)s [%(id)s].%(ext)s
+  * Title + Format ID:    %(title)s [%(format_id)s].%(ext)s
+  * Title + Resolution:   %(title)s [%(resolution)s].%(ext)s
 - Output Template (Social Media*): %(uploader)s [%(id)s].%(ext)s
-- Output Template (Standard): %(title)s.%(ext)s
-- Anti-Ban / Rate Limit: --newline --sleep-interval 2 --max-sleep-interval 5
+- Anti-Ban / Rate Limit (User Selectable Delay Mode): 
+  * Modes: None, Playlist Only, All Downloads
+  * Params: --sleep-interval [MIN] --max-sleep-interval [MAX] --sleep-requests [REQ]
 - Cookies (If enabled): --cookies [PATH]
 - Background Fetch (Title/JSON): -J --flat-playlist --no-warnings --playlist-items 1
 * Social media includes Instagram, TikTok, Kwai, Twitter/X, Facebook, Reddit, LinkedIn, Pinterest, and Snapchat.
