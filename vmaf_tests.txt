@@ -1,17 +1,53 @@
 ========================================= 
 VMAF QUALITY REPORT - COPYNDOWN 
-Date/Time: 10/05/2026  6:51:15,42 
+Date/Time: 12/05/2026  4:54:05,04 
 ========================================= 
  
-Test: original.mp4 [h264] vs converted.mkv [hevc] 
- - VMAF score: 97.598532 
+Mode: High Quality
+
+Test: gameplay.mp4 [h264] vs gameplay_converted.mkv [hevc] 
+ - VMAF score: 94.976608 
+ - Elapsed time: 1m 59s 
+ - Size file: 290 MB
  
-Test: original.mp4 [h264] vs converted.webm [vp9] 
- - VMAF score: 99.107027 
+Test: gameplay.mp4 [h264] vs gameplay_converted.webm [vp9] 
+ - VMAF score: 97.017154 
+ - Elapsed time: 1m 52s 
+ - Size file: 468 MB
  
-Test: original.mp4 [h264] vs converted.mov [h264] 
- - VMAF score: 99.046714 
  
-Test: original.mp4 [h264] vs converted.avi [h264] 
- - VMAF score: 99.046714 
+========================================= 
+VMAF QUALITY REPORT - COPYNDOWN 
+Date/Time: 12/05/2026  6:53:20,92 
+========================================= 
+ 
+Mode: Balanced
+
+Test: gameplay.mp4 [h264] vs gameplay_converted.mkv [hevc] 
+ - VMAF score: 93.684363 
+ - Elapsed time: 1m 54s 
+ - Size file: 228 MB
+ 
+Test: gameplay.mp4 [h264] vs gameplay_converted.webm [vp9] 
+ - VMAF score: 96.838630 
+ - Elapsed time: 1m 50s 
+ - Size file: 424 MB
+ 
+ 
+========================================= 
+VMAF QUALITY REPORT - COPYNDOWN 
+Date/Time: 12/05/2026  7:35:00,52 
+========================================= 
+ 
+Mode: Economy
+
+Test: gameplay.mp4 [h264] vs gameplay_converted.mkv [hevc] 
+ - VMAF score: 91.966740 
+ - Elapsed time: 1m 56s 
+ - Size file: 178 MB
+ 
+Test: gameplay.mp4 [h264] vs gameplay_converted.webm [vp9] 
+ - VMAF score: 96.642631 
+ - Elapsed time: 1m 51s 
+ - Size file: 385 MB
  
