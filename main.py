@@ -107,7 +107,7 @@ class DownloaderApp(ctk.CTk):
                 "sleep_min": "2",
                 "sleep_max": "5",
                 "sleep_req": "1",
-                "conv_profile": "Fast"
+                "conv_profile": "High Quality"
             },
             self.TAB_VID: {"thumb": True, "meta": False, "native_subs": False, "auto_subs": False, "embed_subs": False, "langs": "en", "trans_langs": "none"},
             self.TAB_AUD: {"thumb": True, "meta": True}
@@ -1104,7 +1104,7 @@ class DownloaderApp(ctk.CTk):
             # ==============================================================
             
             # Puxa a preferência do perfil de conversão salvo nas configurações
-            profile = gen_cfg.get("conv_profile", "Fast")
+            profile = gen_cfg.get("conv_profile", "High Quality")
             
             if vc == "none": cmd.append("-vn")
             else:
@@ -2342,7 +2342,7 @@ class DownloaderApp(ctk.CTk):
             trans_selector.set("None")
             check_subtitle_state()
             
-            prof_menu.set("Fast")
+            prof_menu.set("High Quality")
 
             v_prefer_video.set(False)
             tmpl_menu.set("Title (Default)")
