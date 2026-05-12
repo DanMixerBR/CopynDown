@@ -1,7 +1,7 @@
 ========================================================================
                  COPYNDOWN - TECHNICAL SPECIFICATIONS
 ========================================================================
-Version: 2.6.0
+Version: 2.6.1
 Engines: yt-dlp, FFmpeg
 ========================================================================
 
@@ -118,4 +118,5 @@ all devices, CopynDown applies the following automatic overwrites:
 - If user extracts pure audio into M4A or Opus container -> Forces re-encoding to CBR (-b:a 192k)
 - If user extracts pure audio into WAV or FLAC container -> Forces uncompressed/lossless re-encoding
 - If source is MP4/M4A/MOV and user extracts pure audio into M4A container -> 'Copy'
+- If source is WEBM/Opus and user extracts pure audio into Opus container -> 'Copy'
 *(Pure copy into strict containers from random sources often breaks headers).*
