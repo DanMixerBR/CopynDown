@@ -55,9 +55,18 @@ used by CopynDown's engines for downloading and converting media.
 - Input: -i [SOURCE]
 
 [VIDEO CODECS (-c:v)]
-- H.264: libx264    | Params: -crf 18 -preset faster -pix_fmt yuv420p
-- H.265: libx265    | Params: -crf 22 -preset faster -tag:v hvc1
-- VP9:   libvpx-vp9 | Params: -crf 20 -b:v 0 -row-mt 1 -cpu-used 4
+- H.264: libx264
+  * Fast Profile:     -crf 18 -preset faster -pix_fmt yuv420p
+  * Balanced Profile: -crf 18 -preset medium -pix_fmt yuv420p
+
+- H.265: libx265
+  * Fast Profile:     -crf 18 -preset faster -tag:v hvc1
+  * Balanced Profile: -crf 18 -preset medium -tag:v hvc1
+
+- VP9:   libvpx-vp9
+  * Fast Profile:     -crf 18 -b:v 0 -row-mt 1 -cpu-used 4
+  * Balanced Profile: -crf 18 -b:v 0 -row-mt 1 -cpu-used 2
+
 - Copy:  copy       | (No re-encoding)
 - None:  -vn        | (Drops video stream)
 
@@ -102,12 +111,11 @@ all devices, CopynDown applies the following automatic overwrites:
 # MP4 & MOV Compatibility Lock
 - If target is MP4/MOV and Video Codec is 'VP9' -> Forces 'libx264'
 - If target is MP4/MOV and Audio Codec is 'Opus' -> Forces 'AAC'
-- Safe Copy: If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces H.264/AAC re-encoding to prevent container corruption.
+- If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces 'libx264' and 'AAC'
 
 # Extract Original Audio Lock
 - If user extracts pure audio into MP3 or Ogg container -> Forces re-encoding to VBR (-q:a 2)
-- If user extracts pure audio into Opus container -> Forces re-encoding to CBR (-b:a 192k)
+- If user extracts pure audio into M4A or Opus container -> Forces re-encoding to CBR (-b:a 192k)
 - If user extracts pure audio into WAV or FLAC container -> Forces uncompressed/lossless re-encoding
-- If user extracts pure audio into M4A container -> Safely 'Copies' ONLY if source is MP4/M4A/MOV.
-Otherwise, forces re-encoding to CBR (-b:a 192k).
+- If source is MP4/M4A/MOV and user extracts pure audio into M4A container -> 'Copy'
 *(Pure copy into strict containers from random sources often breaks headers).*
