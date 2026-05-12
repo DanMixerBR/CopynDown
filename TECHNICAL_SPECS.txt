@@ -51,7 +51,6 @@ used by CopynDown's engines for downloading and converting media.
    2. --parse-metadata "%(release_year,release_date,date,upload_date).4s:%(meta_date)s"
    3. --parse-metadata "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
 
-
 ------------------------------------------------------------------------
 2. FFMPEG ENGINE (CONVERSIONS)
 ------------------------------------------------------------------------
@@ -90,7 +89,6 @@ used by CopynDown's engines for downloading and converting media.
 - Bitrate (-b:a): Auto, 320k, 256k, 192k, 128k (Audio conversions only)
 - Channels (-ac): 2 (Stereo) or 1 (Mono)
 - Sample Rate (-ar): 48000 or 44100
-
 
 ------------------------------------------------------------------------
 3. INTELLIGENT AUTO-FIXES (COMPATIBILITY SAFEGUARDS)
