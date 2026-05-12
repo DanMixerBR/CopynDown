@@ -1113,32 +1113,36 @@ class DownloaderApp(ctk.CTk):
                 if scale_filter:
                     cmd.extend(["-vf", scale_filter])
                 
-                # === LÓGICA DE VELOCIDADE (Fast vs Balanced) ===
-                if profile == "Fast":
+                # === LÓGICA DE QUALIDADE/TAMANHO (CRF) ===
+                if profile == "High Quality":
                     if vc == "libvpx-vp9":
                         cmd.extend(["-crf", "18", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
-                    
                     elif vc == "libx264":
                         cmd.extend(["-crf", "18", "-preset", "faster", "-pix_fmt", "yuv420p"])
-                    
                     elif vc == "libx265":
                         cmd.extend(["-crf", "18", "-preset", "faster", "-tag:v", "hvc1"])
-                        
                     elif vc != "copy": 
                         cmd.extend(["-crf", "18"])
                         
-                else: # Modo Balanced
+                elif profile == "Balanced": 
                     if vc == "libvpx-vp9":
-                        cmd.extend(["-crf", "18", "-b:v", "0", "-row-mt", "1", "-cpu-used", "2"])
-                    
+                        cmd.extend(["-crf", "20", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
                     elif vc == "libx264":
-                        cmd.extend(["-crf", "18", "-preset", "medium", "-pix_fmt", "yuv420p"])
-                    
+                        cmd.extend(["-crf", "20", "-preset", "faster", "-pix_fmt", "yuv420p"])
                     elif vc == "libx265":
-                        cmd.extend(["-crf", "18", "-preset", "medium", "-tag:v", "hvc1"])
-                        
+                        cmd.extend(["-crf", "20", "-preset", "faster", "-tag:v", "hvc1"])
                     elif vc != "copy": 
-                        cmd.extend(["-crf", "18"])
+                        cmd.extend(["-crf", "20"])
+                        
+                else: # Economy
+                    if vc == "libvpx-vp9":
+                        cmd.extend(["-crf", "22", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
+                    elif vc == "libx264":
+                        cmd.extend(["-crf", "22", "-preset", "faster", "-pix_fmt", "yuv420p"])
+                    elif vc == "libx265":
+                        cmd.extend(["-crf", "22", "-preset", "faster", "-tag:v", "hvc1"])
+                    elif vc != "copy": 
+                        cmd.extend(["-crf", "22"])
                 # ===============================================
                 
             if ac == "none": cmd.append("-an")
@@ -2120,14 +2124,16 @@ class DownloaderApp(ctk.CTk):
         prof_frame = ctk.CTkFrame(frame_conv, fg_color="transparent")
         prof_frame.pack(fill="x", pady=2)
         
-        prof_menu = ctk.CTkOptionMenu(prof_frame, values=["Fast", "Balanced"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=140)
-        prof_menu.set(self.config_data.get("General", {}).get("conv_profile", "Fast"))
+        # Mudamos as opções para refletir Qualidade/Tamanho
+        prof_menu = ctk.CTkOptionMenu(prof_frame, values=["High Quality", "Balanced", "Economy"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=140)
+        prof_menu.set(self.config_data.get("General", {}).get("conv_profile", "High Quality"))
         prof_menu.pack(side="left")
         
-        # A quebra de linha manual para proteger o texto!
+        # Textos atualizados, focando apenas no tamanho do arquivo e qualidade
         legend_text = (
-            "• Fast: Prioritizes speed. Finishes in minutes, ideal for daily use,\n  but generates slightly larger files.\n\n"
-            "• Balanced: Prioritizes file size. Takes twice as long to convert,\n  but generates smaller files maintaining quality."
+            "• High Quality: Visually lossless. Ideal for archiving, but generates\n  larger files.\n\n"
+            "• Balanced: The sweet spot. Excellent quality with optimized file size.\n\n"
+            "• Economy: Maximum compression. Generates the smallest files while\n  keeping good quality."
         )
         ctk.CTkLabel(frame_conv, text=legend_text, font=FONT_TEXT, text_color="gray", justify="left").pack(anchor="w", pady=(10, 15), padx=0)
 
@@ -2454,6 +2460,10 @@ class DownloaderApp(ctk.CTk):
             
         for btn in self.pills.values(): 
             btn.configure(state=state)
+            
+        # NOVA TRAVA: Bloqueia/Desbloqueia o botão de update se a janela About estiver aberta
+        if hasattr(self, 'btn_update_app') and self.btn_update_app.winfo_exists():
+            self.btn_update_app.configure(state=state)
 
     def check_ytdlp_updates(self):
         if not os.path.exists(self.ytdlp_path):
@@ -2523,7 +2533,9 @@ class DownloaderApp(ctk.CTk):
         btn_frame.pack(pady=15)
         
         ctk.CTkButton(btn_frame, text="GitHub", fg_color="#21252b", hover_color="#2c313a", width=120, command=lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown")).pack(side="left", padx=10)
-        self.btn_update_app = ctk.CTkButton(btn_frame, text="Check for updates", width=120, font=("Segoe UI", 12, "bold"), command=self.start_github_update, fg_color="#1f538d", hover_color="#14375e")
+        # Verifica se há algo rodando para abrir a janela já com o botão bloqueado
+        btn_state = "disabled" if self.is_busy else "normal"
+        self.btn_update_app = ctk.CTkButton(btn_frame, text="Check for updates", width=120, font=("Segoe UI", 12, "bold"), command=self.start_github_update, fg_color="#1f538d", hover_color="#14375e", state=btn_state)
         self.btn_update_app.pack(side="left", padx=10)
         
         self.about_win.update_idletasks()
