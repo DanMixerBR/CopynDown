@@ -61,16 +61,19 @@ used by CopynDown's engines for downloading and converting media.
 
 [VIDEO CODECS (-c:v)]
 - H.264: libx264
-  * Fast Profile:     -crf 18 -preset faster -pix_fmt yuv420p
-  * Balanced Profile: -crf 18 -preset medium -pix_fmt yuv420p
+  * High Quality Profile: -crf 18 -preset faster -pix_fmt yuv420p
+  * Balanced Profile:     -crf 20 -preset faster -pix_fmt yuv420p
+  * Economy Profile:      -crf 22 -preset faster -pix_fmt yuv420p
 
 - H.265: libx265
-  * Fast Profile:     -crf 18 -preset faster -tag:v hvc1
-  * Balanced Profile: -crf 18 -preset medium -tag:v hvc1
+  * High Quality Profile: -crf 18 -preset faster -tag:v hvc1
+  * Balanced Profile:     -crf 20 -preset faster -tag:v hvc1
+  * Economy Profile:      -crf 22 -preset faster -tag:v hvc1
 
 - VP9:   libvpx-vp9
-  * Fast Profile:     -crf 18 -b:v 0 -row-mt 1 -cpu-used 4
-  * Balanced Profile: -crf 18 -b:v 0 -row-mt 1 -cpu-used 2
+  * High Quality Profile: -crf 18 -b:v 0 -row-mt 1 -cpu-used 4
+  * Balanced Profile:     -crf 20 -b:v 0 -row-mt 1 -cpu-used 4
+  * Economy Profile:      -crf 22 -b:v 0 -row-mt 1 -cpu-used 4
 
 - Copy:  copy       | (No re-encoding)
 - None:  -vn        | (Drops video stream)
