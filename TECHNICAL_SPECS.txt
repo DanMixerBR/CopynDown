@@ -84,6 +84,7 @@ used by CopynDown's engines for downloading and converting media.
 - MP3:   libmp3lame   | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
 - Ogg:   libvorbis    | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
 - FLAC:  flac         | (Lossless, ignores bitrate)
+- ALAC:  alac         | (Lossless, ignores bitrate)
 - WAV:   pcm_s16le    | (Uncompressed, ignores bitrate)
 - Copy:  copy         | (No re-encoding)
 - None:  -an          | (Drops audio stream)
@@ -118,6 +119,7 @@ all devices, CopynDown applies the following automatic overwrites:
 # MP4 & MOV Compatibility Lock
 - If target is MP4/MOV and Video Codec is 'VP9' -> Forces 'libx264'
 - If target is MP4/MOV and Audio Codec is 'Opus' -> Forces 'AAC'
+- If target is MP4/MOV and Audio Codec is 'FLAC' -> Forces 'ALAC' (Maintains Lossless quality with Apple/TV support)
 - If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces 'libx264' and 'AAC'
 
 # Smart Extract Audio Lock (Dynamic Codec Checking)
