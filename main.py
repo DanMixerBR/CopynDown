@@ -610,7 +610,7 @@ class DownloaderApp(ctk.CTk):
         # Só atualiza a tela de verdade 200 milissegundos após ele PARAR de digitar
         self.ui_update_timer = self.after(200, self.evaluate_ui_state)
     
-    def build_base_cmd(self, is_json=False, url=""):
+    def build_base_cmd(self, is_json=False, url="", silent=False):
         cmd = [self.ytdlp_path, "-i"]
         gen_cfg = self.config_data.get("General", {})
         
@@ -619,10 +619,11 @@ class DownloaderApp(ctk.CTk):
             try:
                 if os.path.exists(c_path) and os.path.getsize(c_path) > 0:
                     cmd.extend(["--cookies", c_path])
-                else:
+                elif not silent:
                     self.safe_ui(self.add_to_log, f"Warning: Cookies.txt file not found or empty. Continuing without cookies.")
             except Exception as e:
-                self.safe_ui(self.add_to_log, f"Warning: Error verifying cookies.txt ({e}). Continuing without cookies.")
+                if not silent:
+                    self.safe_ui(self.add_to_log, f"Warning: Error verifying cookies.txt ({e}). Continuing without cookies.")
         
         if is_json: 
             cmd.append("-J")
@@ -1292,7 +1293,7 @@ class DownloaderApp(ctk.CTk):
         def fetch_data_task():
             try:
                 # CORREÇÃO 3: Adicionado '--no-warnings' para evitar que mensagens quebrem o JSON
-                cmd_json = self.build_base_cmd(is_json=True) + ["--no-warnings", "--no-playlist", url]
+                cmd_json = self.build_base_cmd(is_json=True, silent=True) + ["--no-warnings", "--no-playlist", url]
                 output = subprocess.check_output(cmd_json, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                 
                 video_data = json.loads(output)
@@ -1748,7 +1749,7 @@ class DownloaderApp(ctk.CTk):
             def fetch_title_task():
                 try:
                     # Pede pro yt-dlp ler o JSON no modo "Plano" (Ignora extração pesada de vídeo)
-                    title_cmd = self.build_base_cmd(is_json=True) + [
+                    title_cmd = self.build_base_cmd(is_json=True, silent=True) + [
                         "--flat-playlist", 
                         "--no-warnings", 
                         "--playlist-items", "1", 
