@@ -1748,10 +1748,8 @@ class DownloaderApp(ctk.CTk):
             def fetch_title_task():
                 try:
                     # Pede pro yt-dlp ler o JSON no modo "Plano" (Ignora extração pesada de vídeo)
-                    title_cmd = [
-                        self.ytdlp_path, 
-                        "-J", 
-                        "--flat-playlist",  # A MÁGICA ESTÁ AQUI
+                    title_cmd = self.build_base_cmd(is_json=True) + [
+                        "--flat-playlist", 
                         "--no-warnings", 
                         "--playlist-items", "1", 
                         task_name
@@ -1768,9 +1766,9 @@ class DownloaderApp(ctk.CTk):
                         if p_title:
                             new_name = f"[Playlist] {p_title}"
                         elif is_playlist_url:
-                            new_name = f"[Playlist] {info.get('title', 'Unknown Title')}"
+                            new_name = f"[Playlist] {info.get('title') or task_name}"
                         else:
-                            new_name = info.get('title', 'Unknown Title')
+                            new_name = info.get('title') or task_name
                             
                         queue_item["name"] = new_name
                         
