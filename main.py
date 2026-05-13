@@ -459,7 +459,7 @@ class DownloaderApp(ctk.CTk):
             self.menu_3.grid()
 
             self.lbl_4.configure(text="Audio Codec")
-            self.menu_4.configure(values=["Original", "AAC", "MP3", "FLAC", "Opus", "None (Video Only)"])
+            self.menu_4.configure(values=["Original", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"])
             self.menu_4.set("Original")
             self.lbl_4.grid()
             self.menu_4.grid()
@@ -1061,10 +1061,15 @@ class DownloaderApp(ctk.CTk):
         
         if is_video:
             vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
-            ac_map = {"Original": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "Opus": "libopus", "None (Video Only)": "none"}
+            ac_map = {"Original": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "ALAC": "alac", "Opus": "libopus", "None (Video Only)": "none"}
             
             vc = vc_map.get(self.menu_conv_3.get(), "copy")
             ac = ac_map.get(self.menu_conv_4.get(), "copy")            
+            
+            # NOVA TRAVA: ALAC para MP4/MOV (Mantém Lossless com compatibilidade Apple/TV)
+            if ext_final in ["mp4", "mov"] and ac == "flac":
+                ac = "alac"
+                self.safe_ui(self.add_to_log, f"[Auto-Fix] Swapped FLAC for ALAC for {ext_final.upper()} lossless compatibility.")
             
             # ==============================================================
             # NOVA LÓGICA DE RESOLUÇÃO (COM AUTO-FIX)
@@ -1096,7 +1101,7 @@ class DownloaderApp(ctk.CTk):
                 if vc == "copy" or vc == "libvpx-vp9":  # <- Bloqueia VP9 manual
                     vc = "libx264"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced H.264 codec for AVI compatibility.")
-                if ac in ["copy", "aac", "flac", "libopus"]: 
+                if ac in ["copy", "aac", "flac", "alac", "libopus"]: 
                     ac = "libmp3lame"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced MP3 codec for AVI compatibility.")
                     
@@ -1104,7 +1109,7 @@ class DownloaderApp(ctk.CTk):
                 if vc in ["copy", "libx264", "libx265"]:
                     vc = "libvpx-vp9"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced VP9 codec for WEBM compatibility.")
-                if ac in ["copy", "aac", "libmp3lame", "flac"]:
+                if ac in ["copy", "aac", "libmp3lame", "flac", "alac"]:
                     ac = "libopus"
                     self.safe_ui(self.add_to_log, "[Auto-Fix] Forced Opus codec for WEBM compatibility.")
                     
@@ -1172,7 +1177,8 @@ class DownloaderApp(ctk.CTk):
             if ac == "none": cmd.append("-an")
             else:
                 cmd.extend(["-c:a", ac])
-                if ac != "copy" and ac != "flac": cmd.extend(["-b:a", "192k"])
+                if ac not in ["copy", "flac", "alac"]: 
+                    cmd.extend(["-b:a", "192k"])
         else:
             cmd.append("-vn")
             dst_fmt = self.menu_conv_2.get().lower()
@@ -1186,15 +1192,19 @@ class DownloaderApp(ctk.CTk):
                     
                     # 2. O Mapa de Relacionamento (O que o FFprobe acha vs O que o usuário quer)
                     copy_allowed = {
-                        "m4a": "aac",
-                        "mp3": "mp3",          
-                        "flac": "flac",
-                        "wav": "pcm_s16le",
-                        "opus": "opus",        
-                        "ogg": "vorbis"        
+                        "m4a": ["aac", "alac"],
+                        "mp3": ["mp3"],          
+                        "flac": ["flac"],
+                        "wav": ["pcm_s16le"],
+                        "opus": ["opus"],        
+                        "ogg": ["vorbis"]        
                     }
                     
-                    if src_codec == copy_allowed.get(dst_fmt):
+                    # Pegamos a lista de codecs permitidos para o formato de destino
+                    allowed_codecs = copy_allowed.get(dst_fmt, [])
+                    
+                    # Verificamos se o codec do arquivo original está dentro dessa lista permitida
+                    if src_codec in allowed_codecs:
                         # COMBINAÇÃO PERFEITA: Faz a cópia direta ultra-rápida!
                         cmd.extend(["-c:a", "copy"])
                         self.safe_ui(self.add_to_log, f">>> [Smart Extract] Source codec '{src_codec}' matches '{dst_fmt.upper()}'. Proceeding with lossless direct copy.")
@@ -1230,7 +1240,7 @@ class DownloaderApp(ctk.CTk):
                 sample_rate = self.menu_conv_4.get()
                 channels = self.menu_conv_3.get()
                 
-                if bitrate != "Auto" and ac not in ["copy", "flac", "pcm_s16le"]: # <- WAV protegido!
+                if bitrate != "Auto" and ac not in ["copy", "flac", "alac", "pcm_s16le"]: # <- WAV protegido!
                     # Fix: Substitui " kbps" por "k" para o formato exato do FFmpeg (ex: 320k)
                     cmd.extend(["-b:a", bitrate.replace(" kbps", "k")])
                 elif bitrate == "Auto":
