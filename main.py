@@ -47,6 +47,7 @@ class DownloaderApp(ctk.CTk):
 
         self.title(f"CopynDown")
         self.center_window(self, 850, 650)
+        self.minsize(850, 650)
         self.resizable(True, True)
         self.configure(fg_color="#181a1f") 
 
@@ -985,6 +986,34 @@ class DownloaderApp(ctk.CTk):
         cmd = base_cmd + ["-o", f"{real_path}/%(playlist_index&{{}}. |)s%(title)s.%(ext)s", url]
         self.run_command(cmd, task_name=url)
 
+    def get_audio_codec(self, filepath):
+        """Descobre o codec real lendo os metadados do arquivo."""
+        ffprobe_exe = os.path.join("bin", f"ffprobe{self.exe}").replace("\\", "/")
+        if not os.path.exists(ffprobe_exe): ffprobe_exe = "ffprobe"
+        
+        try:
+            # 1. Tenta o método nativo e limpo com FFprobe
+            cmd = [ffprobe_exe, "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", filepath]
+            res = subprocess.run(cmd, capture_output=True, text=True, startupinfo=self.startupinfo)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip().lower()
+        except:
+            pass
+            
+        try:
+            # 2. Fallback: Se o usuário deletou o ffprobe, tentamos usar o FFmpeg comum
+            ffmpeg_exe = os.path.join("bin", f"ffmpeg{self.exe}").replace("\\", "/")
+            if not os.path.exists(ffmpeg_exe): ffmpeg_exe = "ffmpeg"
+            cmd = [ffmpeg_exe, "-i", filepath]
+            res = subprocess.run(cmd, capture_output=True, text=True, startupinfo=self.startupinfo)
+            match = re.search(r'Audio:\s*([a-zA-Z0-9_]+)', res.stderr)
+            if match:
+                return match.group(1).lower()
+        except:
+            pass
+            
+        return "unknown"
+
     def convert_media(self, media_type="video"):
         src = self.src_entry.get().strip()
         
@@ -1148,37 +1177,47 @@ class DownloaderApp(ctk.CTk):
             cmd.append("-vn")
             dst_fmt = self.menu_conv_2.get().lower()
             
-            # --- LÓGICA DE EXTRAÇÃO E TRAVA DE COMPATIBILIDADE ---
+            # --- LÓGICA DE EXTRAÇÃO INTELIGENTE POR CODEC ---
             if self.extract_audio_var.get():
-                # Ampliamos a lista para incluir M4A
                 if dst_fmt in ["mp3", "wav", "flac", "ogg", "opus", "m4a"]:
-                    ac_map = {
-                        "mp3": "libmp3lame", 
-                        "wav": "pcm_s16le", 
-                        "flac": "flac", 
-                        "ogg": "libvorbis", 
-                        "opus": "libopus",
-                        "m4a": "aac" # <- M4A adicionado!
-                    }
-                    ac = ac_map.get(dst_fmt)
                     
-                    # --- LÓGICA DE EXTRAÇÃO INTELIGENTE (SAFE SMART COPY) ---
-                    if dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".mov"]:
+                    # 1. Aciona o detetive para ler o arquivo original
+                    src_codec = self.get_audio_codec(src)
+                    
+                    # 2. O Mapa de Relacionamento (O que o FFprobe acha vs O que o usuário quer)
+                    copy_allowed = {
+                        "m4a": "aac",
+                        "mp3": "mp3",          
+                        "flac": "flac",
+                        "wav": "pcm_s16le",
+                        "opus": "opus",        
+                        "ogg": "vorbis"        
+                    }
+                    
+                    if src_codec == copy_allowed.get(dst_fmt):
+                        # COMBINAÇÃO PERFEITA: Faz a cópia direta ultra-rápida!
                         cmd.extend(["-c:a", "copy"])
-                    elif dst_fmt == "opus" and src_ext in [".webm", ".opus"]:
-                        cmd.extend(["-c:a", "copy"])
+                        self.safe_ui(self.add_to_log, f">>> [Smart Extract] Source codec '{src_codec}' matches '{dst_fmt.upper()}'. Proceeding with lossless direct copy.")
                     else:
+                        # INCOMPATÍVEL: Força o re-encode seguro para não gerar arquivo corrompido
+                        ac_map = {
+                            "mp3": "libmp3lame", 
+                            "wav": "pcm_s16le", 
+                            "flac": "flac", 
+                            "ogg": "libvorbis", 
+                            "opus": "libopus",
+                            "m4a": "aac" 
+                        }
+                        ac = ac_map.get(dst_fmt)
                         cmd.extend(["-c:a", ac])
+                        
                         if dst_fmt in ["mp3", "ogg"]: 
                             cmd.extend(["-q:a", "2"])
                         elif dst_fmt in ["m4a", "opus"]: 
                             cmd.extend(["-b:a", "192k"])
-                        
-                        # Se não era compatível para copy, avisa no log
-                        if not (dst_fmt == "m4a" and src_ext in [".mp4", ".m4a", ".aac"]):
-                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced {ac} for {dst_fmt.upper()} compatibility during extraction.")
+                            
+                        self.safe_ui(self.add_to_log, f">>> [Smart Extract] Source codec '{src_codec}' is incompatible with '{dst_fmt.upper()}'. Recoding safely to '{ac}'.")
                 else:
-                    # Somente M4A vai passar por aqui, permitindo a cópia 100% original e instantânea
                     cmd.extend(["-c:a", "copy"])
                     
             # --- LÓGICA DE RECODIFICAÇÃO (Com bugs corrigidos!) ---
@@ -1960,11 +1999,19 @@ class DownloaderApp(ctk.CTk):
         nav_frame = ctk.CTkFrame(main_card, fg_color="#181a1f", corner_radius=20, height=40)
         nav_frame.pack(pady=15)
 
-        # 3. Os 4 frames de conteúdo (que vão alternar) mantendo os mesmos nomes!
-        frame_gen = ctk.CTkFrame(main_card, fg_color="transparent")
-        frame_media = ctk.CTkFrame(main_card, fg_color="transparent")
-        frame_conv = ctk.CTkFrame(main_card, fg_color="transparent")
-        frame_net = ctk.CTkFrame(main_card, fg_color="transparent")
+        # 3. Os 4 frames de conteúdo (Empilhados via Grid)
+        content_container = ctk.CTkFrame(main_card, fg_color="transparent")
+        content_container.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+        content_container.grid_rowconfigure(0, weight=1)
+        content_container.grid_columnconfigure(0, weight=1)
+
+        frame_gen = ctk.CTkFrame(content_container, fg_color="transparent")
+        frame_media = ctk.CTkFrame(content_container, fg_color="transparent")
+        frame_conv = ctk.CTkFrame(content_container, fg_color="transparent")
+        frame_net = ctk.CTkFrame(content_container, fg_color="transparent")
+
+        for f in (frame_gen, frame_media, frame_conv, frame_net):
+            f.grid(row=0, column=0, sticky="nsew")
 
         tabs_dict = {
             "General": frame_gen,
@@ -1975,13 +2022,12 @@ class DownloaderApp(ctk.CTk):
         tab_buttons = {}
 
         def select_settings_tab(selected_name):
-            # Esconde todos os frames e reseta as cores dos botões
-            for name, frame in tabs_dict.items():
-                frame.pack_forget()
-                tab_buttons[name].configure(fg_color="transparent", text_color="gray", hover_color="#282c34")
+            # Desmarca todos os botões
+            for name, btn in tab_buttons.items():
+                btn.configure(fg_color="transparent", text_color="gray", hover_color="#282c34")
 
-            # Exibe apenas o frame selecionado e acende o botão azul
-            tabs_dict[selected_name].pack(fill="both", expand=True, padx=20, pady=(10, 20))
+            # Seleciona o frame puxando ele para frente (Zero Flicker!)
+            tabs_dict[selected_name].tkraise()
             tab_buttons[selected_name].configure(fg_color="#1f538d", text_color="white", hover_color="#14375e")
 
         # 4. Criando os botões soltos (Pílulas) dinamicamente
