@@ -9,10 +9,8 @@ This document outlines the default parameters, codecs, and arguments
 used by CopynDown's engines for downloading and converting media.
 
 ------------------------------------------------------------------------
-1. YT-DLP ENGINE (DOWNLOADS)
+GLOBAL APPLICATION ARGUMENTS (YT-DLP)
 ------------------------------------------------------------------------
-
-[GLOBAL ARGUMENTS]
 - Ignore errors: -i
 - Output Templates (Standard - User Selectable):
   * Title (Default):      %(title)s.%(ext)s
@@ -20,19 +18,22 @@ used by CopynDown's engines for downloading and converting media.
   * Title + Format ID:    %(title)s [%(format_id)s].%(ext)s
   * Title + Resolution:   %(title)s [%(resolution)s].%(ext)s
 - Output Template (Social Media*): %(uploader)s [%(id)s].%(ext)s
-- Anti-Ban / Rate Limit (User Selectable Delay Mode): 
+  * Social media includes Instagram, TikTok, Kwai, Twitter/X, Facebook, Reddit, LinkedIn, Pinterest, and Snapchat.
+- Anti-Ban / Rate Limit (User Selectable Delay Mode):
   * Modes: None, Playlist Only, All Downloads
   * Params: --sleep-interval [MIN] --max-sleep-interval [MAX] --sleep-requests [REQ]
 - Cookies (If enabled): --cookies [PATH]
 - Background Fetch (Title/JSON): -J --flat-playlist --no-warnings --playlist-items 1
-* Social media includes Instagram, TikTok, Kwai, Twitter/X, Facebook, Reddit, LinkedIn, Pinterest, and Snapchat.
 
-[VIDEO DOWNLOAD ARGUMENTS]
+------------------------------------------------------------------------
+TAB 1: SAVE VIDEO (DOWNLOADS)
+------------------------------------------------------------------------
+[ARGUMENTS & MODIFIERS]
 - Embed Thumbnail: --embed-thumbnail (Except for WEBM)
 - Embed Metadata: --embed-metadata
 - Embed Subtitles: --write-subs --write-auto-subs --sub-langs [lang] --convert-subs srt --embed-subs
 
-[VIDEO FORMAT SELECTION (-S)]
+[FORMAT SELECTION (-S) & REMUXING]
 - MP4 Target:  res:[Y],aext:m4a
 - MKV Target:  res:[Y],aext:opus
 - WEBM Target: res:[Y],vcodec:vp9,aext:opus
@@ -40,66 +41,53 @@ used by CopynDown's engines for downloading and converting media.
 - Remuxing:    --merge-output-format [EXT] --remux-video [EXT]
 *(Where [Y] is the selected resolution: 360, 480, 720, 1080, 1440, 2160)*
 
-[AUDIO DOWNLOAD ARGUMENTS]
+------------------------------------------------------------------------
+TAB 2: SAVE AUDIO (DOWNLOADS)
+------------------------------------------------------------------------
+[ARGUMENTS & MODIFIERS]
 - Extract Audio: -x
 - Audio Format:  --audio-format [EXT]
 - Quality (128k/192k/320k): --audio-quality [BITRATE]
 - Embed Thumbnail: --embed-thumbnail (Except for WAV)
 - Embed Metadata:  --embed-metadata (Except for WAV)
-- Advanced Parsing: 
+- Advanced Parsing:
    1. --parse-metadata "%(playlist_index|)s:%(track_number)s"
    2. --parse-metadata "%(release_year,release_date,date,upload_date).4s:%(meta_date)s"
    3. --parse-metadata "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
 
 ------------------------------------------------------------------------
-2. FFMPEG ENGINE (CONVERSIONS)
+TAB 3: CONVERT VIDEO (FFMPEG)
 ------------------------------------------------------------------------
-
-[GLOBAL ARGUMENTS]
+[GLOBAL FFMPEG ARGUMENTS]
 - Overwrite existing: -y
 - Input: -i [SOURCE]
 
-[VIDEO CODECS (-c:v)]
+[VIDEO CODECS (-c:v) & PROFILES]
 - H.264: libx264
   * High Quality Profile: -crf 18 -preset faster -pix_fmt yuv420p
   * Balanced Profile:     -crf 20 -preset faster -pix_fmt yuv420p
   * Economy Profile:      -crf 22 -preset faster -pix_fmt yuv420p
-
 - H.265: libx265
   * High Quality Profile: -crf 18 -preset faster -tag:v hvc1
   * Balanced Profile:     -crf 20 -preset faster -tag:v hvc1
   * Economy Profile:      -crf 22 -preset faster -tag:v hvc1
-
-- VP9:   libvpx-vp9
+- VP9: libvpx-vp9
   * High Quality Profile: -crf 18 -b:v 0 -row-mt 1 -cpu-used 4
   * Balanced Profile:     -crf 20 -b:v 0 -row-mt 1 -cpu-used 4
   * Economy Profile:      -crf 22 -b:v 0 -row-mt 1 -cpu-used 4
+- Copy: copy (No re-encoding)
+- None: -vn (Drops video stream)
 
-- Copy:  copy       | (No re-encoding)
-- None:  -vn        | (Drops video stream)
-
-[AUDIO CODECS (-c:a)]
-- AAC:   aac          | Params: -b:a 192k (Video Conv / Audio Conv 'Auto')
-- Opus:  libopus      | Params: -b:a 192k (Video Conv / Audio Conv 'Auto')
-- MP3:   libmp3lame   | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
-- Ogg:   libvorbis    | Params: -b:a 192k (Video Conv) OR -q:a 2 (Audio Conv 'Auto' / Extract)
+[AUDIO CODECS (-c:a) AVAILABLE FOR VIDEO]
+- AAC:   aac          | Params: -b:a 192k
+- MP3:   libmp3lame   | Params: -b:a 192k
+- Opus:  libopus      | Params: -b:a 192k
 - FLAC:  flac         | (Lossless, ignores bitrate)
 - ALAC:  alac         | (Lossless, ignores bitrate)
-- WAV:   pcm_s16le    | (Uncompressed, ignores bitrate)
 - Copy:  copy         | (No re-encoding)
 - None:  -an          | (Drops audio stream)
 
-[AUDIO MODIFIERS]
-- Bitrate (-b:a): Auto, 320k, 256k, 192k, 128k (Audio conversions only)
-- Channels (-ac): 2 (Stereo) or 1 (Mono)
-- Sample Rate (-ar): 48000 or 44100
-
-------------------------------------------------------------------------
-3. INTELLIGENT AUTO-FIXES (COMPATIBILITY SAFEGUARDS)
-------------------------------------------------------------------------
-To prevent conversion failures and ensure playback compatibility across 
-all devices, CopynDown applies the following automatic overwrites:
-
+[VIDEO COMPATIBILITY SAFEGUARDS]
 # HDR Handling (10-bit vs 8-bit SDR)
 - H.264: Strictly locked to 8-bit SDR (-pix_fmt yuv420p). If a user converts an HDR video using H.264, it will automatically tone-map to standard colors to guarantee playback on legacy devices.
 - H.265 and VP9: Dynamically adapt to the source. If the input is HDR (10-bit), the output will preserve the HDR metadata natively.
@@ -109,11 +97,11 @@ all devices, CopynDown applies the following automatic overwrites:
 
 # AVI Compatibility Lock
 - If target is AVI and Video Codec is 'Copy' or 'VP9' -> Forces 'libx264'
-- If target is AVI and Audio Codec is incompatible (AAC/FLAC/Opus/Copy) -> Forces 'libmp3lame'
+- If target is AVI and Audio Codec is incompatible (AAC/FLAC/Opus/Copy/ALAC) -> Forces 'libmp3lame'
 
 # WEBM Compatibility Lock
 - If target is WEBM and Video Codec is H.264/H.265/Copy -> Forces 'libvpx-vp9'
-- If target is WEBM and Audio Codec is AAC/MP3/FLAC/Copy -> Forces 'libopus'
+- If target is WEBM and Audio Codec is AAC/MP3/FLAC/Copy/ALAC -> Forces 'libopus'
 - If user attempts to download WEBM format with '1080p (H.264)' -> Forces '1080p (AV1/VP9)'
 
 # MP4 & MOV Compatibility Lock
@@ -122,10 +110,27 @@ all devices, CopynDown applies the following automatic overwrites:
 - If target is MP4/MOV and Audio Codec is 'FLAC' -> Forces 'ALAC' (Maintains Lossless quality with Apple/TV support)
 - If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces 'libx264' and 'AAC'
 
-# Smart Extract Audio Lock (Dynamic Codec Checking)
+------------------------------------------------------------------------
+TAB 4: CONVERT AUDIO / SMART EXTRACT (FFMPEG)
+------------------------------------------------------------------------
+[AUDIO MODIFIERS]
+- Bitrate (-b:a): Auto, 320k, 256k, 192k, 128k (Audio conversions only)
+- Channels (-ac): 2 (Stereo) or 1 (Mono)
+- Sample Rate (-ar): 48000 or 44100
+
+[AUDIO CODECS (-c:a) AVAILABLE FOR AUDIO]
+- MP3:   libmp3lame   | Params: -q:a 2 (Audio Conv 'Auto' / Extract)
+- Ogg:   libvorbis    | Params: -q:a 2 (Audio Conv 'Auto' / Extract)
+- AAC:   aac          | Params: -b:a 192k (Audio Conv 'Auto')
+- Opus:  libopus      | Params: -b:a 192k (Audio Conv 'Auto')
+- WAV:   pcm_s16le    | (Uncompressed, ignores bitrate)
+- Copy:  copy         | (No re-encoding)
+
+[SMART EXTRACT AUDIO LOCK (Dynamic Codec Checking)]
 CopynDown reads the native audio stream of the source file using FFmpeg before extraction.
 - If Source Codec natively matches Target Format -> Forces 'copy' (Lossless/Instant):
   * AAC stream      -> matches M4A
+  * ALAC stream     -> matches M4A
   * MP3 stream      -> matches MP3
   * FLAC stream     -> matches FLAC
   * PCM stream      -> matches WAV
