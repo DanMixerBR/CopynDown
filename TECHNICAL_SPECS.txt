@@ -120,10 +120,17 @@ all devices, CopynDown applies the following automatic overwrites:
 - If target is MP4/MOV and Audio Codec is 'Opus' -> Forces 'AAC'
 - If source is WEBM/MKV and user attempts to 'Copy' into MP4/MOV -> Forces 'libx264' and 'AAC'
 
-# Extract Original Audio Lock
-- If user extracts pure audio into MP3 or Ogg container -> Forces re-encoding to VBR (-q:a 2)
-- If user extracts pure audio into M4A or Opus container -> Forces re-encoding to CBR (-b:a 192k)
-- If user extracts pure audio into WAV or FLAC container -> Forces uncompressed/lossless re-encoding
-- If source is MP4/M4A/MOV and user extracts pure audio into M4A container -> 'Copy'
-- If source is WEBM/Opus and user extracts pure audio into Opus container -> 'Copy'
-*(Pure copy into strict containers from random sources often breaks headers).*
+# Smart Extract Audio Lock (Dynamic Codec Checking)
+CopynDown reads the native audio stream of the source file using FFmpeg before extraction.
+- If Source Codec natively matches Target Format -> Forces 'copy' (Lossless/Instant):
+  * AAC stream      -> matches M4A
+  * MP3 stream      -> matches MP3
+  * FLAC stream     -> matches FLAC
+  * PCM stream      -> matches WAV
+  * Opus stream     -> matches Opus
+  * Vorbis stream   -> matches Ogg
+
+- If Source Codec is incompatible with Target Format -> Safely recodes:
+  * Target MP3/Ogg  -> Recodes using transparent VBR (-q:a 2)
+  * Target M4A/Opus -> Recodes using CBR (-b:a 192k)
+  * Target FLAC/WAV -> Recodes to lossless uncompressed audio
