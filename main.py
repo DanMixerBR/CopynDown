@@ -2638,25 +2638,48 @@ class DownloaderApp(ctk.CTk):
         try:
             if os.path.exists(zip_path): os.remove(zip_path)
                 
-            self.safe_ui(self.progress_label.configure, text="Updating... 25%", text_color="white")
-            self.safe_ui(self.progress_bar.set, 0.25)
+            self.safe_ui(self.progress_label.configure, text="Starting update...", text_color="white")
+            self.safe_ui(self.progress_bar.set, 0.0)
             self.safe_ui(self.add_to_log, "\n>>> Downloading update file...")
             
             target_url = download_url_windows if self.is_windows else download_url_linux
             
-            # OTIMIZAÇÃO DE RAM: Download em "Stream" (pedaços de 8KB) em vez de jogar tudo na memória!
+            # Puxa o cabeçalho do arquivo
             r = requests.get(target_url, stream=True, timeout=30)
             r.raise_for_status()
+            
+            # 1. Pega o tamanho total do arquivo no servidor do GitHub
+            total_size = int(r.headers.get('content-length', 0))
+            downloaded_size = 0
+            last_reported_progress = 0.0
+            
+            # 2. Download em Stream com atualização em tempo real
             with open(zip_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
-                    if chunk: f.write(chunk)
+                    if chunk: 
+                        f.write(chunk)
+                        if total_size > 0:
+                            downloaded_size += len(chunk)
+                            
+                            # Porcentagem real do download (0.0 a 1.0)
+                            download_percent = downloaded_size / total_size
+                            
+                            # Mapeamos para a metade da barra de progresso (0.0 a 0.5)
+                            actual_progress = download_percent * 0.5
+                            
+                            # 3. O SEGREDO DO DESEMPENHO: Só atualiza a tela a cada 1% de mudança!
+                            if actual_progress - last_reported_progress >= 0.01 or downloaded_size == total_size:
+                                display_percent = int(actual_progress * 100)
+                                self.safe_ui(self.progress_label.configure, text=f"Downloading update... {display_percent}%", text_color="white")
+                                self.safe_ui(self.progress_bar.set, actual_progress)
+                                last_reported_progress = actual_progress
             
             zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
             if zip_size_mb < 100.0:
                 if os.path.exists(zip_path): os.remove(zip_path)
                 raise Exception(f"ERROR: The file '{zip_platform}' is suspiciously small ({zip_size_mb:.1f} MB). Update aborted.")
             
-            self.safe_ui(self.progress_label.configure, text="Updating... 50%", text_color="white")
+            self.safe_ui(self.progress_label.configure, text="Verifying update... 50%", text_color="white")
             self.safe_ui(self.progress_bar.set, 0.5)
             self.safe_ui(self.add_to_log, "Verifying update file...")
             
@@ -2686,7 +2709,7 @@ class DownloaderApp(ctk.CTk):
                 if os.path.exists(zip_path): os.remove(zip_path)
                 raise Exception(f"Security Error: Could not download hash_v2.txt to verify '{zip_platform}'.")
                 
-            self.safe_ui(self.progress_label.configure, text="Updating... 75%", text_color="white")
+            self.safe_ui(self.progress_label.configure, text="Preparing update... 75%", text_color="white")
             self.safe_ui(self.progress_bar.set, 0.75)
             self.safe_ui(self.add_to_log, "Downloading update script...")
             
