@@ -143,7 +143,6 @@ class DownloaderApp(ctk.CTk):
         self.apply_window_icon(self)
         self.build_ui()
         self.select_pill(self.TAB_VID)
-        self.update()
         
         self.bind("<FocusIn>", self.on_focus)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
