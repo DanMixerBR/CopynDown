@@ -2056,6 +2056,99 @@ class DownloaderApp(ctk.CTk):
 
         # Inicia a janela com a primeira aba pré-selecionada
         select_settings_tab("General")
+        settings_win.update()
+
+        # =========================================================
+        # BOTÕES DE AÇÃO GERAIS
+        # =========================================================
+        def restore_defaults():
+            vid_entry.configure(state="normal")
+            vid_entry.delete(0, 'end')
+            vid_entry.insert(0, "~/Videos/CopynDown")
+            vid_entry.configure(state="readonly")
+            
+            aud_entry.configure(state="normal")
+            aud_entry.delete(0, 'end')
+            aud_entry.insert(0, "~/Music/CopynDown")
+            aud_entry.configure(state="readonly")
+            
+            cookie_entry.configure(state="normal")
+            cookie_entry.delete(0, 'end')
+            cookie_entry.insert(0, self.cookies_path_default)
+            cookie_entry.configure(state="readonly")
+
+            v_auto_paste.set(self.DEF_AUTO_PASTE)
+            v_use_cookies.set(self.DEF_USE_COOKIES)
+            v_hide_options.set(self.DEF_HIDE_OPTS)
+            v_vid_thumb.set(True)
+            v_aud_meta.set(True)
+            v_native_subs.set(False)
+            v_auto_subs.set(False)
+            v_embed_subs.set(False)
+            lang_selector.set("English")
+            trans_selector.set("None")
+            check_subtitle_state()
+            
+            prof_menu.set("High Quality")
+
+            v_prefer_video.set(False)
+            tmpl_menu.set("Title (Default)")
+            delay_menu.set("Playlist Only")
+            
+            entries_to_reset = [
+                (retries_entry, "10"),
+                (min_entry, "2"),
+                (max_entry, "5"),
+                (req_entry, "1")
+            ]
+            for entry_widget, default_val in entries_to_reset:
+                entry_widget.delete(0, 'end')
+                entry_widget.insert(0, default_val)
+            
+        def save():
+            self.config_data["General"].update({
+                "video_path": vid_entry.get(),
+                "audio_path": aud_entry.get(),
+                "auto_paste": v_auto_paste.get(), 
+                "use_cookies": v_use_cookies.get(), 
+                "cookies_path": cookie_entry.get(), 
+                "hide_options": v_hide_options.get(),
+                "prefer_video": v_prefer_video.get(),
+                "max_retries": retries_entry.get(),
+                "file_template": tmpl_menu.get(),
+                "delay_mode": delay_menu.get(),
+                "sleep_min": min_entry.get(),
+                "sleep_max": max_entry.get(),
+                "sleep_req": req_entry.get(),
+                "conv_profile": prof_menu.get()
+            })
+            
+            self.config_data[self.TAB_VID].update({
+                "thumb": v_vid_thumb.get(),
+                "native_subs": v_native_subs.get(), 
+                "auto_subs": v_auto_subs.get(), 
+                "embed_subs": v_embed_subs.get(),
+                "langs": lang_map.get(lang_selector.get(), "en"), 
+                "trans_langs": lang_map.get(trans_selector.get(), "none")
+            })
+            
+            self.config_data[self.TAB_AUD].update({
+                "thumb": v_vid_thumb.get(), 
+                "meta": v_aud_meta.get()
+            })
+            
+            self.save_config()
+            self.update_folder_context()
+            self.evaluate_ui_state()
+            settings_win.destroy()
+            self.add_to_log(">>> Settings saved successfully.")
+
+        btn_frame = ctk.CTkFrame(settings_win, fg_color="transparent")
+        btn_frame.pack(pady=10, fill="x", padx=10)
+        
+        # Botões destrutivos/neutros em cinza, botões de salvar em Azul!
+        ctk.CTkButton(btn_frame, text="Restore defaults", font=FONT_TEXT, fg_color="#2c313a", hover_color="#a94442", command=restore_defaults).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Save settings", font=FONT_BTN, fg_color="#1f538d", hover_color="#14375e", command=save).pack(side="right", padx=10)
 
         # =========================================================
         # ABA 1: GENERAL & OUTPUTS
@@ -2353,98 +2446,6 @@ class DownloaderApp(ctk.CTk):
 
         self.btn_extract.configure(command=perform_extraction)
         update_cookie_ui()
-
-        # =========================================================
-        # BOTÕES DE AÇÃO GERAIS
-        # =========================================================
-        def restore_defaults():
-            vid_entry.configure(state="normal")
-            vid_entry.delete(0, 'end')
-            vid_entry.insert(0, "~/Videos/CopynDown")
-            vid_entry.configure(state="readonly")
-            
-            aud_entry.configure(state="normal")
-            aud_entry.delete(0, 'end')
-            aud_entry.insert(0, "~/Music/CopynDown")
-            aud_entry.configure(state="readonly")
-            
-            cookie_entry.configure(state="normal")
-            cookie_entry.delete(0, 'end')
-            cookie_entry.insert(0, self.cookies_path_default)
-            cookie_entry.configure(state="readonly")
-
-            v_auto_paste.set(self.DEF_AUTO_PASTE)
-            v_use_cookies.set(self.DEF_USE_COOKIES)
-            v_hide_options.set(self.DEF_HIDE_OPTS)
-            v_vid_thumb.set(True)
-            v_aud_meta.set(True)
-            v_native_subs.set(False)
-            v_auto_subs.set(False)
-            v_embed_subs.set(False)
-            lang_selector.set("English")
-            trans_selector.set("None")
-            check_subtitle_state()
-            
-            prof_menu.set("High Quality")
-
-            v_prefer_video.set(False)
-            tmpl_menu.set("Title (Default)")
-            delay_menu.set("Playlist Only")
-            
-            entries_to_reset = [
-                (retries_entry, "10"),
-                (min_entry, "2"),
-                (max_entry, "5"),
-                (req_entry, "1")
-            ]
-            for entry_widget, default_val in entries_to_reset:
-                entry_widget.delete(0, 'end')
-                entry_widget.insert(0, default_val)
-            
-        def save():
-            self.config_data["General"].update({
-                "video_path": vid_entry.get(),
-                "audio_path": aud_entry.get(),
-                "auto_paste": v_auto_paste.get(), 
-                "use_cookies": v_use_cookies.get(), 
-                "cookies_path": cookie_entry.get(), 
-                "hide_options": v_hide_options.get(),
-                "prefer_video": v_prefer_video.get(),
-                "max_retries": retries_entry.get(),
-                "file_template": tmpl_menu.get(),
-                "delay_mode": delay_menu.get(),
-                "sleep_min": min_entry.get(),
-                "sleep_max": max_entry.get(),
-                "sleep_req": req_entry.get(),
-                "conv_profile": prof_menu.get()
-            })
-            
-            self.config_data[self.TAB_VID].update({
-                "thumb": v_vid_thumb.get(),
-                "native_subs": v_native_subs.get(), 
-                "auto_subs": v_auto_subs.get(), 
-                "embed_subs": v_embed_subs.get(),
-                "langs": lang_map.get(lang_selector.get(), "en"), 
-                "trans_langs": lang_map.get(trans_selector.get(), "none")
-            })
-            
-            self.config_data[self.TAB_AUD].update({
-                "thumb": v_vid_thumb.get(), 
-                "meta": v_aud_meta.get()
-            })
-            
-            self.save_config()
-            self.update_folder_context()
-            self.evaluate_ui_state()
-            settings_win.destroy()
-            self.add_to_log(">>> Settings saved successfully.")
-
-        btn_frame = ctk.CTkFrame(settings_win, fg_color="transparent")
-        btn_frame.pack(pady=10, fill="x", padx=10)
-        
-        # Botões destrutivos/neutros em cinza, botões de salvar em Azul!
-        ctk.CTkButton(btn_frame, text="Restore defaults", font=FONT_TEXT, fg_color="#2c313a", hover_color="#a94442", command=restore_defaults).pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text="Save settings", font=FONT_BTN, fg_color="#1f538d", hover_color="#14375e", command=save).pack(side="right", padx=10)
 
     def load_config(self):
         if os.path.exists(self.config_file):
