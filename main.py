@@ -143,6 +143,7 @@ class DownloaderApp(ctk.CTk):
         self.apply_window_icon(self)
         self.build_ui()
         self.select_pill(self.TAB_VID)
+        self.update()
         
         self.bind("<FocusIn>", self.on_focus)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -2056,7 +2057,6 @@ class DownloaderApp(ctk.CTk):
 
         # Inicia a janela com a primeira aba pré-selecionada
         select_settings_tab("General")
-        settings_win.update()
 
         # =========================================================
         # BOTÕES DE AÇÃO GERAIS
@@ -2210,6 +2210,7 @@ class DownloaderApp(ctk.CTk):
         tmpl_menu = ctk.CTkOptionMenu(tmpl_frame, values=["Title (Default)", "Title + Video ID", "Title + Format ID", "Title + Resolution"], font=FONT_TEXT, dropdown_font=FONT_TEXT, fg_color="#181a1f", button_color="#2c3e50", button_hover_color="#34495e", width=200)
         tmpl_menu.set(self.config_data.get("General", {}).get("file_template", "Title (Default)"))
         tmpl_menu.pack(side="left")
+        settings_win.update()
 
         # =========================================================
         # ABA 2: MEDIA (Embedding & Subtitles)
