@@ -146,6 +146,7 @@ If you have any questions, suggestions, or just want to say hi, feel free to rea
 
 This project is built using:
 * [Python](https://www.python.org/)
+* [PySide6](https://pypi.org/project/PySide6) for the modern UI.
 * [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) for the modern UI.
 * [yt-dlp](https://github.com/yt-dlp/yt-dlp) for media downloading.
 * [FFmpeg](https://ffmpeg.org/) for media conversion.
