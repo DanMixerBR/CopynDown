@@ -34,7 +34,7 @@ jobs:
           $CLEAN_V = ("${{ github.event.inputs.versao_tag }}" -replace '[A-Za-z]', '').Trim('.') + ".0"
           # O Nuitka já gera o CopynDown.exe dentro da pasta main.dist
           python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable `
-          --enable-plugin=tk-inter --windows-icon-from-ico=assets/icon_windows.ico `
+          --enable-plugin=pyside6 --windows-icon-from-ico=assets/icon_windows.ico `
           --company-name="DanMixerBR" --product-name="CopynDown" `
           --file-description="CopynDown" --copyright="MIT License" `
           --file-version="$CLEAN_V" --product-version="$CLEAN_V" `
@@ -112,7 +112,7 @@ jobs:
       - name: Compilar com Nuitka (Modo Linux)
         run: |
           # O Nuitka já gera o CopynDown dentro da pasta main.dist
-          python -m nuitka --assume-yes-for-downloads --standalone --enable-plugin=tk-inter -o CopynDown main.py
+          python -m nuitka --assume-yes-for-downloads --standalone --enable-plugin=pyside6 -o CopynDown main.py
   
       - name: Atualizar version.txt localmente
         shell: bash
