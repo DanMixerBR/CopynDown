@@ -108,7 +108,7 @@ QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS
 QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
 QComboBox QAbstractItemView {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; outline: 0; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
-QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else ""}; color: {COLORS['text']}; }}
+QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else "#303030"}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
 QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 5px; border: 2px solid {COLORS['muted']}; background-color: transparent; }}
 QCheckBox::indicator:hover {{ border-color: {COLORS['text']}; }}
