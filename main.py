@@ -49,7 +49,7 @@ THEMES = {
         "bg": "#ffffff", "card": "#f0f2f5", "input": "#ffffff", "input2": "#e4e6eb",
         "border": "#ccd0d5", "blue": "#3ba1ff", "blue_hover": "#288ce6", "blue_dark": "#1d4ed8",
         "button": "#f0f2f5", "button_hover": "#e4e6eb", "combo_button": "#e4e6eb", 
-        "text": "#1c1e21", "muted": "#606770", "muted2": "#8d949e", "danger": "#e11d48",
+        "text": "#1c1e21", "muted": "#606770", "muted2": "#8d949e", "danger": "#ff5252",
     }
 }
 COLORS = THEMES[CURRENT_THEME]
@@ -240,7 +240,8 @@ class QueueDialog(QDialog):
 
     def update_list(self, queue_data, is_running):
         for i in reversed(range(self.queue_layout.count())): 
-            self.queue_layout.itemAt(i).widget().setParent(None)
+            widget = self.queue_layout.itemAt(i).widget()
+            if widget: widget.deleteLater()
 
         if not queue_data:
             self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -313,6 +314,7 @@ class LogsDialog(QDialog):
         layout.setContentsMargins(10, 10, 10, 10)
         self.text_box = QTextEdit()
         self.text_box.setReadOnly(True)
+        self.text_box.document().setMaximumBlockCount(5000)
         layout.addWidget(self.text_box, 1)
         
         row = QHBoxLayout()
@@ -342,6 +344,7 @@ class ManualSelectionDialog(QDialog):
         self.main_app = parent; self.url = url; self.base_cmd = base_cmd; self.out_tmpl = out_tmpl; self.allowed_formats = formats
         self.setWindowTitle("Manual Format Selection")
         self.setFixedSize(750, 630)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setModal(True)
         self._set_icon()
         self._build_ui()
@@ -512,6 +515,7 @@ class AboutDialog(QDialog):
         self.main_app = parent
         self.setWindowTitle("About CopynDown")
         self.setFixedSize(642, 532)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self._set_icon()
         self._build_ui()
         apply_theme_titlebar(self)
@@ -564,6 +568,7 @@ class SettingsDialog(QDialog):
         self.cfg = parent.config_data
         self.setWindowTitle("Settings")
         self.setFixedSize(650, 650)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setModal(True)
         self._set_icon()
         self._build_ui()
@@ -693,7 +698,6 @@ class SettingsDialog(QDialog):
         p_auto = QWidget(); p_auto_lay = QVBoxLayout(p_auto); p_auto_lay.setContentsMargins(0, 2, 0, 0); p_auto_lay.setSpacing(8)
         n_auto = QLabel("Note: May require closing the browser or running the app as Administrator."); n_auto.setObjectName("muted"); p_auto_lay.addWidget(n_auto)
         row_ext = QHBoxLayout(); self.browser_combo = QComboBox(); self.browser_combo.addItems(["Edge", "Firefox", "Brave", "Safari"]); self.browser_combo.setFixedWidth(120)
-        row_ext = QHBoxLayout(); self.browser_combo = QComboBox(); self.browser_combo.addItems(["Edge", "Firefox", "Brave", "Safari"]); self.browser_combo.setFixedWidth(120)
         
         btn_ext = QPushButton("Extract cookies"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(116)
         row_ext.addWidget(self.browser_combo); row_ext.addWidget(btn_ext); row_ext.addStretch(1); p_auto_lay.addLayout(row_ext)
@@ -704,7 +708,10 @@ class SettingsDialog(QDialog):
             c_path = self.cookie_path.text()
 
             def reset_btn():
-                btn_ext.setEnabled(True); btn_ext.setText("Extract cookies"); btn_ext.setStyleSheet("")
+                try:
+                    btn_ext.setEnabled(True); btn_ext.setText("Extract cookies"); btn_ext.setStyleSheet("")
+                except RuntimeError:
+                    pass
 
             def thread_task():
                 try:
@@ -753,7 +760,7 @@ class SettingsDialog(QDialog):
                     
                     # 2. Passamos a mensagem congelada (m=err_msg) para blindar o lambda
                     self.main_app.safe_ui(lambda: (btn_ext.setText("❌ Error"), btn_ext.setStyleSheet("background-color: #a94442; color: white; border: none;")))
-                    self.main_app.safe_ui(lambda m=err_msg: QMessageBox.critical(self, "Extraction Error", f"Failed to extract cookies.\n\nDetails: {m}"))
+                    self.main_app.safe_ui(lambda m=err_msg: QMessageBox.critical(self.main_app, "Extraction Error", f"Failed to extract cookies.\n\nDetails: {m}"))
                     self.main_app.safe_ui(self.main_app.add_to_log, f">>> Cookie extraction error: {err_msg}")
                     self.main_app.safe_ui(lambda: QTimer.singleShot(3000, reset_btn))
 
@@ -837,6 +844,8 @@ class SettingsDialog(QDialog):
             apply_theme_titlebar(self)
             if getattr(self.main_app, 'queue_window', None): apply_theme_titlebar(self.main_app.queue_window)
             if getattr(self.main_app, 'log_window', None): apply_theme_titlebar(self.main_app.log_window)
+            
+            self.main_app.refresh_theme_colors()
             
         self.main_app.save_config()
         self.main_app.update_folder_context()
@@ -1184,8 +1193,12 @@ class CopynDownApp(QMainWindow):
         self.ui_signal.emit(func, args, kwargs)
 
     def _execute_safe_ui(self, func, args, kwargs):
-        # O aplicativo executa a ação gráfica na Thread principal
-        func(*args, **kwargs)
+        # 🔻 ESCUDO BLINDADO: Impede o app de crashar se uma Thread 
+        # tentar atualizar um botão ou janela que o usuário já fechou!
+        try:
+            func(*args, **kwargs)
+        except RuntimeError:
+            pass
 
     def is_valid_media_url(self, text_url):
         if not text_url or len(text_url) < 12: return False
@@ -1240,6 +1253,21 @@ class CopynDownApp(QMainWindow):
     def update_folder_context(self):
         is_video = self.current_category in [self.TAB_VID, self.TAB_C_VID]
         self.last_folder = self.config_data["General"]["video_path"] if is_video else self.config_data["General"]["audio_path"]
+        
+    def refresh_theme_colors(self):
+        txt = self.progress_label.text()
+        if "Complete" in txt:
+            self.progress.setStyleSheet("QProgressBar::chunk { background-color: #2ea043; }")
+            self.progress_label.setStyleSheet("color: #2ea043; font-size: 11px;")
+        elif "Incomplete" in txt:
+            self.progress.setStyleSheet("QProgressBar::chunk { background-color: #d29922; }")
+            self.progress_label.setStyleSheet("color: #d29922; font-size: 11px;")
+        elif "Error" in txt or "Canceled" in txt or "Failed" in txt or "Invalid" in txt:
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['danger']}; }}")
+            self.progress_label.setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px;")
+        else:
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
+            self.progress_label.setStyleSheet("font-size: 11px;")
 
     def add_to_log(self, text):
         self.full_logs_list.append(text)
@@ -1263,8 +1291,11 @@ class CopynDownApp(QMainWindow):
         self.btn_cancel.setEnabled(state == "disabled" and is_downloading)
         for btn in self.tab_buttons.values(): btn.setEnabled(state == "normal")
         
-        if hasattr(self, 'about_win') and self.about_win.isVisible():
-            self.about_win.update_btn.setEnabled(state == "normal")
+        try:
+            if hasattr(self, 'about_win') and self.about_win.isVisible():
+                self.about_win.update_btn.setEnabled(state == "normal")
+        except RuntimeError:
+            pass
 
     def build_base_cmd(self, is_json=False, url="", silent=False):
         cmd = [self.ytdlp_path, "-i"]
@@ -1325,12 +1356,18 @@ class CopynDownApp(QMainWindow):
         b_cmd = self.add_subtitle_args(b_cmd, cfg)
 
         if self.switch_advanced.isChecked():
-            ManualSelectionDialog(url, b_cmd, o_tmpl, ["MP4", "MKV", "WEBM"], self).show()
+            # 🔻 Salva no 'self' e usa .exec() para bloquear o fundo corretamente
+            self.manual_win = ManualSelectionDialog(url, b_cmd, o_tmpl, ["MP4", "MKV", "WEBM"], self)
+            self.manual_win.exec()
             return
 
         res_map = {"360p": "360", "480p": "480", "720p": "720", "1080p (H.264)": "1080", "1080p (AV1/VP9)": "1080", "1440p (QHD)": "1440", "2160p (4K)": "2160"}
         sq = self.menu_1.currentText()
-        if vfmt == "webm" and sq == "1080p (H.264)": sq = "1080p (AV1/VP9)"; self.add_to_log("[Auto-Fix] Forced VP9/Opus for WEBM.")
+        
+        pending_logs = [] # 👈 Retém o log!
+        if vfmt == "webm" and sq == "1080p (H.264)": 
+            sq = "1080p (AV1/VP9)"
+            pending_logs.append("[Auto-Fix] Forced VP9/Opus for WEBM.") 
         
         r = res_map[sq]
         if sq == "1080p (H.264)": s_str = f"res:{r},vcodec:avc1,aext:m4a"
@@ -1340,7 +1377,7 @@ class CopynDownApp(QMainWindow):
         else: s_str = f"res:{r}"
 
         cmd = b_cmd + ["-S", s_str, "--merge-output-format", vfmt, "--remux-video", vfmt, "-o", f"{r_path}/{o_tmpl}", "-o", f"subtitle:{r_path}/subtitles/{o_tmpl}", url]
-        self.run_command(cmd, url)
+        self.run_command(cmd, url, pending_logs) # 👈 Passa o log para a fila!
 
     def download_music(self, url):
         cfg = self.config_data[self.TAB_AUD]
@@ -1354,7 +1391,8 @@ class CopynDownApp(QMainWindow):
             b_cmd.extend(["--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "--parse-metadata", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s", "--parse-metadata", "%(album_artist,creator,channel|)s:%(meta_album_artist)s"])
             
         if self.switch_advanced.isChecked():
-            ManualSelectionDialog(url, b_cmd, "%(playlist_index&{}. |)s%(title)s.%(ext)s", ["M4A", "MP3", "FLAC", "WAV", "Opus"], self).show()
+            self.manual_win = ManualSelectionDialog(url, b_cmd, "%(playlist_index&{}. |)s%(title)s.%(ext)s", ["M4A", "MP3", "FLAC", "WAV", "Opus"], self)
+            self.manual_win.exec()
             return
             
         b_map = {"Low (128 kbps)": "128k", "Medium (192 kbps)": "192k", "High (320 kbps)": "320k"}
@@ -1397,7 +1435,11 @@ class CopynDownApp(QMainWindow):
         gen_cfg = self.config_data.get("General", {})
         save_dir = os.path.expanduser(gen_cfg.get("video_path") if is_vid else gen_cfg.get("audio_path"))
         
-        if not os.path.exists(save_dir): os.makedirs(save_dir)
+        try:
+            if not os.path.exists(save_dir): os.makedirs(save_dir)
+        except Exception as e:
+            self.status_error(f"Folder Access Error: {e}")
+            return
         dst = os.path.join(save_dir, f"{base}_{suf}.{e_fin}").replace("\\", "/")
         if src == dst: dst = os.path.join(save_dir, f"{base}_new.{e_fin}").replace("\\", "/")
         
@@ -1410,6 +1452,7 @@ class CopynDownApp(QMainWindow):
                 self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please check your 'bin' folder.")
                 return
         cmd = [ff_exe, "-y", "-i", src]
+        pending_logs = [] # 👈 O BAÚ DE LOGS
 
         if is_vid:
             vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
@@ -1418,7 +1461,7 @@ class CopynDownApp(QMainWindow):
             
             if e_fin in ["mp4", "mov"] and ac == "flac":
                 ac = "alac"
-                self.safe_ui(self.add_to_log, f"[Auto-Fix] Swapped FLAC for ALAC for {e_fin.upper()} lossless compatibility.")
+                pending_logs.append(f"[Auto-Fix] Swapped FLAC for ALAC for {e_fin.upper()} lossless compatibility.")
                 
             r_c = self.menu_1.currentText()
             sf = None
@@ -1429,41 +1472,41 @@ class CopynDownApp(QMainWindow):
                     if vc == "copy":
                         if e_fin == "webm":
                             vc = "libvpx-vp9"
-                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced VP9 codec to allow scaling to {th}p.")
+                            pending_logs.append(f"[Auto-Fix] Forced VP9 codec to allow scaling to {th}p.")
                         else:
                             vc = "libx264"
-                            self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 codec to allow scaling to {th}p.")
+                            pending_logs.append(f"[Auto-Fix] Forced H.264 codec to allow scaling to {th}p.")
             
             if e_fin == "avi":
                 if vc in ["copy", "libvpx-vp9"]:
                     vc = "libx264"
-                    self.safe_ui(self.add_to_log, "[Auto-Fix] Forced H.264 codec for AVI compatibility.")
+                    pending_logs.append("[Auto-Fix] Forced H.264 codec for AVI compatibility.")
                 if ac in ["copy", "aac", "flac", "alac", "libopus"]:
                     ac = "libmp3lame"
-                    self.safe_ui(self.add_to_log, "[Auto-Fix] Forced MP3 codec for AVI compatibility.")
+                    pending_logs.append("[Auto-Fix] Forced MP3 codec for AVI compatibility.")
                     
             elif e_fin == "webm":
                 if vc in ["copy", "libx264", "libx265"]:
                     vc = "libvpx-vp9"
-                    self.safe_ui(self.add_to_log, "[Auto-Fix] Forced VP9 codec for WEBM compatibility.")
+                    pending_logs.append("[Auto-Fix] Forced VP9 codec for WEBM compatibility.")
                 if ac in ["copy", "aac", "libmp3lame", "flac", "alac"]:
                     ac = "libopus"
-                    self.safe_ui(self.add_to_log, "[Auto-Fix] Forced Opus codec for WEBM compatibility.")
+                    pending_logs.append("[Auto-Fix] Forced Opus codec for WEBM compatibility.")
                     
             elif e_fin in ["mp4", "mov"]:
                 if vc == "libvpx-vp9":
                     vc = "libx264"
-                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 (VP9 is incompatible with {e_fin.upper()}).")
+                    pending_logs.append(f"[Auto-Fix] Forced H.264 (VP9 is incompatible with {e_fin.upper()}).")
                 if ac == "libopus":
                     ac = "aac"
-                    self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced AAC (Opus is incompatible with {e_fin.upper()}).")
+                    pending_logs.append(f"[Auto-Fix] Forced AAC (Opus is incompatible with {e_fin.upper()}).")
                 if s_ext in [".webm", ".mkv", ".ogg"]:
                     if vc == "copy":
                         vc = "libx264"
-                        self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced H.264 to safely put WEBM/MKV into {e_fin.upper()}.")
+                        pending_logs.append(f"[Auto-Fix] Forced H.264 to safely put WEBM/MKV into {e_fin.upper()}.")
                     if ac == "copy":
                         ac = "aac"
-                        self.safe_ui(self.add_to_log, f"[Auto-Fix] Forced AAC audio to safely put WEBM/MKV into {e_fin.upper()}.")
+                        pending_logs.append(f"[Auto-Fix] Forced AAC audio to safely put WEBM/MKV into {e_fin.upper()}.")
             
             prof = gen_cfg.get("conv_profile", "High Quality")
             crf = "18" if prof == "High Quality" else ("20" if prof == "Balanced" else "22")
@@ -1485,32 +1528,25 @@ class CopynDownApp(QMainWindow):
             cmd.append("-vn")
             dst_fmt = self.menu_2.currentText().lower()
             
-            # --- LÓGICA DE EXTRAÇÃO INTELIGENTE RESTAURADA! ---
             if self.switch_extract_audio.isChecked():
                 if dst_fmt in ["mp3", "wav", "flac", "ogg", "opus", "m4a"]:
-                    # 1. Aciona o detetive para ler o arquivo original
                     src_codec = self.get_audio_codec(src)
-                    
-                    # 2. O Mapa de Relacionamento
                     copy_allowed = {"m4a": ["aac", "alac"], "mp3": ["mp3"], "flac": ["flac"], "wav": ["pcm_s16le"], "opus": ["opus"], "ogg": ["vorbis"]}
                     allowed_codecs = copy_allowed.get(dst_fmt, [])
                     
                     if src_codec in allowed_codecs:
-                        # COMBINAÇÃO PERFEITA: Faz a cópia direta ultra-rápida!
                         cmd.extend(["-c:a", "copy"])
-                        self.safe_ui(self.add_to_log, f">>> [Smart Extract] Source codec '{src_codec}' matches '{dst_fmt.upper()}'. Proceeding with lossless direct copy.")
+                        pending_logs.append(f">>> [Smart Extract] Source codec '{src_codec}' matches '{dst_fmt.upper()}'. Proceeding with lossless direct copy.")
                     else:
-                        # INCOMPATÍVEL: Força o re-encode seguro para não gerar arquivo corrompido
                         ac_map = {"mp3": "libmp3lame", "wav": "pcm_s16le", "flac": "flac", "ogg": "libvorbis", "opus": "libopus", "m4a": "aac"}
                         ac = ac_map.get(dst_fmt)
                         cmd.extend(["-c:a", ac])
                         if dst_fmt in ["mp3", "ogg"]: cmd.extend(["-q:a", "2"])
                         elif dst_fmt in ["m4a", "opus"]: cmd.extend(["-b:a", "192k"])
-                        self.safe_ui(self.add_to_log, f">>> [Smart Extract] Source codec '{src_codec}' is incompatible with '{dst_fmt.upper()}'. Recoding safely to '{ac}'.")
+                        pending_logs.append(f">>> [Smart Extract] Source codec '{src_codec}' is incompatible with '{dst_fmt.upper()}'. Recoding safely to '{ac}'.")
                 else:
                     cmd.extend(["-c:a", "copy"])
                     
-            # --- LÓGICA DE RECODIFICAÇÃO (Com bugs corrigidos!) ---
             else:
                 amap = {"m4a": "aac", "mp3": "libmp3lame", "flac": "flac", "wav": "pcm_s16le", "opus": "libopus", "ogg": "libvorbis"}
                 ac = amap.get(dst_fmt, "copy")
@@ -1525,23 +1561,21 @@ class CopynDownApp(QMainWindow):
                 if sr != "Original" and ac != "copy": cmd.extend(["-ar", sr.replace(" Hz", "")])
                 if ch != "Original" and ac != "copy": cmd.extend(["-ac", "2" if "Stereo" in ch else "1"])
         
-        cmd.append(dst); self.run_command(cmd, task_name=base)
+        cmd.append(dst); self.run_command(cmd, base, pending_logs) # 👈 Passa os logs para a fila
 
-    def run_command(self, cmd, task_name="Media Task"):
+    def run_command(self, cmd, task_name="Media Task", task_logs=None):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
-        qi = {"cmd": cmd, "name": task_name, "is_convert": is_conv, "label_widget": None}
+        # 🔻 Adicionado a chave "logs" no dicionário da tarefa
+        qi = {"cmd": cmd, "name": task_name, "is_convert": is_conv, "label_widget": None, "logs": task_logs or []}
         self.download_queue.append(qi)
         
         def animate_btn():
-            self.queue_animating = True # 👈 Bloqueia interferências externas
+            self.queue_animating = True
             count = len(self.download_queue)
             self.queue_btn.setText(f"✅ Added! ({count})")
-            
             def revert():
                 self.queue_animating = False
-                if self.isVisible():
-                    self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})")
-            
+                if self.isVisible(): self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})")
             QTimer.singleShot(2000, revert)
             
         self.safe_ui(animate_btn)
@@ -1650,6 +1684,10 @@ class CopynDownApp(QMainWindow):
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
             self.add_to_log("\n>>> Starting download...")
 
+        # 🔻 DESPEJA OS LOGS RETIDOS NA HORA CERTA! 🔻
+        for log_msg in task.get("logs", []):
+            self.add_to_log(log_msg)
+
         def worker():
             err = False
             try:
@@ -1684,7 +1722,8 @@ class CopynDownApp(QMainWindow):
                 
             except Exception as e:
                 self.safe_ui(self.status_error, f"SYSTEM ERROR: {e}")
-                self.is_queue_running = False; self.safe_ui(self.toggle_buttons, "normal")
+                # 🔻 A CORREÇÃO: Avisa a central para finalizar e remover o item defeituoso!
+                self.safe_ui(lambda: self._finish_task(is_conv, True, "0s", None))
             finally:
                 self.current_process = None; self.safe_ui(lambda: self.btn_cancel.setText("Cancel"))
         threading.Thread(target=worker, daemon=True).start()
@@ -1704,11 +1743,14 @@ class CopynDownApp(QMainWindow):
                 self.is_cancelling = False
 
     def open_folder(self):
-        p = os.path.expanduser(self.last_folder)
-        if not os.path.exists(p): os.makedirs(p)
-        if self.is_windows: os.startfile(os.path.realpath(p))
-        elif sys.platform == "darwin": subprocess.Popen(["open", p])
-        else: subprocess.Popen(["xdg-open", p])
+        try:
+            p = os.path.expanduser(self.last_folder)
+            if not os.path.exists(p): os.makedirs(p)
+            if self.is_windows: os.startfile(os.path.realpath(p))
+            elif sys.platform == "darwin": subprocess.Popen(["open", p])
+            else: subprocess.Popen(["xdg-open", p])
+        except Exception as e:
+            QMessageBox.critical(self, "Folder Error", f"Could not open or create output folder:\n{e}")
     
     def show_queue(self):
         # Restaura o cursor do botão que disparou o evento para evitar que trave como mãozinha
@@ -1736,8 +1778,9 @@ class CopynDownApp(QMainWindow):
         self.log_window.raise_()
 
     def show_settings(self): 
-        # Modal real usando .exec()
-        QTimer.singleShot(10, lambda: SettingsDialog(self).exec())
+        # 🔻 Salva no 'self' para a janela não ser devorada pelo Garbage Collector
+        self.settings_win = SettingsDialog(self)
+        QTimer.singleShot(10, self.settings_win.exec)
         
     def show_about(self): 
         btn = self.sender()
@@ -1786,17 +1829,22 @@ class CopynDownApp(QMainWindow):
                         QApplication.restoreOverrideCursor()
                             
                         if ans == QMessageBox.StandardButton.Yes:
-                            if dialog: dialog.accept()
+                            # 1º Ação Crítica: Inicia a thread de update PRIMEIRO
                             threading.Thread(target=self.do_update, daemon=True).start()
+                            # 2º Ação Visual: Tenta fechar o dialog (blindado)
+                            try:
+                                if dialog: dialog.accept()
+                            except RuntimeError: pass
                         else:
                             self.is_updating = False
-                            # 🔻 CORREÇÃO: Destrava as abas (is_busy = False) ANTES de resetar o status!
                             self.safe_ui(self.toggle_buttons, "normal") 
                             self.safe_ui(self.reset_status)
                             
-                            if btn: 
-                                btn.setEnabled(True)
-                                btn.setText("Check for updates")
+                            try:
+                                if btn: 
+                                    btn.setEnabled(True)
+                                    btn.setText("Check for updates")
+                            except RuntimeError: pass
                     self.safe_ui(ask)
                 else:
                     self.is_updating = False; self.safe_ui(self.reset_status)
@@ -1805,10 +1853,15 @@ class CopynDownApp(QMainWindow):
                         QMessageBox.information(self, "Up to date", "You are using the latest version.")
                         QApplication.restoreOverrideCursor()
                         
-                        if btn: 
-                            btn.setEnabled(True)
-                            btn.setText("Check for updates")
+                        # 1º Ação Crítica: Destrava o aplicativo PRIMEIRO
                         self.safe_ui(self.toggle_buttons, "normal")
+                        
+                        # 2º Ação Visual: Restaura o botão (blindado)
+                        try:
+                            if btn: 
+                                btn.setEnabled(True)
+                                btn.setText("Check for updates")
+                        except RuntimeError: pass
                         
                     self.safe_ui(show_info)
             except Exception as e:
