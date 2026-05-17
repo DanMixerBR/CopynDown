@@ -14,7 +14,7 @@ import ctypes
 
 import requests
 from PySide6.QtCore import Qt, QTimer, Signal, qInstallMessageHandler
-from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QImage, QPixmap
+from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QImage, QPixmap, QTextCursor
 
 def qt_message_handler(mode, context, message):
     if "QThreadStorage" not in message and "must be a top level window" not in message: 
@@ -47,8 +47,7 @@ THEMES = {
     },
     "light": {
         "bg": "#ffffff", "card": "#f0f2f5", "input": "#ffffff", "input2": "#e4e6eb",
-        "border": "#ccd0d5", "blue": "#2f74c4", "blue_hover": "#3b82f6", "blue_dark": "#1d4ed8",
-        # 🔻 "button" alterado para cinza claro
+        "border": "#ccd0d5", "blue": "#3ba1ff", "blue_hover": "#288ce6", "blue_dark": "#1d4ed8",
         "button": "#f0f2f5", "button_hover": "#e4e6eb", "combo_button": "#e4e6eb", 
         "text": "#1c1e21", "muted": "#606770", "muted2": "#8d949e", "danger": "#e11d48",
     }
@@ -89,8 +88,10 @@ QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}
 QPushButton:disabled {{ color: {COLORS['muted2']}; background-color: {COLORS['input2']}; }}
 QPushButton#primaryButton {{ background-color: {COLORS['blue']}; color: white; font-weight: 700; }}
 QPushButton#primaryButton:hover {{ background-color: {COLORS['blue_hover']}; }}
+QPushButton#primaryButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
+QPushButton#dangerButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
 QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: white; }}
-QPushButton#primaryButton:disabled, QPushButton#dangerButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
+QPushButton#dangerButton:disabled {{ background-color: {COLORS['input']}; color: {COLORS['muted2']}; }}
 QPushButton#browseButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
 QPushButton#browseButton:hover {{ background-color: {COLORS['blue_hover']}; color: white; }}
 QPushButton#pill {{ background-color: transparent; color: {COLORS['muted']}; border-radius: 18px; padding: 8px 12px; font-weight: 700; min-width: 82px; min-height: 19px; }}
@@ -101,13 +102,13 @@ QPushButton#smallFooter:hover {{ background-color: {COLORS['button_hover']}; }}
 QLineEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; border-radius: 4px; padding: 6px 8px; selection-background-color: {COLORS['blue']}; }}
 QLineEdit#mainEntry {{ border: none; background-color: transparent; padding-left: 13px; }}
 QComboBox {{ background-color: {COLORS['input']}; border: none; border-radius: 8px; padding: 8px 10px; min-height: 18px; }}
-QComboBox:hover {{ background-color: {COLORS['input2']}; }}
 QComboBox#cardCombo {{ background-color: {COLORS['card']}; }}
 QComboBox::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 34px; border: none; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background-color: {COLORS['combo_button']}; }}
+QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS['blue_hover']}; }}
 QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
-QComboBox::drop-down:hover {{ background-color: {COLORS['blue_hover']}; }}
 QComboBox QAbstractItemView {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; outline: 0; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
+QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else ""}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
 QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 5px; border: 2px solid {COLORS['muted']}; background-color: transparent; }}
 QCheckBox::indicator:hover {{ border-color: {COLORS['text']}; }}
@@ -242,39 +243,45 @@ class QueueDialog(QDialog):
             self.queue_layout.itemAt(i).widget().setParent(None)
 
         if not queue_data:
+            self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             empty = QLabel("Queue is empty."); empty.setObjectName("muted"); empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.queue_layout.addWidget(empty)
             return
+            
+        self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for index, task in enumerate(queue_data):
-            name = task.get("name", "Media Task")
-            if len(name) > 60: name = name[:57] + "..." 
+            full_name = task.get("name", "Media Task")
             is_active = (index == 0 and is_running)
             
+            limit = 48 if is_active else 57
+            name = full_name[:limit-3] + "..." if len(full_name) > limit else full_name
+            
             f = QFrame(); f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
+            f.setMinimumHeight(44)
             f_lay = QHBoxLayout(f)
             
             btn_up = QPushButton("▲"); btn_down = QPushButton("▼"); btn_remove = QPushButton("X")
             
+            # Cria a Label padrão de forma uniforme para todos
+            lbl = QLabel(f"{index+1}. {name}")
+            lbl.setMaximumWidth(365)
+            
             if is_active:
-                # 🔻 ESTAS DUAS LINHAS ESTAVAM FALTANDO! (Texto do download rodando)
-                prefix = "1. [Converting]" if task.get("is_convert") else "1. [Downloading]"
-                lbl = QLabel(f"{prefix} {name}") 
-                
                 btn_remove.setEnabled(False); btn_up.setEnabled(False); btn_down.setEnabled(False)
+                lbl.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLORS['blue']};")
             else:
-                # 🔻 ESTA LINHA ESTAVA FALTANDO! (Texto dos itens na fila)
-                lbl = QLabel(f"{index+1}. {name}")
-                
                 btn_remove.clicked.connect(lambda checked=False, i=index: self.main_app.remove_from_queue(i))
                 btn_up.setEnabled(index > (1 if is_running else 0)); btn_up.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, -1))
                 btn_down.setEnabled(index < len(queue_data)-1); btn_down.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, 1))
-
+                lbl.setStyleSheet("font-size: 13px;")
+            
             # Estilo com padding: 0px para o texto (X, ▲, ▼) caber no botão pequeno!
-            btn_style = f"QPushButton {{ background-color: {COLORS['button']}; color: white; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+            btn_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['button_hover']}; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
             btn_up.setStyleSheet(btn_style); btn_up.setFixedSize(30, 24)
             btn_down.setStyleSheet(btn_style); btn_down.setFixedSize(30, 24)
-            btn_remove.setStyleSheet(f"QPushButton {{ background-color: {COLORS['danger']}; color: white; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}")
+            btn_remove_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+            btn_remove.setStyleSheet(btn_remove_style)
             btn_remove.setFixedSize(30, 24)
             
             f_lay.addWidget(lbl, 1); f_lay.addWidget(btn_up); f_lay.addWidget(btn_down); f_lay.addWidget(btn_remove)
@@ -316,7 +323,7 @@ class LogsDialog(QDialog):
         
     def update_logs(self, log_list):
         self.text_box.setPlainText("\n".join(log_list) + "\n")
-        self.text_box.verticalScrollBar().setValue(self.text_box.verticalScrollBar().maximum())
+        self.text_box.moveCursor(QTextCursor.MoveOperation.End)
 
     def append_log(self, text):
         # Inserção inteligente: Apenas adiciona a nova linha no final, sem reescrever tudo
@@ -334,7 +341,7 @@ class ManualSelectionDialog(QDialog):
         super().__init__(parent)
         self.main_app = parent; self.url = url; self.base_cmd = base_cmd; self.out_tmpl = out_tmpl; self.allowed_formats = formats
         self.setWindowTitle("Manual Format Selection")
-        self.setFixedSize(750, 550)
+        self.setFixedSize(750, 630)
         self.setModal(True)
         self._set_icon()
         self._build_ui()
@@ -418,7 +425,7 @@ class ManualSelectionDialog(QDialog):
             scroll = QScrollArea(); scroll.setWidgetResizable(True)
             content = QWidget(); content.setStyleSheet("background-color: transparent;")
             scroll_lay = QVBoxLayout(content); scroll_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
-            rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
+            rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); rb_none.setStyleSheet("font-size: 13px; padding: 4px 0px;"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
             scroll.setWidget(content); lay.addWidget(scroll)
             return card, scroll_lay
 
@@ -437,12 +444,14 @@ class ManualSelectionDialog(QDialog):
 
             if vc == 'none' and ac != 'none':
                 rb = QRadioButton(f"ID: {fmt_id} | {ext.upper()} | {ac} | {size_str}")
+                rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
                 rb.setProperty("fmt_id", fmt_id); self.aud_group.addButton(rb); aud_lay.addWidget(rb)
             elif vc != 'none':
                 res = f.get('resolution', 'Unknown')
                 if res == 'Unknown': res = f"{f.get('width', '?')}x{f.get('height', '?')}"
                 t_note = "[Video+Audio]" if ac != 'none' else "[Video Only]"
                 rb = QRadioButton(f"ID: {fmt_id} | {res} | {ext.upper()} | {vc} {t_note} | {size_str}")
+                rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
                 rb.setProperty("fmt_id", fmt_id); self.vid_group.addButton(rb); vid_lay.addWidget(rb)
 
         lists_frame.addWidget(vid_card, 1); lists_frame.addWidget(aud_card, 1)
@@ -612,13 +621,13 @@ class SettingsDialog(QDialog):
 
     def _media_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
-        layout.addWidget(self._section("Embedding")); layout.addSpacing(6)
+        layout.addWidget(self._section("Embedding")); layout.addSpacing(12)
         
         self.cb_thumb = QCheckBox("Embed thumbnail (Cover art)"); self.cb_thumb.setChecked(self.cfg[self.main_app.TAB_VID].get("thumb", True))
         self.cb_meta = QCheckBox("Embed metadata (Artist, Title, etc)"); self.cb_meta.setChecked(self.cfg[self.main_app.TAB_AUD].get("meta", True))
         layout.addWidget(self.cb_thumb); layout.addSpacing(8); layout.addWidget(self.cb_meta)
         
-        layout.addSpacing(24); layout.addWidget(self._section("Subtitles")); layout.addSpacing(6)
+        layout.addSpacing(24); layout.addWidget(self._section("Subtitles")); layout.addSpacing(12)
         self.cb_native = QCheckBox("Download standard subtitles"); self.cb_native.setChecked(self.cfg[self.main_app.TAB_VID].get("native_subs", False))
         self.cb_auto_sub = QCheckBox("Download auto-generated subtitles"); self.cb_auto_sub.setChecked(self.cfg[self.main_app.TAB_VID].get("auto_subs", False))
         self.cb_embed = QCheckBox("Embed subtitles into video"); self.cb_embed.setChecked(self.cfg[self.main_app.TAB_VID].get("embed_subs", False))
@@ -633,7 +642,7 @@ class SettingsDialog(QDialog):
         lang_map = {"none": "None", "en": "English", "pt": "Portuguese", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "ja": "Japanese", "ko": "Korean", "ru": "Russian"}
         self.rev_map = {v: k for k, v in lang_map.items()}
         
-        layout.addSpacing(20); lang_row = QHBoxLayout(); lang_row.setSpacing(18)
+        layout.addSpacing(20); lang_row = QHBoxLayout(); lang_row.setSpacing(8)
         lang_col = QVBoxLayout(); lang_col.addWidget(QLabel("Original language:"))
         self.lang_combo = QComboBox(); self.lang_combo.addItems(list(lang_map.values())[1:]); self.lang_combo.setFixedWidth(140); self.lang_combo.setCurrentText(lang_map.get(self.cfg[self.main_app.TAB_VID].get("langs", "en"), "English"))
         lang_col.addWidget(self.lang_combo); lang_row.addLayout(lang_col)
@@ -671,8 +680,10 @@ class SettingsDialog(QDialog):
         
         layout.addSpacing(16); self.cb_cookies = QCheckBox("Use cookies file"); self.cb_cookies.setChecked(self.cfg["General"].get("use_cookies", True)); layout.addWidget(self.cb_cookies)
         
+        layout.addSpacing(20)
+        
         c_box = QFrame(); c_box.setObjectName("cookieBox"); c_box.setStyleSheet(f"QFrame#cookieBox {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
-        c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(15, 10, 15, 10); c_lay.setSpacing(8); c_lay.addWidget(self._section("Cookie Extraction Method"))
+        c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(0, 10, 15, 10); c_lay.setSpacing(12); c_lay.addWidget(self._section("Cookie Extraction Method"))
         
         r_row = QHBoxLayout()
         r_auto = QRadioButton("Auto-extract (Edge/Firefox/Brave)"); r_txt = QRadioButton("Import from text file"); r_auto.setChecked(True)
@@ -762,7 +773,7 @@ class SettingsDialog(QDialog):
         lbl = QLabel(text); lbl.setObjectName("sectionTitle"); return lbl
 
     def _path_row(self, parent_layout, label_text, path, is_dir, has_ext=False):
-        if label_text: parent_layout.addWidget(QLabel(label_text))
+        if label_text: parent_layout.addWidget(QLabel(label_text)); parent_layout.addSpacing(-8)
         row = QHBoxLayout(); edit = QLineEdit(path); edit.setReadOnly(True)
         btn = QPushButton("Browse"); btn.setObjectName("browseButton"); btn.setFixedWidth(75)
         
@@ -1285,6 +1296,11 @@ class CopynDownApp(QMainWindow):
         return base_cmd
 
     def handle_unified_download(self):
+        if self.switch_advanced.isChecked():
+            btn = self.sender()
+            if btn:
+                btn.setCursor(Qt.CursorShape.ArrowCursor)
+                QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         tab = self.current_category
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
@@ -1961,6 +1977,8 @@ class CopynDownApp(QMainWindow):
         event.accept(); os._exit(0)
 
 def main():
+    if sys.platform.startswith("linux"):
+        os.environ["QT_QPA_PLATFORMTHEME"] = "xdgdesktopportal"
     app = QApplication(sys.argv)
     app.setApplicationName("CopynDown")
     app.setStyleSheet(get_app_qss())
