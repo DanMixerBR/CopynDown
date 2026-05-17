@@ -129,6 +129,7 @@ QProgressBar {{ background-color: {COLORS['input']}; border: none; border-radius
 QProgressBar::chunk {{ background-color: {COLORS['blue']}; border-radius: 3px; }}
 QTextEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: none; border-radius: 6px; padding: 10px; font-family: Consolas; font-size: 11px; selection-background-color: {COLORS['blue']}; }}
 QScrollArea {{ border: none; background-color: transparent; }}
+QScrollArea#settingsScroll, QScrollArea#settingsScroll > QWidget, QScrollArea#settingsScroll > QWidget > QWidget, QStackedWidget#settingsStack, QStackedWidget#settingsStack > QWidget {{ background-color: {COLORS['card']}; border: none; }}
 QScrollBar:vertical {{ background-color: transparent; width: 10px; margin: 4px 0 4px 0; }}
 QScrollBar::handle:vertical {{ background-color: {COLORS['muted']}; border-radius: 5px; min-height: 30px; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
@@ -569,7 +570,7 @@ class SettingsDialog(QDialog):
         self.main_app = parent
         self.cfg = parent.config_data
         self.setWindowTitle("Settings")
-        self.setFixedSize(650, 650)
+        self.setFixedSize(650, 550)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setModal(True)
         self._set_icon()
@@ -592,8 +593,17 @@ class SettingsDialog(QDialog):
         card_layout = QVBoxLayout(card); card_layout.setContentsMargins(20, 10, 20, 20); card_layout.setSpacing(18)
 
         stack = QStackedWidget()
+        stack.setObjectName("settingsStack")
         tabs = SegmentedTabs(["General", "Media", "Conversion", "Network"], stack)
-        card_layout.addWidget(tabs); card_layout.addWidget(stack, 1)
+        
+        # 🔻 CRIA A SCROLL AREA (BARRA DE ROLAGEM)
+        scroll = QScrollArea()
+        scroll.setObjectName("settingsScroll")
+        scroll.setWidgetResizable(True) # Faz o conteúdo se adaptar à largura
+        scroll.setWidget(stack)         # Coloca as abas dentro da rolagem
+        
+        # Adiciona a Scroll Area no layout (em vez do stack direto)
+        card_layout.addWidget(tabs); card_layout.addWidget(scroll, 1)
 
         stack.addWidget(self._general_tab()); stack.addWidget(self._media_tab()); stack.addWidget(self._conversion_tab()); stack.addWidget(self._network_tab())
 
@@ -616,7 +626,7 @@ class SettingsDialog(QDialog):
         self.theme_combo = QComboBox(); self.theme_combo.addItems(["Dark", "Light"]); self.theme_combo.setFixedWidth(200)
         self.theme_combo.setCurrentText(CURRENT_THEME.capitalize()); theme_row.addWidget(self.theme_combo); theme_row.addStretch(1); layout.addLayout(theme_row)
         
-        layout.addSpacing(18); layout.addWidget(self._section("Outputs"))
+        layout.addSpacing(10); layout.addWidget(self._section("Outputs"))
         self.vid_path = self._path_row(layout, "Video output folder:", self.cfg["General"].get("video_path", "~/Videos/CopynDown"), True)
         self.aud_path = self._path_row(layout, "Audio output folder:", self.cfg["General"].get("audio_path", "~/Music/CopynDown"), True)
         
@@ -662,7 +672,7 @@ class SettingsDialog(QDialog):
 
     def _conversion_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
-        layout.addWidget(self._section("Conversion Profile")); layout.addSpacing(8)
+        layout.addWidget(self._section("Conversion Profile")); layout.addSpacing(12)
         
         self.prof_combo = QComboBox(); self.prof_combo.addItems(["High Quality", "Balanced", "Economy"])
         self.prof_combo.setFixedWidth(140); self.prof_combo.setCurrentText(self.cfg["General"].get("conv_profile", "High Quality"))
@@ -719,7 +729,7 @@ class SettingsDialog(QDialog):
 
     def _network_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
-        layout.addWidget(self._section("Network Options")); layout.addSpacing(8)
+        layout.addWidget(self._section("Network Options")); layout.addSpacing(12)
         
         row1 = QHBoxLayout(); row1.setSpacing(10); row1.addWidget(QLabel("Max retries:"))
         self.retries = QLineEdit(self.cfg["General"].get("max_retries", "10")); self.retries.setFixedWidth(60); row1.addWidget(self.retries); row1.addStretch(1); layout.addLayout(row1)
@@ -727,7 +737,7 @@ class SettingsDialog(QDialog):
         layout.addSpacing(10); row2 = QHBoxLayout(); row2.setSpacing(10); row2.addWidget(QLabel("Delay mode:"))
         self.delay = QComboBox(); self.delay.addItems(["None", "Playlist Only", "All Downloads"]); self.delay.setFixedWidth(140); self.delay.setCurrentText(self.cfg["General"].get("delay_mode", "Playlist Only")); row2.addWidget(self.delay); row2.addStretch(1); layout.addLayout(row2)
         
-        layout.addSpacing(8); row3 = QHBoxLayout(); row3.setSpacing(6)
+        layout.addSpacing(10); row3 = QHBoxLayout(); row3.setSpacing(6)
         row3.addWidget(QLabel("Sleep intervals (Sec):  Min")); self.s_min = QLineEdit(self.cfg["General"].get("sleep_min", "2")); self.s_min.setFixedWidth(40); row3.addWidget(self.s_min)
         row3.addWidget(QLabel("Max")); self.s_max = QLineEdit(self.cfg["General"].get("sleep_max", "5")); self.s_max.setFixedWidth(40); row3.addWidget(self.s_max)
         row3.addWidget(QLabel("Requests")); self.s_req = QLineEdit(self.cfg["General"].get("sleep_req", "1")); self.s_req.setFixedWidth(40); row3.addWidget(self.s_req); row3.addStretch(1); layout.addLayout(row3)
@@ -739,25 +749,27 @@ class SettingsDialog(QDialog):
         row4.addWidget(self.speed_combo); row4.addStretch(1); layout.addLayout(row4)
 
         # 🔻 PROXY
-        layout.addSpacing(6); self.cb_proxy = Switch("Use Proxy Server"); self.cb_proxy.setChecked(self.cfg["General"].get("use_proxy", False))
+        layout.addSpacing(10); self.cb_proxy = Switch("Use Proxy Server"); self.cb_proxy.setChecked(self.cfg["General"].get("use_proxy", False))
         layout.addWidget(self.cb_proxy)
+        
+        layout.addSpacing(10)
         
         self.proxy_entry = QLineEdit(self.cfg["General"].get("proxy_url", ""))
         self.proxy_entry.setPlaceholderText("http://ip:port or socks5://ip:port")
+        self.proxy_entry.setFixedWidth(350)
         self.proxy_entry.setEnabled(self.cb_proxy.isChecked()) # Começa ativado/desativado de acordo com a caixinha
         self.cb_proxy.toggled.connect(self.proxy_entry.setEnabled) # Trava/Destrava ao clicar
         layout.addWidget(self.proxy_entry)
         
-        layout.addSpacing(6)
+        layout.addSpacing(10)
         
         c_box = QFrame(); c_box.setObjectName("cookieBox"); c_box.setStyleSheet(f"QFrame#cookieBox {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
         c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(0, 10, 15, 10); c_lay.setSpacing(12)
         c_lay.addWidget(self._section("Cookies"))
-        
         self.cb_cookies = Switch("Use cookies file")
         self.cb_cookies.setChecked(self.cfg["General"].get("use_cookies", True))
         c_lay.addWidget(self.cb_cookies)
-        
+        c_lay.addSpacing(8)
         r_row = QHBoxLayout()
         r_auto = QRadioButton("Auto-extract (Edge/Firefox/Brave)"); r_txt = QRadioButton("Import from text file"); r_auto.setChecked(True)
         r_row.addWidget(r_auto); r_row.addSpacing(10); r_row.addWidget(r_txt); r_row.addStretch(1); c_lay.addLayout(r_row)
@@ -852,6 +864,7 @@ class SettingsDialog(QDialog):
     def _path_row(self, parent_layout, label_text, path, is_dir, has_ext=False):
         if label_text: parent_layout.addWidget(QLabel(label_text)); parent_layout.addSpacing(-8)
         row = QHBoxLayout(); edit = QLineEdit(path); edit.setReadOnly(True)
+        edit.setFixedWidth(350)
         btn = QPushButton("Browse"); btn.setObjectName("browseButton"); btn.setFixedWidth(75)
         
         def do_browse():
@@ -866,13 +879,14 @@ class SettingsDialog(QDialog):
                 edit.setText(p)
                 
         btn.clicked.connect(do_browse)
-        row.addWidget(edit, 1); row.addWidget(btn)
+        row.addWidget(edit); row.addWidget(btn)
         
         if has_ext:
             btn_ext = QPushButton("Get extension"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(110)
             btn_ext.clicked.connect(lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"))
             row.addWidget(btn_ext)
             
+        row.addStretch(1)
         parent_layout.addLayout(row)
         return edit
 
