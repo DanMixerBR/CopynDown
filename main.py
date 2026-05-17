@@ -103,6 +103,8 @@ QLineEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; borde
 QLineEdit#mainEntry {{ border: none; background-color: transparent; padding-left: 13px; }}
 QComboBox {{ background-color: {COLORS['input']}; border: none; border-radius: 8px; padding: 8px 10px; min-height: 18px; }}
 QComboBox#cardCombo {{ background-color: {COLORS['card']}; }}
+QComboBox:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
+QComboBox::drop-down:disabled {{ background-color: {COLORS['input2']}; }}
 QComboBox::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 34px; border: none; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background-color: {COLORS['combo_button']}; }}
 QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS['blue_hover']}; }}
 QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
@@ -408,11 +410,11 @@ class ManualSelectionDialog(QDialog):
         if data.get('thumbnail'):
             def fetch_img():
                 try:
-                    r = requests.get(data['thumbnail'], stream=True, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
-                    if r.status_code == 200:
-                        img = QImage()
-                        img.loadFromData(r.content)
-                        self.main_app.safe_ui(lambda: self.img_label.setPixmap(QPixmap.fromImage(img).scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)))
+                    with requests.get(data['thumbnail'], stream=True, timeout=5, headers={"User-Agent": "Mozilla/5.0"}) as r:
+                        if r.status_code == 200:
+                            img = QImage()
+                            img.loadFromData(r.content)
+                            self.main_app.safe_ui(lambda: self.img_label.setPixmap(QPixmap.fromImage(img).scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)))
                 except: pass
             threading.Thread(target=fetch_img, daemon=True).start()
 
@@ -587,7 +589,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(title)
 
         card = QFrame(); card.setObjectName("dialogCard"); layout.addWidget(card, 1)
-        card_layout = QVBoxLayout(card); card_layout.setContentsMargins(20, 16, 20, 20); card_layout.setSpacing(18)
+        card_layout = QVBoxLayout(card); card_layout.setContentsMargins(20, 10, 20, 20); card_layout.setSpacing(18)
 
         stack = QStackedWidget()
         tabs = SegmentedTabs(["General", "Media", "Conversion", "Network"], stack)
@@ -661,12 +663,59 @@ class SettingsDialog(QDialog):
     def _conversion_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
         layout.addWidget(self._section("Conversion Profile")); layout.addSpacing(8)
-        self.prof_combo = QComboBox(); self.prof_combo.addItems(["High Quality", "Balanced", "Economy"]); self.prof_combo.setFixedWidth(140); self.prof_combo.setCurrentText(self.cfg["General"].get("conv_profile", "High Quality"))
+        
+        self.prof_combo = QComboBox(); self.prof_combo.addItems(["High Quality", "Balanced", "Economy"])
+        self.prof_combo.setFixedWidth(140); self.prof_combo.setCurrentText(self.cfg["General"].get("conv_profile", "High Quality"))
         layout.addWidget(self.prof_combo, 0, Qt.AlignmentFlag.AlignLeft)
         
         layout.addSpacing(14)
         legend = QLabel("• High Quality: Visually lossless. Ideal for archiving, but generates\n  larger files.\n\n• Balanced: The sweet spot. Excellent quality with optimized file size.\n\n• Economy: Maximum compression. Generates the smallest files while\n  keeping good quality."); legend.setObjectName("muted"); legend.setWordWrap(True)
-        layout.addWidget(legend); layout.addStretch(1); return w
+        layout.addWidget(legend)
+
+        layout.addSpacing(20)
+        
+        # 🔻 NOVA SEÇÃO: CUSTOM PROFILE
+        c_box = QFrame(); c_box.setStyleSheet(f"QFrame {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
+        c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(0, 10, 15, 15); c_lay.setSpacing(10)
+        
+        self.cb_custom = Switch("Enable custom profile")
+        self.cb_custom.setChecked(self.cfg["General"].get("custom_profile", False))
+        c_lay.addWidget(self.cb_custom); c_lay.addSpacing(5)
+        
+        # Grid para alinhar os campos direitinho
+        grid = QGridLayout(); grid.setContentsMargins(0, 0, 0, 0); grid.setHorizontalSpacing(15); grid.setVerticalSpacing(10)
+        
+        grid.setColumnStretch(2, 1)
+        
+        grid.addWidget(QLabel("CRF Value (0-51):"), 0, 0)
+        self.crf_entry = QLineEdit(self.cfg["General"].get("custom_crf", "18")); self.crf_entry.setFixedWidth(60)
+        grid.addWidget(self.crf_entry, 0, 1, Qt.AlignmentFlag.AlignLeft)
+        
+        grid.addWidget(QLabel("Preset (H.264/H.265):"), 1, 0)
+        self.preset_combo = QComboBox(); self.preset_combo.addItems(["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"])
+        self.preset_combo.setCurrentText(self.cfg["General"].get("custom_preset", "faster"))
+        grid.addWidget(self.preset_combo, 1, 1)
+        
+        grid.addWidget(QLabel("CPU-Used (VP9):"), 2, 0)
+        self.cpu_combo = QComboBox(); self.cpu_combo.addItems(["0", "1", "2", "3", "4", "5"])
+        self.cpu_combo.setCurrentText(self.cfg["General"].get("custom_cpu_used", "4"))
+        grid.addWidget(self.cpu_combo, 2, 1)
+        
+        c_lay.addLayout(grid)
+        layout.addWidget(c_box)
+
+        # 🔻 Lógica de Ativar/Desativar os menus cruzados
+        def toggle_custom_profile():
+            is_custom = self.cb_custom.isChecked()
+            self.prof_combo.setEnabled(not is_custom) # Escurece o perfil padrão
+            self.crf_entry.setEnabled(is_custom)      # Acende o CRF
+            self.preset_combo.setEnabled(is_custom)   # Acende o Preset
+            self.cpu_combo.setEnabled(is_custom)      # Acende o CPU-Used
+            
+        self.cb_custom.toggled.connect(toggle_custom_profile)
+        toggle_custom_profile() # Chama uma vez para configurar o estado inicial
+        
+        layout.addStretch(1); return w
 
     def _network_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
@@ -683,12 +732,31 @@ class SettingsDialog(QDialog):
         row3.addWidget(QLabel("Max")); self.s_max = QLineEdit(self.cfg["General"].get("sleep_max", "5")); self.s_max.setFixedWidth(40); row3.addWidget(self.s_max)
         row3.addWidget(QLabel("Requests")); self.s_req = QLineEdit(self.cfg["General"].get("sleep_req", "1")); self.s_req.setFixedWidth(40); row3.addWidget(self.s_req); row3.addStretch(1); layout.addLayout(row3)
         
-        layout.addSpacing(16); self.cb_cookies = QCheckBox("Use cookies file"); self.cb_cookies.setChecked(self.cfg["General"].get("use_cookies", True)); layout.addWidget(self.cb_cookies)
+        # 🔻 LIMITADOR DE VELOCIDADE
+        layout.addSpacing(10); row4 = QHBoxLayout(); row4.setSpacing(10); row4.addWidget(QLabel("Speed limit:"))
+        self.speed_combo = QComboBox(); self.speed_combo.addItems(["Unlimited", "1 MB/s", "5 MB/s", "10 MB/s", "25 MB/s", "50 MB/s"])
+        self.speed_combo.setFixedWidth(140); self.speed_combo.setCurrentText(self.cfg["General"].get("speed_limit", "Unlimited"))
+        row4.addWidget(self.speed_combo); row4.addStretch(1); layout.addLayout(row4)
+
+        # 🔻 PROXY
+        layout.addSpacing(6); self.cb_proxy = Switch("Use Proxy Server"); self.cb_proxy.setChecked(self.cfg["General"].get("use_proxy", False))
+        layout.addWidget(self.cb_proxy)
         
-        layout.addSpacing(20)
+        self.proxy_entry = QLineEdit(self.cfg["General"].get("proxy_url", ""))
+        self.proxy_entry.setPlaceholderText("http://ip:port or socks5://ip:port")
+        self.proxy_entry.setEnabled(self.cb_proxy.isChecked()) # Começa ativado/desativado de acordo com a caixinha
+        self.cb_proxy.toggled.connect(self.proxy_entry.setEnabled) # Trava/Destrava ao clicar
+        layout.addWidget(self.proxy_entry)
+        
+        layout.addSpacing(6)
         
         c_box = QFrame(); c_box.setObjectName("cookieBox"); c_box.setStyleSheet(f"QFrame#cookieBox {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
-        c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(0, 10, 15, 10); c_lay.setSpacing(12); c_lay.addWidget(self._section("Cookie Extraction Method"))
+        c_lay = QVBoxLayout(c_box); c_lay.setContentsMargins(0, 10, 15, 10); c_lay.setSpacing(12)
+        c_lay.addWidget(self._section("Cookies"))
+        
+        self.cb_cookies = Switch("Use cookies file")
+        self.cb_cookies.setChecked(self.cfg["General"].get("use_cookies", True))
+        c_lay.addWidget(self.cb_cookies)
         
         r_row = QHBoxLayout()
         r_auto = QRadioButton("Auto-extract (Edge/Firefox/Brave)"); r_txt = QRadioButton("Import from text file"); r_auto.setChecked(True)
@@ -774,7 +842,9 @@ class SettingsDialog(QDialog):
         
         stack.addWidget(p_auto); stack.addWidget(p_txt); c_lay.addWidget(stack)
         r_auto.toggled.connect(lambda c: stack.setCurrentIndex(0) if c else None); r_txt.toggled.connect(lambda c: stack.setCurrentIndex(1) if c else None)
-        layout.addWidget(c_box); layout.addStretch(1); return w
+        layout.addWidget(c_box)
+        layout.addStretch(1)
+        return w
 
     def _section(self, text):
         lbl = QLabel(text); lbl.setObjectName("sectionTitle"); return lbl
@@ -816,6 +886,12 @@ class SettingsDialog(QDialog):
         self.prof_combo.setCurrentText("High Quality"); self.tmpl_combo.setCurrentText("Title (Default)")
         self.delay.setCurrentText("Playlist Only")
         self.retries.setText("10"); self.s_min.setText("2"); self.s_max.setText("5"); self.s_req.setText("1")
+        self.speed_combo.setCurrentText("Unlimited")
+        self.cb_proxy.setChecked(False); self.proxy_entry.setText("")
+        self.cb_custom.setChecked(False)
+        self.crf_entry.setText("18")
+        self.preset_combo.setCurrentText("faster")
+        self.cpu_combo.setCurrentText("4")
 
     def save_settings(self):
         global CURRENT_THEME, COLORS
@@ -826,7 +902,14 @@ class SettingsDialog(QDialog):
             "prefer_video": self.cb_prefer.isChecked(), "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
             "delay_mode": self.delay.currentText(), "sleep_min": self.s_min.text(), "sleep_max": self.s_max.text(), "sleep_req": self.s_req.text(),
             "conv_profile": self.prof_combo.currentText(),
-            "theme": sel_theme
+            "speed_limit": self.speed_combo.currentText(),
+            "use_proxy": self.cb_proxy.isChecked(),
+            "proxy_url": self.proxy_entry.text(),
+            "theme": sel_theme,
+            "custom_profile": self.cb_custom.isChecked(),
+            "custom_crf": self.crf_entry.text(),
+            "custom_preset": self.preset_combo.currentText(),
+            "custom_cpu_used": self.cpu_combo.currentText()
         })
         self.cfg[self.main_app.TAB_VID].update({
             "thumb": self.cb_thumb.isChecked(), "native_subs": self.cb_native.isChecked(), "auto_subs": self.cb_auto_sub.isChecked(),
@@ -895,7 +978,14 @@ class CopynDownApp(QMainWindow):
         self.full_logs_list = ["--- Program Logs ---"]
 
         self.config_data = {
-            "General": { "auto_paste": True, "use_cookies": True, "cookies_path": self.cookies_path_default, "hide_options": False, "video_path": "~/Videos/CopynDown", "audio_path": "~/Music/CopynDown", "prefer_video": False, "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality" },
+            "General": { 
+                "auto_paste": True, "use_cookies": True, "cookies_path": self.cookies_path_default, "hide_options": False, 
+                "video_path": "~/Videos/CopynDown", "audio_path": "~/Music/CopynDown", "prefer_video": False, 
+                "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", 
+                "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality",
+                "custom_profile": False, "custom_crf": "18", "custom_preset": "faster", "custom_cpu_used": "4",
+                "speed_limit": "Unlimited", "use_proxy": False, "proxy_url": ""                
+            },
             self.TAB_VID: {"thumb": True, "meta": False, "native_subs": False, "auto_subs": False, "embed_subs": False, "langs": "en", "trans_langs": "none"},
             self.TAB_AUD: {"thumb": True, "meta": True}
         }
@@ -1017,7 +1107,7 @@ class CopynDownApp(QMainWindow):
         self.switch_advanced = Switch("Advanced selection")
         self.switch_advanced.clicked.connect(self.on_advanced_toggle)
         self.switch_extract_audio = Switch("Extract original audio")
-        self.switch_extract_audio.clicked.connect(self.on_extract_audio_toggle)
+        self.switch_extract_audio.toggled.connect(self.on_extract_audio_toggle)
         switches_layout.addWidget(self.switch_advanced, 0, Qt.AlignmentFlag.AlignLeft)
         switches_layout.addWidget(self.switch_extract_audio, 0, Qt.AlignmentFlag.AlignLeft)
         card_layout.addWidget(switches_container)
@@ -1059,6 +1149,7 @@ class CopynDownApp(QMainWindow):
         if current: combo.setCurrentText(current)
 
     def select_tab(self, tab):
+        self.switch_extract_audio.setChecked(False)
         self.current_category = tab
         for k, v in self.tab_buttons.items(): v.setChecked(k == tab)
         
@@ -1307,6 +1398,12 @@ class CopynDownApp(QMainWindow):
                 elif not silent: self.safe_ui(self.add_to_log, ">>> Warning: Cookies.txt file not found or empty. Continuing without cookies.")
             except Exception as e:
                 if not silent: self.safe_ui(self.add_to_log, f">>> Warning: Error verifying cookies.txt ({e}). Continuing without cookies.")
+        
+        if gen_cfg.get("use_proxy", False):
+            proxy_url = gen_cfg.get("proxy_url", "").strip()
+            if proxy_url:
+                cmd.extend(["--proxy", proxy_url])
+        
         if is_json: cmd.append("-J")
         else:
             cmd.append("--newline"); cmd.extend(["--retries", str(gen_cfg.get("max_retries", "10"))])
@@ -1314,6 +1411,10 @@ class CopynDownApp(QMainWindow):
             delay = gen_cfg.get("delay_mode", "Playlist Only")
             apply = (delay == "All Downloads") or (delay == "Playlist Only" and "list=" in url.lower())
             if apply: cmd.extend(["--sleep-interval", str(gen_cfg.get("sleep_min", "2")), "--max-sleep-interval", str(gen_cfg.get("sleep_max", "5")), "--sleep-requests", str(gen_cfg.get("sleep_req", "1"))])
+            speed_map = {"1 MB/s": "1M", "5 MB/s": "5M", "10 MB/s": "10M", "25 MB/s": "25M", "50 MB/s": "50M"}
+            speed_choice = gen_cfg.get("speed_limit", "Unlimited")
+            if speed_choice in speed_map:
+                cmd.extend(["--limit-rate", speed_map[speed_choice]])
         return cmd
 
     def add_subtitle_args(self, base_cmd, cfg):
@@ -1452,7 +1553,7 @@ class CopynDownApp(QMainWindow):
                 self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please check your 'bin' folder.")
                 return
         cmd = [ff_exe, "-y", "-i", src]
-        pending_logs = [] # 👈 O BAÚ DE LOGS
+        pending_logs = []
 
         if is_vid:
             vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
@@ -1508,16 +1609,27 @@ class CopynDownApp(QMainWindow):
                         ac = "aac"
                         pending_logs.append(f"[Auto-Fix] Forced AAC audio to safely put WEBM/MKV into {e_fin.upper()}.")
             
-            prof = gen_cfg.get("conv_profile", "High Quality")
-            crf = "18" if prof == "High Quality" else ("20" if prof == "Balanced" else "22")
+            # 🔻 LÓGICA DOS PERFIS (Padrão vs Custom)
+            is_custom = gen_cfg.get("custom_profile", False)
+            
+            if is_custom:
+                crf = gen_cfg.get("custom_crf", "18")
+                v_preset = gen_cfg.get("custom_preset", "faster")
+                v_cpu = gen_cfg.get("custom_cpu_used", "4")
+            else:
+                prof = gen_cfg.get("conv_profile", "High Quality")
+                crf = "18" if prof == "High Quality" else ("20" if prof == "Balanced" else "22")
+                v_preset = "faster"
+                v_cpu = "4"
             
             if vc == "none": cmd.append("-vn")
             else:
                 cmd.extend(["-c:v", vc])
                 if sf: cmd.extend(["-vf", sf])
-                if vc == "libvpx-vp9": cmd.extend(["-crf", crf, "-b:v", "0", "-row-mt", "1", "-cpu-used", "4"])
-                elif vc == "libx264": cmd.extend(["-crf", crf, "-preset", "faster", "-pix_fmt", "yuv420p"])
-                elif vc == "libx265": cmd.extend(["-crf", crf, "-preset", "faster", "-tag:v", "hvc1"])
+                
+                if vc == "libvpx-vp9": cmd.extend(["-crf", crf, "-b:v", "0", "-row-mt", "1", "-cpu-used", v_cpu])
+                elif vc == "libx264": cmd.extend(["-crf", crf, "-preset", v_preset, "-pix_fmt", "yuv420p"])
+                elif vc == "libx265": cmd.extend(["-crf", crf, "-preset", v_preset, "-tag:v", "hvc1"])
                 elif vc != "copy": cmd.extend(["-crf", crf])
 
             if ac == "none": cmd.append("-an")
@@ -1561,7 +1673,7 @@ class CopynDownApp(QMainWindow):
                 if sr != "Original" and ac != "copy": cmd.extend(["-ar", sr.replace(" Hz", "")])
                 if ch != "Original" and ac != "copy": cmd.extend(["-ac", "2" if "Stereo" in ch else "1"])
         
-        cmd.append(dst); self.run_command(cmd, base, pending_logs) # 👈 Passa os logs para a fila
+        cmd.append(dst); self.run_command(cmd, base, pending_logs)
 
     def run_command(self, cmd, task_name="Media Task", task_logs=None):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
@@ -1584,7 +1696,7 @@ class CopynDownApp(QMainWindow):
         if not is_conv and task_name.startswith("http"):
             def fetch_title():
                 try:
-                    t_cmd = self.build_base_cmd(True, True) + ["--flat-playlist", "--no-warnings", "--playlist-items", "1", task_name]
+                    t_cmd = self.build_base_cmd(is_json=True, silent=True) + ["--flat-playlist", "--no-warnings", "--playlist-items", "1", task_name]
                     res = subprocess.run(t_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
                     if res.returncode == 0:
                         info = json.loads(res.stdout.strip())
@@ -1691,7 +1803,11 @@ class CopynDownApp(QMainWindow):
         def worker():
             err = False
             try:
-                self.current_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
+                kwargs = {'startupinfo': self.startupinfo}
+                if not self.is_windows:
+                    kwargs['preexec_fn'] = os.setsid
+
+                self.current_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8', errors='replace', **kwargs)
                 for line in self.current_process.stdout:
                     c = line.strip()
                     if c:
@@ -1729,15 +1845,18 @@ class CopynDownApp(QMainWindow):
         threading.Thread(target=worker, daemon=True).start()
 
     def cancel_download(self):
-        if self.current_process and not self.is_cancelling:
+        proc = self.current_process
+        if proc and not self.is_cancelling:
             self.btn_cancel.setEnabled(False); self.btn_cancel.setText("Cancelling...")
             self.is_cancelling = True; self.add_to_log(">>> Attempting to force close process...")
             try:
-                if self.is_windows: 
-                    res = subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.current_process.pid)], capture_output=True, text=True, encoding='oem', errors='replace', startupinfo=self.startupinfo)
+                if self.is_windows:
+                    res = subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True, text=True, encoding='oem', errors='replace', startupinfo=self.startupinfo, timeout=3)
                     if res.stdout: self.add_to_log(res.stdout.strip())
                     if res.stderr: self.add_to_log(res.stderr.strip())
-                else: self.current_process.terminate()
+                else: 
+                    import signal
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except Exception as e: 
                 self.add_to_log(f">>> Failed to close process: {e}")
                 self.is_cancelling = False
@@ -1780,7 +1899,7 @@ class CopynDownApp(QMainWindow):
     def show_settings(self): 
         # 🔻 Salva no 'self' para a janela não ser devorada pelo Garbage Collector
         self.settings_win = SettingsDialog(self)
-        QTimer.singleShot(10, self.settings_win.exec)
+        self.settings_win.exec()
         
     def show_about(self): 
         btn = self.sender()
@@ -1802,14 +1921,20 @@ class CopynDownApp(QMainWindow):
                 if line.strip(): self.safe_ui(self.add_to_log, f"[yt-dlp update] {line.strip()}")
             p.wait()
         except Exception as e: self.safe_ui(self.add_to_log, f"ERROR: {e}")
-        finally: self.safe_ui(self.toggle_buttons, "normal"); self.safe_ui(self.reset_status)
+        finally: 
+            def restore_ui():
+                if not self.is_queue_running:
+                    self.toggle_buttons("normal")
+                    self.reset_status()
+            self.safe_ui(restore_ui)
 
     def get_local_version(self):
         if os.path.exists(self.version_file):
             try:
-                with open(self.version_file, "r", encoding='utf-8') as f: return f.read().strip()
-            except Exception as e:
-                self.add_to_log(f">>> Warning: Failed to read version.txt: {e}")
+                with open(self.version_file, "r", encoding='utf-8') as f: 
+                    return f.read().strip()
+            except Exception:
+                pass
         return "Unknown"
 
     def start_github_update(self, btn=None, dialog=None):
@@ -2022,10 +2147,14 @@ class CopynDownApp(QMainWindow):
             self.safe_ui(show_err)
 
     def closeEvent(self, event):
-        if self.current_process:
+        proc = self.current_process
+        if proc:
             try:
-                if self.is_windows: subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.current_process.pid)], capture_output=True, startupinfo=self.startupinfo)
-                else: self.current_process.terminate()
+                if self.is_windows: 
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True, startupinfo=self.startupinfo, timeout=2)
+                else: 
+                    import signal
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except: pass
         event.accept(); os._exit(0)
 
