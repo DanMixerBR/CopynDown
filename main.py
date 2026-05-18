@@ -1469,6 +1469,11 @@ class CopynDownApp(QMainWindow):
         return base_cmd
 
     def handle_unified_download(self):
+        if self.switch_advanced.isChecked():
+            btn = self.sender()
+            if btn:
+                btn.setCursor(Qt.CursorShape.ArrowCursor)
+                QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         tab = self.current_category
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
