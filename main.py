@@ -77,6 +77,16 @@ def set_app_icon(app):
             app.setWindowIcon(QIcon(icon_path))
             break
 
+def apply_ui_ux_cursors(window):
+    target_classes = [QPushButton, QComboBox, QCheckBox, QRadioButton]
+
+    for widget_class in target_classes:
+        for widget in window.findChildren(widget_class):
+            if widget.objectName() == "smallFooter":
+                widget.setCursor(Qt.CursorShape.ArrowCursor)
+            else:
+                widget.setCursor(Qt.CursorShape.PointingHandCursor)
+
 def get_app_qss():
     return f"""
 * {{ font-family: 'Segoe UI'; color: {COLORS['text']}; outline: none; }}
@@ -238,6 +248,8 @@ class QueueDialog(QDialog):
         clear.clicked.connect(self.main_app.clear_entire_queue)
         bottom.addStretch(1); bottom.addWidget(clear)
         layout.addLayout(bottom)
+        
+        apply_ui_ux_cursors(self)
 
     def update_list(self, queue_data, is_running):
         self.setUpdatesEnabled(False)
@@ -339,6 +351,8 @@ class LogsDialog(QDialog):
         copy = QPushButton("Copy all"); copy.setObjectName("primaryButton"); copy.setFixedWidth(100); copy.clicked.connect(self.main_app.copy_logs)
         row.addWidget(clear); row.addWidget(copy); row.addStretch(1)
         layout.addLayout(row)
+        
+        apply_ui_ux_cursors(self)
         
     def update_logs(self, log_list):
         self.text_box.setPlainText("\n".join(log_list) + "\n")
@@ -489,6 +503,8 @@ class ManualSelectionDialog(QDialog):
         
         self.content_layout.addLayout(footer)
         self.stack.setCurrentIndex(1)
+        
+        apply_ui_ux_cursors(self)
 
     def start_download(self):
         vid = self.vid_group.checkedButton().property("fmt_id") if self.vid_group.checkedButton() else None
@@ -574,6 +590,8 @@ class AboutDialog(QDialog):
         
         bottom.addWidget(github); bottom.addSpacing(16); bottom.addWidget(self.update_btn); bottom.addStretch(1)
         layout.addLayout(bottom)
+        
+        apply_ui_ux_cursors(self)
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -616,6 +634,8 @@ class SettingsDialog(QDialog):
         save = QPushButton("Save settings"); save.setObjectName("primaryButton"); save.setFixedWidth(140); save.clicked.connect(self.save_settings)
         bottom.addWidget(restore); bottom.addStretch(1); bottom.addWidget(save)
         layout.addLayout(bottom)
+        
+        apply_ui_ux_cursors(self)
 
     def _general_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(12)
@@ -1151,6 +1171,8 @@ class CopynDownApp(QMainWindow):
         self.logs_btn = self._footer_btn("📄 View logs", 105); self.logs_btn.clicked.connect(self.show_logs)
         self.about_btn = self._footer_btn("ℹ About", 80); self.about_btn.clicked.connect(self.show_about)
         footer.addWidget(self.open_btn); footer.addWidget(self.queue_btn); footer.addStretch(1); footer.addWidget(self.logs_btn); footer.addWidget(self.about_btn)
+        
+        apply_ui_ux_cursors(self)
 
     def _field(self, label_text, values):
         label = QLabel(label_text); label.setObjectName("fieldLabel")
@@ -1158,7 +1180,10 @@ class CopynDownApp(QMainWindow):
         return label, combo
 
     def _footer_btn(self, text, width):
-        btn = QPushButton(text); btn.setObjectName("smallFooter"); btn.setFixedWidth(width); btn.setCursor(Qt.CursorShape.PointingHandCursor); return btn
+        btn = QPushButton(text)
+        btn.setObjectName("smallFooter")
+        btn.setFixedWidth(width)
+        return btn
 
     def set_combo(self, combo, values, current=None):
         combo.clear(); combo.addItems(values)
@@ -1444,11 +1469,6 @@ class CopynDownApp(QMainWindow):
         return base_cmd
 
     def handle_unified_download(self):
-        if self.switch_advanced.isChecked():
-            btn = self.sender()
-            if btn:
-                btn.setCursor(Qt.CursorShape.ArrowCursor)
-                QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         tab = self.current_category
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
@@ -1893,24 +1913,12 @@ class CopynDownApp(QMainWindow):
             QMessageBox.critical(self, "Folder Error", f"Could not open or create output folder:\n{e}")
     
     def show_queue(self):
-        # Restaura o cursor do botão que disparou o evento para evitar que trave como mãozinha
-        btn = self.sender()
-        if btn:
-            btn.setCursor(Qt.CursorShape.ArrowCursor)
-            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
-            
         if not getattr(self, 'queue_window', None): self.queue_window = QueueDialog(self)
         self.queue_window.show()
         self.queue_window.raise_()
         self.update_queue_ui()
 
     def show_logs(self):
-        # Restaura o cursor do botão que disparou o evento para evitar que trave como mãozinha
-        btn = self.sender()
-        if btn:
-            btn.setCursor(Qt.CursorShape.ArrowCursor)
-            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
-            
         if not getattr(self, 'log_window', None): 
             self.log_window = LogsDialog(self)
             self.log_window.update_logs(self.full_logs_list)
@@ -1923,11 +1931,6 @@ class CopynDownApp(QMainWindow):
         self.settings_win.exec()
         
     def show_about(self): 
-        btn = self.sender()
-        if btn:
-            btn.setCursor(Qt.CursorShape.ArrowCursor)
-            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
-            
         self.about_win = AboutDialog(self)
         self.about_win.exec()
 
