@@ -1093,7 +1093,7 @@ class CopynDownApp(QMainWindow):
             btn.clicked.connect(lambda checked=False, name=tab: self.select_tab(name))
             nav_layout.addWidget(btn); self.tab_buttons[tab] = btn
 
-        settings_btn = QPushButton("⚙ Settings"); settings_btn.setObjectName("smallFooter"); settings_btn.setFixedWidth(100)
+        settings_btn = self._footer_btn("⚙ Settings", 100)
         settings_btn.clicked.connect(self.show_settings); top_bar.addWidget(settings_btn, 0, Qt.AlignmentFlag.AlignRight)
 
         self.main_card = QFrame(); self.main_card.setObjectName("mainCard")
