@@ -423,6 +423,7 @@ class ManualSelectionDialog(QDialog):
         threading.Thread(target=task, daemon=True).start()
 
     def handle_error(self, msg):
+        self.main_app.add_to_log(f"ERROR: {msg}")
         QMessageBox.critical(self, "Error", f"Failed to fetch data:\n{msg}")
         self.reject()
 
@@ -2008,16 +2009,15 @@ class CopynDownApp(QMainWindow):
                             except RuntimeError: pass
                     self.safe_ui(ask)
                 else:
-                    self.is_updating = False; self.safe_ui(self.reset_status)
+                    self.is_updating = False
+                    self.safe_ui(self.toggle_buttons, "normal")
+                    self.safe_ui(self.reset_status)
                     def show_info():
                         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
                         QMessageBox.information(self, "Up to date", "You are using the latest version.")
                         QApplication.restoreOverrideCursor()
-                        
-                        # 1º Ação Crítica: Destrava o aplicativo PRIMEIRO
-                        self.safe_ui(self.toggle_buttons, "normal")
-                        
-                        # 2º Ação Visual: Restaura o botão (blindado)
+
+                        # Restaura o botão (blindado)
                         try:
                             if btn: 
                                 btn.setEnabled(True)
