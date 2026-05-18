@@ -78,11 +78,14 @@ def set_app_icon(app):
             break
 
 def apply_ui_ux_cursors(window):
-    target_classes = [QPushButton, QComboBox, QCheckBox, QRadioButton]
-
-    for widget_class in target_classes:
+    for widget_class in [QPushButton, QComboBox]:
         for widget in window.findChildren(widget_class):
             widget.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    for widget_class in [QCheckBox, QRadioButton]:
+        for widget in window.findChildren(widget_class):
+            widget.setCursor(Qt.CursorShape.PointingHandCursor)
+            widget.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
 
 def get_app_qss():
     return f"""
