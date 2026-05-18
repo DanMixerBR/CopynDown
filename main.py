@@ -1470,10 +1470,7 @@ class CopynDownApp(QMainWindow):
 
     def handle_unified_download(self):
         if self.switch_advanced.isChecked():
-            btn = self.sender()
-            if btn:
-                btn.setCursor(Qt.CursorShape.ArrowCursor)
-                QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
+            self.fix_ghost_cursor()
         tab = self.current_category
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
@@ -1916,22 +1913,23 @@ class CopynDownApp(QMainWindow):
             else: subprocess.Popen(["xdg-open", p])
         except Exception as e:
             QMessageBox.critical(self, "Folder Error", f"Could not open or create output folder:\n{e}")
-    
-    def show_queue(self):
+
+    def fix_ghost_cursor(self):
+        # Resolve o bug do cursor travado ao abrir janelas modais
         btn = self.sender()
         if btn:
             btn.setCursor(Qt.CursorShape.ArrowCursor)
             QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
+    
+    def show_queue(self):
+        self.fix_ghost_cursor()
         if not getattr(self, 'queue_window', None): self.queue_window = QueueDialog(self)
         self.queue_window.show()
         self.queue_window.raise_()
         self.update_queue_ui()
 
     def show_logs(self):
-        btn = self.sender()
-        if btn:
-            btn.setCursor(Qt.CursorShape.ArrowCursor)
-            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
+        self.fix_ghost_cursor()
         if not getattr(self, 'log_window', None): 
             self.log_window = LogsDialog(self)
             self.log_window.update_logs(self.full_logs_list)
@@ -1939,15 +1937,12 @@ class CopynDownApp(QMainWindow):
         self.log_window.raise_()
 
     def show_settings(self): 
-        # 🔻 Salva no 'self' para a janela não ser devorada pelo Garbage Collector
+        self.fix_ghost_cursor()
         self.settings_win = SettingsDialog(self)
         self.settings_win.exec()
         
     def show_about(self): 
-        btn = self.sender()
-        if btn:
-            btn.setCursor(Qt.CursorShape.ArrowCursor)
-            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
+        self.fix_ghost_cursor()
         self.about_win = AboutDialog(self)
         self.about_win.exec()
 
