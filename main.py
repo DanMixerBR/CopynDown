@@ -82,10 +82,7 @@ def apply_ui_ux_cursors(window):
 
     for widget_class in target_classes:
         for widget in window.findChildren(widget_class):
-            if widget.objectName() == "smallFooter":
-                widget.setCursor(Qt.CursorShape.ArrowCursor)
-            else:
-                widget.setCursor(Qt.CursorShape.PointingHandCursor)
+            widget.setCursor(Qt.CursorShape.PointingHandCursor)
 
 def get_app_qss():
     return f"""
@@ -1918,12 +1915,20 @@ class CopynDownApp(QMainWindow):
             QMessageBox.critical(self, "Folder Error", f"Could not open or create output folder:\n{e}")
     
     def show_queue(self):
+        btn = self.sender()
+        if btn:
+            btn.setCursor(Qt.CursorShape.ArrowCursor)
+            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         if not getattr(self, 'queue_window', None): self.queue_window = QueueDialog(self)
         self.queue_window.show()
         self.queue_window.raise_()
         self.update_queue_ui()
 
     def show_logs(self):
+        btn = self.sender()
+        if btn:
+            btn.setCursor(Qt.CursorShape.ArrowCursor)
+            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         if not getattr(self, 'log_window', None): 
             self.log_window = LogsDialog(self)
             self.log_window.update_logs(self.full_logs_list)
@@ -1936,6 +1941,10 @@ class CopynDownApp(QMainWindow):
         self.settings_win.exec()
         
     def show_about(self): 
+        btn = self.sender()
+        if btn:
+            btn.setCursor(Qt.CursorShape.ArrowCursor)
+            QTimer.singleShot(300, lambda: btn.setCursor(Qt.CursorShape.PointingHandCursor) if btn else None)
         self.about_win = AboutDialog(self)
         self.about_win.exec()
 
