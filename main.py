@@ -1,9 +1,7 @@
 import hashlib
-import io
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -17,7 +15,7 @@ from PySide6.QtCore import Qt, QTimer, Signal, qInstallMessageHandler
 from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QImage, QPixmap, QTextCursor
 
 def qt_message_handler(mode, context, message):
-    if "QThreadStorage" not in message and "must be a top level window" not in message: 
+    if "QThreadStorage" not in message: 
         sys.stdout.write(f"{message}\n")
 qInstallMessageHandler(qt_message_handler)
 
@@ -72,6 +70,12 @@ def center_window(window):
     frame_geo = window.frameGeometry()
     frame_geo.moveCenter(screen_center)
     window.move(frame_geo.topLeft())
+
+def set_app_icon(app):
+    for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
+        if os.path.exists(icon_path):
+            app.setWindowIcon(QIcon(icon_path))
+            break
 
 def get_app_qss():
     return f"""
@@ -204,16 +208,10 @@ class QueueDialog(QDialog):
         self.main_app = parent
         self.setWindowTitle("Process Queue")
         self.setFixedSize(552, 502)
-        self._set_icon()
+        
         self._build_ui()
         apply_theme_titlebar(self)
         center_window(self)
-
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-                break
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -242,55 +240,77 @@ class QueueDialog(QDialog):
         layout.addLayout(bottom)
 
     def update_list(self, queue_data, is_running):
-        for i in reversed(range(self.queue_layout.count())): 
-            widget = self.queue_layout.itemAt(i).widget()
-            if widget: widget.deleteLater()
+        self.setUpdatesEnabled(False)
+        try:
+            # Limpa widgets anteriores
+            for i in reversed(range(self.queue_layout.count())):
+                widget = self.queue_layout.itemAt(i).widget()
+                if widget:
+                    widget.deleteLater()
 
-        if not queue_data:
-            self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty = QLabel("Queue is empty."); empty.setObjectName("muted"); empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.queue_layout.addWidget(empty)
-            return
-            
-        self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            # Caso Fila Vazia
+            if not queue_data:
+                self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty = QLabel("Queue is empty.")
+                empty.setObjectName("muted")
+                empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.queue_layout.addWidget(empty)
+                return
 
-        for index, task in enumerate(queue_data):
-            full_name = task.get("name", "Media Task")
-            is_active = (index == 0 and is_running)
-            
-            limit = 48 if is_active else 57
-            name = full_name[:limit-3] + "..." if len(full_name) > limit else full_name
-            
-            f = QFrame(); f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
-            f.setMinimumHeight(44)
-            f_lay = QHBoxLayout(f)
-            
-            btn_up = QPushButton("▲"); btn_down = QPushButton("▼"); btn_remove = QPushButton("X")
-            
-            # Cria a Label padrão de forma uniforme para todos
-            lbl = QLabel(f"{index+1}. {name}")
-            lbl.setMaximumWidth(365)
-            
-            if is_active:
-                btn_remove.setEnabled(False); btn_up.setEnabled(False); btn_down.setEnabled(False)
-                lbl.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLORS['blue']};")
-            else:
-                btn_remove.clicked.connect(lambda checked=False, i=index: self.main_app.remove_from_queue(i))
-                btn_up.setEnabled(index > (1 if is_running else 0)); btn_up.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, -1))
-                btn_down.setEnabled(index < len(queue_data)-1); btn_down.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, 1))
-                lbl.setStyleSheet("font-size: 13px;")
-            
-            # Estilo com padding: 0px para o texto (X, ▲, ▼) caber no botão pequeno!
-            btn_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['button_hover']}; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
-            btn_up.setStyleSheet(btn_style); btn_up.setFixedSize(30, 24)
-            btn_down.setStyleSheet(btn_style); btn_down.setFixedSize(30, 24)
-            btn_remove_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
-            btn_remove.setStyleSheet(btn_remove_style)
-            btn_remove.setFixedSize(30, 24)
-            
-            f_lay.addWidget(lbl, 1); f_lay.addWidget(btn_up); f_lay.addWidget(btn_down); f_lay.addWidget(btn_remove)
-            self.queue_layout.addWidget(f)
-            task["label_widget"] = lbl
+            self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+            for index, task in enumerate(queue_data):
+                full_name = task.get("name", "Media Task")
+                is_active = (index == 0 and is_running)
+
+                limit = 48 if is_active else 57
+                name = full_name[:limit-3] + "..." if len(full_name) > limit else full_name
+
+                f = QFrame()
+                f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
+                f.setMinimumHeight(44)
+                f_lay = QHBoxLayout(f)
+
+                btn_up = QPushButton("▲")
+                btn_down = QPushButton("▼")
+                btn_remove = QPushButton("X")
+
+                lbl = QLabel(f"{index+1}. {name}")
+                lbl.setMaximumWidth(365)
+
+                if is_active:
+                    btn_remove.setEnabled(False)
+                    btn_up.setEnabled(False)
+                    btn_down.setEnabled(False)
+                    lbl.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLORS['blue']};")
+                else:
+                    btn_remove.clicked.connect(lambda checked=False, i=index: self.main_app.remove_from_queue(i))
+                    btn_up.setEnabled(index > (1 if is_running else 0))
+                    btn_up.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, -1))
+                    btn_down.setEnabled(index < len(queue_data)-1)
+                    btn_down.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, 1))
+                    lbl.setStyleSheet("font-size: 13px;")
+
+                # Estilização dos botões
+                btn_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['button_hover']}; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+                btn_remove_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+
+                btn_up.setStyleSheet(btn_style)
+                btn_up.setFixedSize(30, 24)
+                btn_down.setStyleSheet(btn_style)
+                btn_down.setFixedSize(30, 24)
+
+                btn_remove.setStyleSheet(btn_remove_style)
+                btn_remove.setFixedSize(30, 24)
+
+                f_lay.addWidget(lbl, 1)
+                f_lay.addWidget(btn_up)
+                f_lay.addWidget(btn_down)
+                f_lay.addWidget(btn_remove)
+                self.queue_layout.addWidget(f)
+
+        finally:
+            self.setUpdatesEnabled(True)
 
     def closeEvent(self, event):
         self.hide(); event.ignore()
@@ -301,16 +321,10 @@ class LogsDialog(QDialog):
         self.main_app = parent
         self.setWindowTitle("Execution Logs")
         self.setFixedSize(600, 430)
-        self._set_icon()
+        
         self._build_ui()
         apply_theme_titlebar(self)
         center_window(self)
-
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-                break
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -346,20 +360,12 @@ class ManualSelectionDialog(QDialog):
         super().__init__(parent)
         self.main_app = parent; self.url = url; self.base_cmd = base_cmd; self.out_tmpl = out_tmpl; self.allowed_formats = formats
         self.setWindowTitle("Manual Format Selection")
-        self.setFixedSize(750, 630)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setModal(True)
-        self._set_icon()
+        self.setFixedSize(750, 550)
+        
         self._build_ui()
         apply_theme_titlebar(self)
         center_window(self)
         self.fetch_data_task()
-
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-                break
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self); main_layout.setContentsMargins(0, 0, 0, 0)
@@ -385,7 +391,15 @@ class ManualSelectionDialog(QDialog):
                 for arg in ["--newline"]: 
                     if arg in cmd_json: cmd_json.remove(arg)
                 cmd_json += ["-J", "--no-warnings", "--no-playlist", self.url]
-                output = subprocess.check_output(cmd_json, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', errors='replace', startupinfo=self.main_app.startupinfo)
+                output = subprocess.check_output(
+                    cmd_json, 
+                    stderr=subprocess.DEVNULL, 
+                    text=True, 
+                    encoding='utf-8', 
+                    errors='replace', 
+                    startupinfo=self.main_app.startupinfo,
+                    timeout=60
+                )
                 video_data = json.loads(output)
                 self.main_app.safe_ui(self.build_content, video_data)
             except subprocess.CalledProcessError as e:
@@ -428,7 +442,7 @@ class ManualSelectionDialog(QDialog):
             lay = QVBoxLayout(card)
             lbl = QLabel(title); lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
             lay.addWidget(lbl, 0, Qt.AlignmentFlag.AlignCenter)
-            scroll = QScrollArea(); scroll.setWidgetResizable(True)
+            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedHeight(300)
             content = QWidget(); content.setStyleSheet("background-color: transparent;")
             scroll_lay = QVBoxLayout(content); scroll_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
             rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); rb_none.setStyleSheet("font-size: 13px; padding: 4px 0px;"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
@@ -508,7 +522,7 @@ class ManualSelectionDialog(QDialog):
             cmd += ["-f", fmt, "--audio-format", ext_final, "-o", full_out_tmpl, self.url]
         else: 
             cmd += ["-f", fmt, "--merge-output-format", ext_final, "--remux-video", ext_final, "-o", full_out_tmpl, "-o", f"subtitle:{base_path}/subtitles/{self.out_tmpl}", self.url]
-            
+
         self.main_app.run_command(cmd, task_name=self.url)
         self.accept()
 
@@ -517,18 +531,12 @@ class AboutDialog(QDialog):
         super().__init__(parent)
         self.main_app = parent
         self.setWindowTitle("About CopynDown")
-        self.setFixedSize(642, 532)
+        self.setFixedSize(620, 520)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self._set_icon()
+        
         self._build_ui()
         apply_theme_titlebar(self)
         center_window(self)
-
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-                break
 
     def _build_ui(self):
         layout = QVBoxLayout(self); layout.setContentsMargins(26, 28, 26, 14)
@@ -537,8 +545,11 @@ class AboutDialog(QDialog):
         scroll.setWidget(content)
         body = QVBoxLayout(content); body.setContentsMargins(0, 0, 12, 0); body.setSpacing(18)
         
-        title = QLabel("CopynDown"); title.setStyleSheet("font-size: 24px; font-weight: 700;"); body.addWidget(title)
-        version = QLabel(f"Version {self.main_app.version}"); version.setObjectName("muted"); body.addWidget(version)
+        header_box = QVBoxLayout(); header_box.setSpacing(4)
+        title = QLabel("CopynDown"); title.setStyleSheet("font-size: 24px; font-weight: 700;")
+        version = QLabel(f"Version {self.main_app.version}"); version.setObjectName("muted")
+        header_box.addWidget(title); header_box.addWidget(version)
+        body.addLayout(header_box)
         dev = QLabel("Developed by DanMixerBR"); dev.setObjectName("sectionTitle"); body.addWidget(dev); body.addSpacing(12)
         
         desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
@@ -572,17 +583,10 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
         self.setFixedSize(650, 550)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setModal(True)
-        self._set_icon()
+        
         self._build_ui()
         apply_theme_titlebar(self)
         center_window(self)
-
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-                break
 
     def _build_ui(self):
         layout = QVBoxLayout(self); layout.setContentsMargins(10, 20, 10, 10); layout.setSpacing(12)
@@ -1020,7 +1024,7 @@ class CopynDownApp(QMainWindow):
             self.startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             self.startupinfo.wShowWindow = subprocess.SW_HIDE
 
-        self._set_icon()
+        
         self._build_ui()
         self.select_tab(self.TAB_VID)
         apply_theme_titlebar(self)
@@ -1033,10 +1037,6 @@ class CopynDownApp(QMainWindow):
         if event.type() == QEvent.Type.ActivationChange and self.isActiveWindow():
             self.on_clipboard_change()
         super().changeEvent(event)
-    
-    def _set_icon(self):
-        for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
-            if os.path.exists(icon_path): self.setWindowIcon(QIcon(icon_path)); break
 
     def _build_ui(self):
         root = QWidget(); self.setCentralWidget(root)
@@ -1046,19 +1046,21 @@ class CopynDownApp(QMainWindow):
         brand = QHBoxLayout(); brand.setSpacing(8); top_bar.addLayout(brand)
 
         logo = QLabel()
-        logo.setFixedSize(34, 34)
+        logo.setFixedSize(32, 32)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_path = os.path.join(bin_path, "logo.png").replace("\\", "/")
         if os.path.exists(logo_path):
-            logo.setPixmap(QPixmap(logo_path).scaled(34, 34, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            logo.setPixmap(QPixmap(logo_path).scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:
             logo.setText("⬇")
             logo.setStyleSheet(f"font-size: 23px; color: #55cdfc; background: {COLORS['blue']}; border-radius: 8px;")
         brand.addWidget(logo)
 
-        title_box = QVBoxLayout(); title_box.setSpacing(0); brand.addLayout(title_box)
+        title_box = QVBoxLayout(); title_box.setSpacing(0); title_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        brand.addLayout(title_box)
         title = QLabel("CopynDown"); title.setObjectName("title")
         version = QLabel(f"Version {self.version}"); version.setObjectName("version")
+        version.setStyleSheet("font-size: 11px;")
         title_box.addWidget(title); title_box.addWidget(version)
 
         self.nav_frame = QFrame(); self.nav_frame.setObjectName("navFrame"); self.nav_frame.setFixedHeight(40); self.nav_frame.setMinimumWidth(455)
@@ -1474,6 +1476,8 @@ class CopynDownApp(QMainWindow):
             # 🔻 Salva no 'self' e usa .exec() para bloquear o fundo corretamente
             self.manual_win = ManualSelectionDialog(url, b_cmd, o_tmpl, ["MP4", "MKV", "WEBM"], self)
             self.manual_win.exec()
+            self.switch_advanced.setChecked(False)
+            self.evaluate_ui_state()
             return
 
         res_map = {"360p": "360", "480p": "480", "720p": "720", "1080p (H.264)": "1080", "1080p (AV1/VP9)": "1080", "1440p (QHD)": "1440", "2160p (4K)": "2160"}
@@ -1508,6 +1512,8 @@ class CopynDownApp(QMainWindow):
         if self.switch_advanced.isChecked():
             self.manual_win = ManualSelectionDialog(url, b_cmd, "%(playlist_index&{}. |)s%(title)s.%(ext)s", ["M4A", "MP3", "FLAC", "WAV", "Opus"], self)
             self.manual_win.exec()
+            self.switch_advanced.setChecked(False)
+            self.evaluate_ui_state()
             return
             
         b_map = {"Low (128 kbps)": "128k", "Medium (192 kbps)": "192k", "High (320 kbps)": "320k"}
@@ -1692,7 +1698,7 @@ class CopynDownApp(QMainWindow):
     def run_command(self, cmd, task_name="Media Task", task_logs=None):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
         # 🔻 Adicionado a chave "logs" no dicionário da tarefa
-        qi = {"cmd": cmd, "name": task_name, "is_convert": is_conv, "label_widget": None, "logs": task_logs or []}
+        qi = {"cmd": cmd, "name": task_name, "is_convert": is_conv, "logs": task_logs or []}
         self.download_queue.append(qi)
         
         def animate_btn():
@@ -1723,7 +1729,8 @@ class CopynDownApp(QMainWindow):
         if not self.is_queue_running: self.process_next_in_queue()
 
     def update_queue_ui(self):
-        if self.queue_window: self.queue_window.update_list(self.download_queue, self.is_queue_running)
+        if self.queue_window and self.queue_window.isVisible(): 
+            self.queue_window.update_list(self.download_queue, self.is_queue_running)
 
     def clear_entire_queue(self):
         if self.is_queue_running and self.download_queue: self.download_queue = [self.download_queue[0]]
@@ -2177,6 +2184,7 @@ def main():
         os.environ["QT_QPA_PLATFORMTHEME"] = "xdgdesktopportal"
     app = QApplication(sys.argv)
     app.setApplicationName("CopynDown")
+    set_app_icon(app)
     app.setStyleSheet(get_app_qss())
     win = CopynDownApp()
     win.show()
