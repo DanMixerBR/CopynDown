@@ -2093,7 +2093,7 @@ class CopynDownApp(QMainWindow):
         if file_hash not in expected_hashes:
             if os.path.exists(file_path):
                 os.remove(file_path)
-            raise Exception(f"Security Error: Hash verification failed for {label}!")
+            raise Exception(f"Hash verification failed for {label}!")
 
         self.safe_ui(self.add_to_log, f"Hash verification OK: {label}")
 
@@ -2158,7 +2158,7 @@ class CopynDownApp(QMainWindow):
             if r_hash.status_code != 200:
                 if os.path.exists(z_path):
                     os.remove(z_path)
-                raise Exception("Security Error: Could not download hash_v2.txt.")
+                raise Exception("Could not download hash_v2.txt.")
 
             expected_hashes = [
                 line.strip().lower().replace("sha256:", "")
