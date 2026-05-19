@@ -569,7 +569,7 @@ class AboutDialog(QDialog):
         body.addLayout(header_box)
         dev = QLabel("Developed by DanMixerBR"); dev.setObjectName("sectionTitle"); body.addWidget(dev); body.addSpacing(12)
         
-        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
+        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms:\nYouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai, Facebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble, Bandcamp, Mixcloud, Kick, and Odysee.")
         desc.setWordWrap(True); body.addWidget(desc); body.addSpacing(16)
         
         credits = QLabel("Credits & License"); credits.setObjectName("sectionTitle"); body.addWidget(credits)
