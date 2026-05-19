@@ -181,9 +181,15 @@ jobs:
           HASH_WIN=$(sha256sum ./downloads/CopynDown_Windows.zip | awk '{ print $1 }')
           HASH_LINUX=$(sha256sum ./downloads/CopynDown_Linux.zip | awk '{ print $1 }')
           
-          # Sobrescreve os arquivos do seu repositório com os novos hashes
-          echo "$HASH_WIN" > hash_v2.txt
-          echo "$HASH_LINUX" >> hash_v2.txt
+          # Calcula o hash dos scripts de atualização nativos
+          HASH_BAT=$(sha256sum update.bat | awk '{ print $1 }')
+          HASH_SH=$(sha256sum update.sh | awk '{ print $1 }')
+          
+          # Sobrescreve o hash_v2.txt com o prefixo 'sha256:' para maior clareza e segurança
+          echo "sha256:$HASH_WIN" > hash_v2.txt
+          echo "sha256:$HASH_LINUX" >> hash_v2.txt
+          echo "sha256:$HASH_BAT" >> hash_v2.txt
+          echo "sha256:$HASH_SH" >> hash_v2.txt
 
           # NOVO: Atualiza o version.txt na pasta bin do repositório
           echo "${{ github.event.inputs.versao_tag }}" | tr -d 'A-Za-z' > bin/version.txt
