@@ -2076,7 +2076,7 @@ class CopynDownApp(QMainWindow):
                             if percent - last_reported >= 1 or d == sz:
                                 self.safe_ui(lambda p=percent: (
                                     self.progress.setValue(p),
-                                    self.progress_label.setText(f"Downloading update... {p*2}%")
+                                    self.progress_label.setText(f"Downloading update... {p}%")
                                 ))
                                 last_reported = percent
 
