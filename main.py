@@ -2178,7 +2178,7 @@ class CopynDownApp(QMainWindow):
             with open(s_path, 'wb') as f:
                 f.write(r_s.content)
 
-            self.safe_ui(self.add_to_log, f"Hash verification OK: {s_name}")
+            self.safe_ui(self.add_to_log, f"Hash verification (OK): {s_name}")
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Update Ready! (100%)"),
