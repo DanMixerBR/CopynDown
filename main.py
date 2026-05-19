@@ -12,11 +12,18 @@ import ctypes
 
 import requests
 from PySide6.QtCore import Qt, QTimer, Signal, qInstallMessageHandler
-from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QImage, QPixmap, QTextCursor
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter, QColor, QImage, QPixmap, QTextCursor
 
 def qt_message_handler(mode, context, message):
-    if "QThreadStorage" not in message: 
+    filtros = [
+        "QThreadStorage", 
+        "QFont::setPointSize", 
+        "zwp_text_input_v3_leave"
+    ]
+
+    if not any(f in message for f in filtros):
         sys.stdout.write(f"{message}\n")
+
 qInstallMessageHandler(qt_message_handler)
 
 from PySide6.QtWidgets import (
@@ -52,6 +59,8 @@ THEMES = {
 }
 COLORS = THEMES[CURRENT_THEME]
 
+APP_FONT_FAMILY = "Segoe UI" if sys.platform == "win32" else "Sans Serif"
+
 def apply_theme_titlebar(window):
     if sys.platform == "win32":
         try:
@@ -77,6 +86,27 @@ def set_app_icon(app):
             app.setWindowIcon(QIcon(icon_path))
             break
 
+def load_app_font(app):
+    global APP_FONT_FAMILY
+
+    if sys.platform == "win32":
+        APP_FONT_FAMILY = "Segoe UI"
+        app.setFont(QFont(APP_FONT_FAMILY, 9))
+        print("Using Windows system font:", APP_FONT_FAMILY)
+        return
+
+    font_path = os.path.join(bin_path, "Inter.ttf").replace("\\", "/")
+    font_id = QFontDatabase.addApplicationFont(font_path) if os.path.exists(font_path) else -1
+
+    if font_id != -1:
+        families = QFontDatabase.applicationFontFamilies(font_id)
+        APP_FONT_FAMILY = families[0] if families else APP_FONT_FAMILY
+        print("External font loaded:", APP_FONT_FAMILY)
+    else:
+        print("External font not loaded. Using fallback font:", APP_FONT_FAMILY)
+
+    app.setFont(QFont(APP_FONT_FAMILY, 9))
+
 def apply_ui_ux_cursors(window):
     for widget_class in [QPushButton, QComboBox]:
         for widget in window.findChildren(widget_class):
@@ -89,7 +119,7 @@ def apply_ui_ux_cursors(window):
 
 def get_app_qss():
     return f"""
-* {{ font-family: 'Segoe UI'; color: {COLORS['text']}; outline: none; }}
+* {{ font-family: '{APP_FONT_FAMILY}'; font-size: 12px; color: {COLORS['text']}; outline: none; }}
 QMainWindow, QDialog {{ background-color: {COLORS['bg']}; }}
 QFrame#mainCard, QFrame#dialogCard, QFrame#queueCard {{ background-color: {COLORS['card']}; border-radius: 20px; }}
 QFrame#navFrame, QFrame#settingsNavFrame {{ background-color: {COLORS['card']}; border-radius: 20px; }}
@@ -141,7 +171,7 @@ QCheckBox#switch::indicator:unchecked {{ background-color: {COLORS['muted2']}; }
 QCheckBox#switch::indicator:checked {{ background-color: {COLORS['blue']}; }}
 QProgressBar {{ background-color: {COLORS['input']}; border: none; border-radius: 3px; height: 6px; text-align: center; }}
 QProgressBar::chunk {{ background-color: {COLORS['blue']}; border-radius: 3px; }}
-QTextEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: none; border-radius: 6px; padding: 10px; font-family: Consolas; font-size: 11px; selection-background-color: {COLORS['blue']}; }}
+QTextEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: none; border-radius: 6px; padding: 10px; font-family: 'Consolas'; font-size: 11px; selection-background-color: {COLORS['blue']}; }}
 QScrollArea {{ border: none; background-color: transparent; }}
 QScrollArea#settingsScroll, QScrollArea#settingsScroll > QWidget, QScrollArea#settingsScroll > QWidget > QWidget, QStackedWidget#settingsStack, QStackedWidget#settingsStack > QWidget {{ background-color: {COLORS['card']}; border: none; }}
 QScrollBar:vertical {{ background-color: transparent; width: 10px; margin: 4px 0 4px 0; }}
@@ -177,7 +207,7 @@ class PillButton(QPushButton):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(bg_color)
         painter.drawRoundedRect(rect, radius, radius)
-        font = QFont("Segoe UI", 9)
+        font = QFont(APP_FONT_FAMILY, 9)
         font.setBold(True)
         painter.setFont(font)
         painter.setPen(text_color)
@@ -569,7 +599,7 @@ class AboutDialog(QDialog):
         body.addLayout(header_box)
         dev = QLabel("Developed by DanMixerBR"); dev.setObjectName("sectionTitle"); body.addWidget(dev); body.addSpacing(12)
         
-        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms:\nYouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai, Facebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble, Bandcamp, Mixcloud, Kick, and Odysee.")
+        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
         desc.setWordWrap(True); body.addWidget(desc); body.addSpacing(16)
         
         credits = QLabel("Credits & License"); credits.setObjectName("sectionTitle"); body.addWidget(credits)
@@ -581,7 +611,7 @@ class AboutDialog(QDialog):
         github = QPushButton("GitHub"); github.setFixedWidth(120); github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
         
         btn_state = False if self.main_app.is_busy else True
-        self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(135); self.update_btn.setEnabled(btn_state)
+        self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(140); self.update_btn.setEnabled(btn_state)
         def do_check():
             self.update_btn.setEnabled(False)
             self.update_btn.setText("Checking...")
@@ -804,7 +834,7 @@ class SettingsDialog(QDialog):
         n_auto = QLabel("Note: May require closing the browser or running the app as Administrator."); n_auto.setObjectName("muted"); p_auto_lay.addWidget(n_auto)
         row_ext = QHBoxLayout(); self.browser_combo = QComboBox(); self.browser_combo.addItems(["Edge", "Firefox", "Brave", "Safari"]); self.browser_combo.setFixedWidth(120)
         
-        btn_ext = QPushButton("Extract cookies"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(116)
+        btn_ext = QPushButton("Extract cookies"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(120)
         row_ext.addWidget(self.browser_combo); row_ext.addWidget(btn_ext); row_ext.addStretch(1); p_auto_lay.addLayout(row_ext)
 
         def perform_extraction():
@@ -907,7 +937,7 @@ class SettingsDialog(QDialog):
         row.addWidget(edit); row.addWidget(btn)
         
         if has_ext:
-            btn_ext = QPushButton("Get extension"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(110)
+            btn_ext = QPushButton("Get extension"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(120)
             btn_ext.clicked.connect(lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"))
             row.addWidget(btn_ext)
             
@@ -1169,7 +1199,7 @@ class CopynDownApp(QMainWindow):
         footer = QHBoxLayout(); footer.setSpacing(10); main_layout.addLayout(footer)
         self.open_btn = self._footer_btn("📁 Open location", 140); self.open_btn.clicked.connect(self.open_folder)
         self.queue_btn = self._footer_btn("📥 Queue (0)", 110); self.queue_btn.clicked.connect(self.show_queue)
-        self.logs_btn = self._footer_btn("📄 View logs", 105); self.logs_btn.clicked.connect(self.show_logs)
+        self.logs_btn = self._footer_btn("📄 View logs", 110); self.logs_btn.clicked.connect(self.show_logs)
         self.about_btn = self._footer_btn("ℹ About", 80); self.about_btn.clicked.connect(self.show_about)
         footer.addWidget(self.open_btn); footer.addWidget(self.queue_btn); footer.addStretch(1); footer.addWidget(self.logs_btn); footer.addWidget(self.about_btn)
         
@@ -1871,14 +1901,23 @@ class CopynDownApp(QMainWindow):
                             if m and not err and not self.is_cancelling:
                                 self.safe_ui(lambda v=float(m.group(1)): (self.progress.setValue(int(v)), self.progress_label.setText(f"Downloading{self.current_playlist_item}... {int(v)}%")))
 
-                self.current_process.wait()
-                if is_conv: self.safe_ui(lambda: self.progress.setRange(0, 100))
-                
+                return_code = self.current_process.wait()
+
+                if return_code != 0 and not self.is_cancelling:
+                    err = True
+                    self.safe_ui(
+                        self.add_to_log,
+                        f">>> Process finished with error code: {return_code}"
+                    )
+
+                if is_conv:
+                    self.safe_ui(lambda: self.progress.setRange(0, 100))
+
                 el = int(time.time() - getattr(self, 'queue_start_time', time.time()))
-                d_str = f"{el//60}m {el%60}s" if el>=60 else f"{el}s"
+                d_str = f"{el//60}m {el%60}s" if el >= 60 else f"{el}s"
                 t_f = cmd[-1] if is_conv else None
-                
-                self.safe_ui(lambda: self._finish_task(is_conv, err, d_str, t_f))
+
+                self.safe_ui(lambda err=err, d_str=d_str, t_f=t_f: self._finish_task(is_conv, err, d_str, t_f))
                 
             except Exception as e:
                 self.safe_ui(self.status_error, f"SYSTEM ERROR: {e}")
@@ -2041,6 +2080,22 @@ class CopynDownApp(QMainWindow):
                 if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
                 self.safe_ui(self.toggle_buttons, "normal") # Reativa as abas
         threading.Thread(target=task, daemon=True).start()
+        
+    def verify_file_hash(self, file_path, expected_hashes, label="file"):
+        sha256_hash = hashlib.sha256()
+
+        with open(file_path, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+
+        file_hash = sha256_hash.hexdigest().lower()
+
+        if file_hash not in expected_hashes:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            raise Exception(f"Security Error: Hash verification failed for {label}!")
+
+        self.safe_ui(self.add_to_log, f"Hash verification OK: {label}")
 
     def do_update(self):
         try:
@@ -2100,19 +2155,18 @@ class CopynDownApp(QMainWindow):
             self.safe_ui(self.add_to_log, "File structure verified (OK).")
 
             r_hash = requests.get(hash_url, timeout=10)
-            if r_hash.status_code == 200:
-                expected_hashes = [line.strip().lower().replace("sha256:", "") for line in r_hash.text.splitlines() if line.strip()]
-                sha256_hash = hashlib.sha256()
-                with open(z_path, "rb") as f:
-                    for byte_block in iter(lambda: f.read(4096), b""):
-                        sha256_hash.update(byte_block)
-                if sha256_hash.hexdigest().lower() not in expected_hashes:
-                    if os.path.exists(z_path): os.remove(z_path)
-                    raise Exception("Security Error: Hash verification failed!")
-                self.safe_ui(self.add_to_log, "Hash verification (OK).")
-            else:
-                if os.path.exists(z_path): os.remove(z_path)
+            if r_hash.status_code != 200:
+                if os.path.exists(z_path):
+                    os.remove(z_path)
                 raise Exception("Security Error: Could not download hash_v2.txt.")
+
+            expected_hashes = [
+                line.strip().lower().replace("sha256:", "")
+                for line in r_hash.text.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ]
+
+            self.verify_file_hash(z_path, expected_hashes, zip_platform)
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Preparing update... 75%"),
@@ -2121,12 +2175,21 @@ class CopynDownApp(QMainWindow):
             self.safe_ui(self.add_to_log, "Downloading update script...")
 
             s_ext = "bat" if self.is_windows else "sh"
-            s_path = os.path.join(base_dir, f"update.{s_ext}")
-            r_s = requests.get(f"https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/update.{s_ext}", timeout=10)
-            if r_s.status_code == 200:
-                with open(s_path, 'wb') as f: f.write(r_s.content)
-            else:
+            s_name = f"update.{s_ext}"
+            s_path = os.path.join(base_dir, s_name)
+
+            r_s = requests.get(
+                f"https://raw.githubusercontent.com/DanMixerBR/CopynDown/refs/heads/main/{s_name}",
+                timeout=10
+            )
+
+            if r_s.status_code != 200:
                 raise Exception("Could not download update script.")
+
+            with open(s_path, 'wb') as f:
+                f.write(r_s.content)
+
+            self.verify_file_hash(s_path, expected_hashes, s_name)
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Update Ready! (100%)"),
@@ -2200,6 +2263,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("CopynDown")
     set_app_icon(app)
+    load_app_font(app)
     app.setStyleSheet(get_app_qss())
     win = CopynDownApp()
     win.show()
