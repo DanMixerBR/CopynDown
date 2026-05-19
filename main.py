@@ -2080,22 +2080,6 @@ class CopynDownApp(QMainWindow):
                 if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
                 self.safe_ui(self.toggle_buttons, "normal") # Reativa as abas
         threading.Thread(target=task, daemon=True).start()
-        
-    def verify_file_hash(self, file_path, expected_hashes, label="file"):
-        sha256_hash = hashlib.sha256()
-
-        with open(file_path, "rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(byte_block)
-
-        file_hash = sha256_hash.hexdigest().lower()
-
-        if file_hash not in expected_hashes:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            raise Exception(f"Hash verification failed for {label}!")
-
-        self.safe_ui(self.add_to_log, f"Hash verification OK: {label}")
 
     def do_update(self):
         try:
@@ -2155,18 +2139,19 @@ class CopynDownApp(QMainWindow):
             self.safe_ui(self.add_to_log, "File structure verified (OK).")
 
             r_hash = requests.get(hash_url, timeout=10)
-            if r_hash.status_code != 200:
-                if os.path.exists(z_path):
-                    os.remove(z_path)
+            if r_hash.status_code == 200:
+                expected_hashes = [line.strip().lower().replace("sha256:", "") for line in r_hash.text.splitlines() if line.strip()]
+                sha256_hash = hashlib.sha256()
+                with open(z_path, "rb") as f:
+                    for byte_block in iter(lambda: f.read(4096), b""):
+                        sha256_hash.update(byte_block)
+                if sha256_hash.hexdigest().lower() not in expected_hashes:
+                    if os.path.exists(z_path): os.remove(z_path)
+                    raise Exception(f"Hash verification failed for {zip_platform}!")
+                self.safe_ui(self.add_to_log, f"Hash verification (OK): {zip_platform}")
+            else:
+                if os.path.exists(z_path): os.remove(z_path)
                 raise Exception("Could not download hash_v2.txt.")
-
-            expected_hashes = [
-                line.strip().lower().replace("sha256:", "")
-                for line in r_hash.text.splitlines()
-                if line.strip() and not line.strip().startswith("#")
-            ]
-
-            self.verify_file_hash(z_path, expected_hashes, zip_platform)
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Preparing update... 75%"),
@@ -2186,10 +2171,14 @@ class CopynDownApp(QMainWindow):
             if r_s.status_code != 200:
                 raise Exception("Could not download update script.")
 
+            script_hash = hashlib.sha256(r_s.content).hexdigest().lower()
+            if script_hash not in expected_hashes:
+                raise Exception(f"Hash verification failed for {s_name}!")
+
             with open(s_path, 'wb') as f:
                 f.write(r_s.content)
 
-            self.verify_file_hash(s_path, expected_hashes, s_name)
+            self.safe_ui(self.add_to_log, f"Hash verification OK: {s_name}")
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Update Ready! (100%)"),
