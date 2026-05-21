@@ -2,7 +2,7 @@
   <img src="assets/logo_c.png" alt="CopynDown Logo" width="150">
   <h1>CopynDown</h1>
   <p>
-    <a href="https://github.com/DanMixerBR/CopynDown/releases/latest"><img src="https://img.shields.io/badge/version-3.0.2-blue.svg?style=for-the-badge"></a>
+    <a href="https://github.com/DanMixerBR/CopynDown/releases/latest"><img src="https://img.shields.io/badge/version-3.0.3-blue.svg?style=for-the-badge"></a>
     <a href="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue.svg"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue.svg?style=for-the-badge"></a>
     <a href="https://www.python.org/downloads/release/python-3120/"><img src="https://img.shields.io/badge/Python-3.12-blue.svg?style=for-the-badge&logo=python&logoColor=white"></a>
     <br>
