@@ -81,7 +81,9 @@ def center_window(window):
     window.move(frame_geo.topLeft())
 
 def set_app_icon(app):
-    for icon_path in ("bin/icon.ico", "bin/icon.png", "bin/logo.png"):
+    for icon_name in ("icon.ico", "icon.png", "logo.png"):
+        # Agora ele puxa o caminho absoluto blindado!
+        icon_path = os.path.join(bin_path, "icons", icon_name).replace("\\", "/")
         if os.path.exists(icon_path):
             app.setWindowIcon(QIcon(icon_path))
             break
@@ -281,78 +283,159 @@ class QueueDialog(QDialog):
         
         apply_ui_ux_cursors(self)
 
-    def update_list(self, queue_data, is_running):
-        self.setUpdatesEnabled(False)
-        try:
-            # Limpa widgets anteriores
-            for i in reversed(range(self.queue_layout.count())):
-                widget = self.queue_layout.itemAt(i).widget()
-                if widget:
-                    widget.deleteLater()
+    def _create_queue_row(self):
+        f = QFrame()
+        f.setMinimumHeight(44)
+        # Aplica o estilo estático APENAS UMA VEZ na criação
+        f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
 
-            # Caso Fila Vazia
+        f_lay = QHBoxLayout(f)
+
+        lbl = QLabel("")
+        lbl.setMaximumWidth(365)
+
+        btn_up = QPushButton("▲")
+        btn_down = QPushButton("▼")
+        btn_remove = QPushButton("X")
+
+        btn_up.setFixedSize(30, 24)
+        btn_down.setFixedSize(30, 24)
+        btn_remove.setFixedSize(30, 24)
+        
+        # Estilos estáticos aplicados na criação
+        btn_style = (
+            f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; "
+            f"border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
+            f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}"
+            f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+        )
+        btn_remove_style = (
+            f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; "
+            f"border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
+            f"QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }}"
+            f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+        )
+        btn_up.setStyleSheet(btn_style)
+        btn_down.setStyleSheet(btn_style)
+        btn_remove.setStyleSheet(btn_remove_style)
+
+        # Conexões independentes lendo a propriedade dinâmica
+        btn_remove.clicked.connect(
+            lambda checked=False, btn=btn_remove: self.main_app.remove_from_queue(btn.property("queue_index"))
+        )
+        btn_up.clicked.connect(
+            lambda checked=False, btn=btn_up: self.main_app.move_queue_item(btn.property("queue_index"), -1)
+        )
+        btn_down.clicked.connect(
+            lambda checked=False, btn=btn_down: self.main_app.move_queue_item(btn.property("queue_index"), 1)
+        )
+
+        f_lay.addWidget(lbl, 1)
+        f_lay.addWidget(btn_up)
+        f_lay.addWidget(btn_down)
+        f_lay.addWidget(btn_remove)
+
+        self.queue_layout.addWidget(f)
+
+        return {
+            "frame": f,
+            "label": lbl,
+            "up": btn_up,
+            "down": btn_down,
+            "remove": btn_remove
+        }
+
+    def _update_queue_row(self, row, index, task, queue_len, is_running):
+        full_name = task.get("name", "Media Task")
+        is_active = index == 0 and is_running
+
+        limit = 48 if is_active else 57
+        name = full_name[:limit - 3] + "..." if len(full_name) > limit else full_name
+
+        # 1. Atualiza Textos e Propriedades invisíveis
+        row["label"].setText(f"{index + 1}. {name}")
+        row["up"].setProperty("queue_index", index)
+        row["down"].setProperty("queue_index", index)
+        row["remove"].setProperty("queue_index", index)
+
+        row["frame"].setVisible(True)
+
+        # 2. Lida APENAS com a lógica de negócio e estados (Extremamente rápido)
+        if is_active:
+            row["remove"].setEnabled(False)
+            row["up"].setEnabled(False)
+            row["down"].setEnabled(False)
+            row["label"].setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLORS['blue']};")
+        else:
+            row["remove"].setEnabled(True)
+            row["up"].setEnabled(index > (1 if is_running else 0))
+            row["down"].setEnabled(index < queue_len - 1)
+            row["label"].setStyleSheet("font-size: 13px;")
+
+    def update_list(self, queue_data, is_running):
+        if not hasattr(self, "queue_rows"):
+            self.queue_rows = []
+
+        if not hasattr(self, "empty_label"):
+            self.empty_label = QLabel("Queue is empty.")
+            self.empty_label.setObjectName("muted")
+            self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.queue_layout.addWidget(self.empty_label)
+
+        self.setUpdatesEnabled(False)
+
+        try:
             if not queue_data:
                 self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                empty = QLabel("Queue is empty.")
-                empty.setObjectName("muted")
-                empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.queue_layout.addWidget(empty)
+                self.empty_label.setVisible(True)
+                for row in self.queue_rows:
+                    row["frame"].setVisible(False)
                 return
 
             self.queue_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            self.empty_label.setVisible(False)
 
+            # Instancia novas linhas apenas se a fila cresceu
+            while len(self.queue_rows) < len(queue_data):
+                self.queue_rows.append(self._create_queue_row())
+
+            # Atualiza os dados das linhas existentes
             for index, task in enumerate(queue_data):
-                full_name = task.get("name", "Media Task")
-                is_active = (index == 0 and is_running)
+                self._update_queue_row(self.queue_rows[index], index, task, len(queue_data), is_running)
 
-                limit = 48 if is_active else 57
-                name = full_name[:limit-3] + "..." if len(full_name) > limit else full_name
-
-                f = QFrame()
-                f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
-                f.setMinimumHeight(44)
-                f_lay = QHBoxLayout(f)
-
-                btn_up = QPushButton("▲")
-                btn_down = QPushButton("▼")
-                btn_remove = QPushButton("X")
-
-                lbl = QLabel(f"{index+1}. {name}")
-                lbl.setMaximumWidth(365)
-
-                if is_active:
-                    btn_remove.setEnabled(False)
-                    btn_up.setEnabled(False)
-                    btn_down.setEnabled(False)
-                    lbl.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLORS['blue']};")
-                else:
-                    btn_remove.clicked.connect(lambda checked=False, i=index: self.main_app.remove_from_queue(i))
-                    btn_up.setEnabled(index > (1 if is_running else 0))
-                    btn_up.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, -1))
-                    btn_down.setEnabled(index < len(queue_data)-1)
-                    btn_down.clicked.connect(lambda checked=False, i=index: self.main_app.move_queue_item(i, 1))
-                    lbl.setStyleSheet("font-size: 13px;")
-
-                # Estilização dos botões
-                btn_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['button_hover']}; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
-                btn_remove_style = f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }} QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
-
-                btn_up.setStyleSheet(btn_style)
-                btn_up.setFixedSize(30, 24)
-                btn_down.setStyleSheet(btn_style)
-                btn_down.setFixedSize(30, 24)
-
-                btn_remove.setStyleSheet(btn_remove_style)
-                btn_remove.setFixedSize(30, 24)
-
-                f_lay.addWidget(lbl, 1)
-                f_lay.addWidget(btn_up)
-                f_lay.addWidget(btn_down)
-                f_lay.addWidget(btn_remove)
-                self.queue_layout.addWidget(f)
+            # Esconde as linhas que sobraram se a fila diminuiu
+            for index in range(len(queue_data), len(self.queue_rows)):
+                self.queue_rows[index]["frame"].setVisible(False)
 
         finally:
             self.setUpdatesEnabled(True)
+
+    def refresh_row_styles(self):
+        if not hasattr(self, "queue_rows"):
+            return
+
+        for row in self.queue_rows:
+            row["frame"].setStyleSheet(
+                f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}"
+            )
+
+            btn_style = (
+                f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; "
+                f"border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
+                f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}"
+                f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+            )
+
+            btn_remove_style = (
+                f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; "
+                f"border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
+                f"QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }}"
+                f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}"
+            )
+
+            row["up"].setStyleSheet(btn_style)
+            row["down"].setStyleSheet(btn_style)
+            row["remove"].setStyleSheet(btn_remove_style)
 
     def closeEvent(self, event):
         self.hide(); event.ignore()
@@ -405,6 +488,7 @@ class ManualSelectionDialog(QDialog):
         self.main_app = parent; self.url = url; self.base_cmd = base_cmd; self.out_tmpl = out_tmpl; self.allowed_formats = formats
         self.setWindowTitle("Manual Format Selection")
         self.setFixedSize(750, 550)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         
         self._build_ui()
         apply_theme_titlebar(self)
@@ -431,10 +515,9 @@ class ManualSelectionDialog(QDialog):
     def fetch_data_task(self):
         def task():
             try:
-                cmd_json = self.base_cmd.copy()
-                for arg in ["--newline"]: 
-                    if arg in cmd_json: cmd_json.remove(arg)
-                cmd_json += ["-J", "--no-warnings", "--no-playlist", self.url]
+                cmd_json = self.main_app.build_base_cmd(is_json=True, silent=True) + [
+                    "--no-warnings", "--no-playlist", self.url
+                ]
                 output = subprocess.check_output(
                     cmd_json, 
                     stderr=subprocess.DEVNULL, 
@@ -458,84 +541,89 @@ class ManualSelectionDialog(QDialog):
         self.reject()
 
     def build_content(self, data):
-        self.spinner.setRange(0, 100); self.spinner.setValue(100)
-        
-        header_frame = QHBoxLayout()
-        self.img_label = QLabel("Loading\nThumbnail..."); self.img_label.setFixedSize(160, 90); self.img_label.setAlignment(Qt.AlignmentFlag.AlignCenter); self.img_label.setStyleSheet(f"background-color: {COLORS['card']}; border-radius: 8px;")
-        header_frame.addWidget(self.img_label)
-        self.title_label = QLabel(data.get('title', 'Unknown Video')); self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;"); self.title_label.setWordWrap(True)
-        header_frame.addWidget(self.title_label, 1)
-        self.content_layout.addLayout(header_frame)
-
-        if data.get('thumbnail'):
-            def fetch_img():
-                try:
-                    with requests.get(data['thumbnail'], stream=True, timeout=5, headers={"User-Agent": "Mozilla/5.0"}) as r:
-                        if r.status_code == 200:
-                            img = QImage()
-                            img.loadFromData(r.content)
-                            self.main_app.safe_ui(lambda: self.img_label.setPixmap(QPixmap.fromImage(img).scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)))
-                except: pass
-            threading.Thread(target=fetch_img, daemon=True).start()
-
-        lists_frame = QHBoxLayout(); lists_frame.setSpacing(15)
-        
-        self.vid_group = QButtonGroup(self); self.aud_group = QButtonGroup(self)
-        
-        def create_list(title, group):
-            card = QFrame(); card.setStyleSheet(f"QFrame {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
-            lay = QVBoxLayout(card)
-            lbl = QLabel(title); lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
-            lay.addWidget(lbl, 0, Qt.AlignmentFlag.AlignCenter)
-            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedHeight(300)
-            content = QWidget(); content.setStyleSheet("background-color: transparent;")
-            scroll_lay = QVBoxLayout(content); scroll_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
-            rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); rb_none.setStyleSheet("font-size: 13px; padding: 4px 0px;"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
-            scroll.setWidget(content); lay.addWidget(scroll)
-            return card, scroll_lay
-
-        vid_card, vid_lay = create_list("Select Video", self.vid_group)
-        aud_card, aud_lay = create_list("Select Audio", self.aud_group)
-
-        for f in data.get('formats', []):
-            fmt_id = f.get('format_id', 'N/A')
-            ext = f.get('ext', 'N/A')
-            vc = f.get('vcodec', 'none')
-            ac = f.get('acodec', 'none')
-            if 'mhtml' in ext or 'sb' in ext or (vc == 'none' and ac == 'none'): continue
+        self.setUpdatesEnabled(False)
+        try:
+            self.spinner.setRange(0, 100); self.spinner.setValue(100)
             
-            size = f.get('filesize') or f.get('filesize_approx') or 0
-            size_str = f"{size / (1024 * 1024):.1f} MB" if size else "Unknown size"
+            header_frame = QHBoxLayout()
+            self.img_label = QLabel("Loading\nThumbnail..."); self.img_label.setFixedSize(160, 90); self.img_label.setAlignment(Qt.AlignmentFlag.AlignCenter); self.img_label.setStyleSheet(f"background-color: {COLORS['card']}; border-radius: 8px;")
+            header_frame.addWidget(self.img_label)
+            self.title_label = QLabel(data.get('title', 'Unknown Video')); self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;"); self.title_label.setWordWrap(True)
+            header_frame.addWidget(self.title_label, 1)
+            self.content_layout.addLayout(header_frame)
 
-            if vc == 'none' and ac != 'none':
-                rb = QRadioButton(f"ID: {fmt_id} | {ext.upper()} | {ac} | {size_str}")
-                rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
-                rb.setProperty("fmt_id", fmt_id); self.aud_group.addButton(rb); aud_lay.addWidget(rb)
-            elif vc != 'none':
-                res = f.get('resolution', 'Unknown')
-                if res == 'Unknown': res = f"{f.get('width', '?')}x{f.get('height', '?')}"
-                t_note = "[Video+Audio]" if ac != 'none' else "[Video Only]"
-                rb = QRadioButton(f"ID: {fmt_id} | {res} | {ext.upper()} | {vc} {t_note} | {size_str}")
-                rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
-                rb.setProperty("fmt_id", fmt_id); self.vid_group.addButton(rb); vid_lay.addWidget(rb)
+            if data.get('thumbnail'):
+                def fetch_img():
+                    try:
+                        with requests.get(data['thumbnail'], stream=True, timeout=5, headers={"User-Agent": "Mozilla/5.0"}) as r:
+                            if r.status_code == 200:
+                                img = QImage()
+                                img.loadFromData(r.content)
+                                self.main_app.safe_ui(lambda: self.img_label.setPixmap(QPixmap.fromImage(img).scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)))
+                    except: pass
+                threading.Thread(target=fetch_img, daemon=True).start()
 
-        lists_frame.addWidget(vid_card, 1); lists_frame.addWidget(aud_card, 1)
-        self.content_layout.addLayout(lists_frame, 1)
+            lists_frame = QHBoxLayout(); lists_frame.setSpacing(15)
+            
+            self.vid_group = QButtonGroup(self); self.aud_group = QButtonGroup(self)
+            
+            def create_list(title, group):
+                card = QFrame(); card.setStyleSheet(f"QFrame {{ background-color: {COLORS['card']}; border-radius: 10px; }}")
+                lay = QVBoxLayout(card)
+                lbl = QLabel(title); lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
+                lay.addWidget(lbl, 0, Qt.AlignmentFlag.AlignCenter)
+                scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedHeight(300)
+                content = QWidget(); content.setStyleSheet("background-color: transparent;")
+                scroll_lay = QVBoxLayout(content); scroll_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
+                rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); rb_none.setStyleSheet("font-size: 13px; padding: 4px 0px;"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
+                scroll.setWidget(content); lay.addWidget(scroll)
+                return card, scroll_lay
 
-        footer = QHBoxLayout()
-        footer.addWidget(QLabel("Output Format:"))
-        self.format_combo = QComboBox(); self.format_combo.setObjectName("cardCombo"); self.format_combo.addItems(self.allowed_formats); self.format_combo.setFixedWidth(100)
-        if len(self.allowed_formats) == 1: self.format_combo.setEnabled(False)
-        footer.addWidget(self.format_combo); footer.addStretch(1)
+            vid_card, vid_lay = create_list("Select Video", self.vid_group)
+            aud_card, aud_lay = create_list("Select Audio", self.aud_group)
 
-        btn_down = QPushButton("Download selected"); btn_down.setObjectName("primaryButton"); btn_down.setFixedSize(145, 35)
-        btn_down.clicked.connect(self.start_download)
-        footer.addWidget(btn_down)
-        
-        self.content_layout.addLayout(footer)
-        self.stack.setCurrentIndex(1)
-        
-        apply_ui_ux_cursors(self)
+            for f in data.get('formats', []):
+                fmt_id = f.get('format_id', 'N/A')
+                ext = f.get('ext', 'N/A')
+                vc = f.get('vcodec', 'none')
+                ac = f.get('acodec', 'none')
+                if 'mhtml' in ext or 'sb' in ext or (vc == 'none' and ac == 'none'): continue
+                
+                size = f.get('filesize') or f.get('filesize_approx') or 0
+                size_str = f"{size / (1024 * 1024):.1f} MB" if size else "Unknown size"
+
+                if vc == 'none' and ac != 'none':
+                    rb = QRadioButton(f"ID: {fmt_id} | {ext.upper()} | {ac} | {size_str}")
+                    rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
+                    rb.setProperty("fmt_id", fmt_id); self.aud_group.addButton(rb); aud_lay.addWidget(rb)
+                elif vc != 'none':
+                    res = f.get('resolution', 'Unknown')
+                    if res == 'Unknown': res = f"{f.get('width', '?')}x{f.get('height', '?')}"
+                    t_note = "[Video+Audio]" if ac != 'none' else "[Video Only]"
+                    rb = QRadioButton(f"ID: {fmt_id} | {res} | {ext.upper()} | {vc} {t_note} | {size_str}")
+                    rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
+                    rb.setProperty("fmt_id", fmt_id); self.vid_group.addButton(rb); vid_lay.addWidget(rb)
+
+            lists_frame.addWidget(vid_card, 1); lists_frame.addWidget(aud_card, 1)
+            self.content_layout.addLayout(lists_frame, 1)
+
+            footer = QHBoxLayout()
+            footer.addWidget(QLabel("Output Format:"))
+            self.format_combo = QComboBox(); self.format_combo.setObjectName("cardCombo"); self.format_combo.addItems(self.allowed_formats); self.format_combo.setFixedWidth(140)
+            if len(self.allowed_formats) == 1: self.format_combo.setEnabled(False)
+            footer.addWidget(self.format_combo); footer.addStretch(1)
+
+            btn_down = QPushButton("Download selected"); btn_down.setObjectName("primaryButton"); btn_down.setFixedSize(145, 35)
+            btn_down.clicked.connect(self.start_download)
+            footer.addWidget(btn_down)
+            
+            self.content_layout.addLayout(footer)
+            self.stack.setCurrentIndex(1)
+            
+            apply_ui_ux_cursors(self)
+            
+        finally:
+            self.setUpdatesEnabled(True)
 
     def start_download(self):
         vid = self.vid_group.checkedButton().property("fmt_id") if self.vid_group.checkedButton() else None
@@ -994,8 +1082,14 @@ class SettingsDialog(QDialog):
             
             apply_theme_titlebar(self.main_app)
             apply_theme_titlebar(self)
-            if getattr(self.main_app, 'queue_window', None): apply_theme_titlebar(self.main_app.queue_window)
-            if getattr(self.main_app, 'log_window', None): apply_theme_titlebar(self.main_app.log_window)
+            
+            if getattr(self.main_app, 'queue_window', None):
+                apply_theme_titlebar(self.main_app.queue_window)
+                self.main_app.queue_window.refresh_row_styles()
+                self.main_app.update_queue_ui()
+                
+            if getattr(self.main_app, 'log_window', None):
+                apply_theme_titlebar(self.main_app.log_window)
             
             self.main_app.refresh_theme_colors()
             
@@ -1034,6 +1128,16 @@ class CopynDownApp(QMainWindow):
         self.current_process = None; self.current_playlist_item = ""
         self.is_cancelling = False; self.is_busy = False; self.is_updating = False
         self.download_queue = []; self.is_queue_running = False
+        
+        self.title_fetch_semaphore = threading.Semaphore(3) # Limita a 3 instâncias do yt-dlp/deno
+        self.queue_generation = 0
+        self.queue_update_timer = QTimer(self)
+        self.queue_update_timer.setSingleShot(True)
+        self.queue_update_timer.timeout.connect(self._do_update_queue_ui)
+        
+        self.btn_anim_timer = QTimer(self)
+        self.btn_anim_timer.setSingleShot(True)
+        self.btn_anim_timer.timeout.connect(self._revert_queue_btn)
 
         self.re_progress = re.compile(r'(\d+\.\d+)%')
         self.valid_domains = [
@@ -1099,7 +1203,7 @@ class CopynDownApp(QMainWindow):
         logo = QLabel()
         logo.setFixedSize(32, 32)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_path = os.path.join(bin_path, "logo.png").replace("\\", "/")
+        logo_path = os.path.join(bin_path, "icons", "logo.png").replace("\\", "/")
         if os.path.exists(logo_path):
             logo.setPixmap(QPixmap(logo_path).scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:
@@ -1124,8 +1228,8 @@ class CopynDownApp(QMainWindow):
             btn.clicked.connect(lambda checked=False, name=tab: self.select_tab(name))
             nav_layout.addWidget(btn); self.tab_buttons[tab] = btn
 
-        settings_btn = self._footer_btn("⚙ Settings", 100)
-        settings_btn.clicked.connect(self.show_settings); top_bar.addWidget(settings_btn, 0, Qt.AlignmentFlag.AlignRight)
+        self.settings_btn = self._footer_btn(" Settings", 100, "settings")
+        self.settings_btn.clicked.connect(self.show_settings); top_bar.addWidget(self.settings_btn, 0, Qt.AlignmentFlag.AlignRight)
 
         self.main_card = QFrame(); self.main_card.setObjectName("mainCard")
         main_layout.addWidget(self.main_card, 1)
@@ -1136,8 +1240,11 @@ class CopynDownApp(QMainWindow):
 
         self.input_frame = QFrame(); self.input_frame.setObjectName("inputFrame"); self.input_frame.setFixedHeight(47)
         input_layout = QHBoxLayout(self.input_frame); input_layout.setContentsMargins(8, 5, 6, 5); input_layout.setSpacing(8)
-        self.main_entry = QLineEdit(); self.main_entry.setObjectName("mainEntry"); self.main_entry.setPlaceholderText("Paste URL here")
+        self.main_entry = QLineEdit()
+        self.main_entry.setObjectName("mainEntry")
+        self.main_entry.setPlaceholderText("Paste URL here")
         self.main_entry.textChanged.connect(self.schedule_ui_evaluation)
+        self.main_entry.returnPressed.connect(self.trigger_download_from_url_entry)
         def on_entry_focus_in(event):
             QLineEdit.focusInEvent(self.main_entry, event)
             self.on_clipboard_change()
@@ -1197,10 +1304,10 @@ class CopynDownApp(QMainWindow):
         card_layout.addWidget(self.status_frame); card_layout.addStretch(1)
 
         footer = QHBoxLayout(); footer.setSpacing(10); main_layout.addLayout(footer)
-        self.open_btn = self._footer_btn("📁 Open location", 140); self.open_btn.clicked.connect(self.open_folder)
-        self.queue_btn = self._footer_btn("📥 Queue (0)", 110); self.queue_btn.clicked.connect(self.show_queue)
-        self.logs_btn = self._footer_btn("📄 View logs", 110); self.logs_btn.clicked.connect(self.show_logs)
-        self.about_btn = self._footer_btn("ℹ About", 80); self.about_btn.clicked.connect(self.show_about)
+        self.open_btn = self._footer_btn(" Open location", 140, "folder"); self.open_btn.clicked.connect(self.open_folder)
+        self.queue_btn = self._footer_btn(" Queue (0)", 120, "queue"); self.queue_btn.clicked.connect(self.show_queue)
+        self.logs_btn = self._footer_btn(" View logs", 110, "log"); self.logs_btn.clicked.connect(self.show_logs)
+        self.about_btn = self._footer_btn(" About", 110, "about"); self.about_btn.clicked.connect(self.show_about)
         footer.addWidget(self.open_btn); footer.addWidget(self.queue_btn); footer.addStretch(1); footer.addWidget(self.logs_btn); footer.addWidget(self.about_btn)
         
         apply_ui_ux_cursors(self)
@@ -1210,11 +1317,22 @@ class CopynDownApp(QMainWindow):
         combo = QComboBox(); combo.addItems(values); combo.setMinimumHeight(35); combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         return label, combo
 
-    def _footer_btn(self, text, width):
+    def _footer_btn(self, text, width, icon_name=None):
         btn = QPushButton(text)
         btn.setObjectName("smallFooter")
         btn.setFixedWidth(width)
+        if icon_name:
+            btn.setProperty("icon_name", icon_name)
+            self.set_button_icon(btn, icon_name)
         return btn
+
+    def set_button_icon(self, btn, icon_name):
+        # Busca o PNG na pasta correta baseado no tema atual!
+        icon_path = os.path.join(bin_path, "icons", CURRENT_THEME, f"{icon_name}.svg").replace("\\", "/")
+        if os.path.exists(icon_path):
+            from PySide6.QtCore import QSize
+            btn.setIcon(QIcon(icon_path))
+            btn.setIconSize(QSize(16, 16))
 
     def set_combo(self, combo, values, current=None):
         combo.clear(); combo.addItems(values)
@@ -1356,12 +1474,15 @@ class CopynDownApp(QMainWindow):
         self.ui_signal.emit(func, args, kwargs)
 
     def _execute_safe_ui(self, func, args, kwargs):
-        # 🔻 ESCUDO BLINDADO: Impede o app de crashar se uma Thread 
-        # tentar atualizar um botão ou janela que o usuário já fechou!
         try:
             func(*args, **kwargs)
         except RuntimeError:
             pass
+        except Exception as e:
+            try:
+                self.add_to_log(f">>> UI Execution Error Suppressed: {e}")
+            except Exception:
+                sys.stdout.write(f"UI Execution Error Suppressed: {e}\n")
 
     def is_valid_media_url(self, text_url):
         if not text_url or len(text_url) < 12: return False
@@ -1431,6 +1552,18 @@ class CopynDownApp(QMainWindow):
         else:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
             self.progress_label.setStyleSheet("font-size: 11px;")
+            
+        icon_buttons = [
+            getattr(self, 'settings_btn', None), 
+            getattr(self, 'open_btn', None), 
+            getattr(self, 'queue_btn', None), 
+            getattr(self, 'logs_btn', None), 
+            getattr(self, 'about_btn', None)
+        ]
+        
+        for btn in icon_buttons:
+            if btn and btn.property("icon_name"):
+                self.set_button_icon(btn, btn.property("icon_name"))
 
     def add_to_log(self, text):
         self.full_logs_list.append(text)
@@ -1498,6 +1631,10 @@ class CopynDownApp(QMainWindow):
             base_cmd.extend(["--sub-langs", s_str, "--convert-subs", "srt"])
             if cfg.get("embed_subs"): base_cmd.append("--embed-subs")
         return base_cmd
+
+    def trigger_download_from_url_entry(self):
+        if self.btn_download.isVisible() and self.btn_download.isEnabled():
+            self.btn_download.click()
 
     def handle_unified_download(self):
         if self.switch_advanced.isChecked():
@@ -1748,6 +1885,12 @@ class CopynDownApp(QMainWindow):
         
         cmd.append(dst); self.run_command(cmd, base, pending_logs)
 
+    def _revert_queue_btn(self):
+        self.queue_animating = False
+        if self.isVisible(): 
+            self.queue_btn.setText(f" Queue ({len(self.download_queue)})")
+            self.set_button_icon(self.queue_btn, "queue")
+    
     def run_command(self, cmd, task_name="Media Task", task_logs=None):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
         # 🔻 Adicionado a chave "logs" no dicionário da tarefa
@@ -1757,43 +1900,93 @@ class CopynDownApp(QMainWindow):
         def animate_btn():
             self.queue_animating = True
             count = len(self.download_queue)
-            self.queue_btn.setText(f"✅ Added! ({count})")
-            def revert():
-                self.queue_animating = False
-                if self.isVisible(): self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})")
-            QTimer.singleShot(2000, revert)
+            self.queue_btn.setText(f" Added! ({count})")
+            self.set_button_icon(self.queue_btn, "check")
+            self.btn_anim_timer.start(2000)
             
         self.safe_ui(animate_btn)
+        
         self.safe_ui(self.update_queue_ui)
 
         if not is_conv and task_name.startswith("http"):
             def fetch_title():
+                gen = self.queue_generation
+
+                self.title_fetch_semaphore.acquire()
                 try:
-                    t_cmd = self.build_base_cmd(is_json=True, silent=True) + ["--flat-playlist", "--no-warnings", "--playlist-items", "1", task_name]
-                    res = subprocess.run(t_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
-                    if res.returncode == 0:
+                    if gen != self.queue_generation:
+                        return
+                    
+                    t_cmd = self.build_base_cmd(is_json=True, silent=True) + [
+                        "--flat-playlist", "--no-warnings", "--playlist-items", "1", task_name
+                    ]
+                    
+                    res = subprocess.run(
+                        t_cmd,
+                        capture_output=True,
+                        text=True,
+                        encoding='utf-8',
+                        errors='replace',
+                        startupinfo=self.startupinfo,
+                        timeout=30
+                    )
+
+                    if gen != self.queue_generation:
+                        return
+
+                    if res.returncode == 0:    
                         info = json.loads(res.stdout.strip())
                         p_t = info.get('playlist_title') or info.get('playlist')
-                        n_name = f"[Playlist] {p_t}" if p_t else (f"[Playlist] {info.get('title')}" if "list=" in task_name.lower() else info.get('title') or task_name)
-                        qi["name"] = n_name; self.safe_ui(self.update_queue_ui)
-                except: pass
+                        n_name = f"[Playlist] {p_t}" if p_t else (
+                            f"[Playlist] {info.get('title')}"
+                            if "list=" in task_name.lower()
+                            else info.get('title') or task_name
+                        )
+                        
+                        qi["name"] = n_name
+                        self.safe_ui(self.update_queue_ui)
+                        
+                except Exception as e:
+                    # Só loga se a fila ainda for a mesma
+                    if gen == self.queue_generation:
+                        self.safe_ui(self.add_to_log, f"Could not fetch title: {e}")
+                        
+                finally:
+                    self.title_fetch_semaphore.release()
             threading.Thread(target=fetch_title, daemon=True).start()
-
-        if not self.is_queue_running: self.process_next_in_queue()
+            
+        if not self.is_queue_running and not self.is_busy and not self.is_updating:
+            self.process_next_in_queue()
 
     def update_queue_ui(self):
-        if self.queue_window and self.queue_window.isVisible(): 
+        # 🔻 O AMORTECEDOR: Acumula os pedidos e espera 200ms antes de forçar o Qt a desenhar
+        self.queue_update_timer.start(200)
+
+    def _do_update_queue_ui(self):
+        # A execução visual real, chamada apenas quando é seguro
+        if getattr(self, 'queue_window', None) and self.queue_window.isVisible(): 
             self.queue_window.update_list(self.download_queue, self.is_queue_running)
 
     def clear_entire_queue(self):
-        if self.is_queue_running and self.download_queue: self.download_queue = [self.download_queue[0]]
-        else: self.download_queue.clear()
-        self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})"); self.update_queue_ui()
+        self.queue_generation += 1
+        
+        # 2. Se existe algo rodando, preservamos apenas o índice 0. Se não, limpamos tudo.
+        if getattr(self, 'is_queue_running', False) and self.download_queue:
+            self.download_queue = [self.download_queue[0]] 
+        else:
+            self.download_queue.clear()
+            
+        # 3. Atualizamos a UI
+        self.queue_btn.setText(f" Queue ({len(self.download_queue)})")
+        self.set_button_icon(self.queue_btn, "queue")
+        self.update_queue_ui()
 
     def remove_from_queue(self, index):
         if 0 <= index < len(self.download_queue):
             self.download_queue.pop(index)
-            self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})"); self.update_queue_ui()
+            self.queue_btn.setText(f" Queue ({len(self.download_queue)})")
+            self.set_button_icon(self.queue_btn, "queue")
+            self.update_queue_ui()
 
     def move_queue_item(self, index, direction):
         n_idx = index + direction
@@ -1841,7 +2034,8 @@ class CopynDownApp(QMainWindow):
         if not self.download_queue:
             self.is_queue_running = False
             self.queue_start_time = None
-            self.queue_btn.setText("📥 Queue (0)")
+            self.queue_btn.setText(" Queue (0)")
+            self.set_button_icon(self.queue_btn, "queue")
             self.update_queue_ui()
             self.toggle_buttons("normal")
             return
@@ -1854,7 +2048,8 @@ class CopynDownApp(QMainWindow):
         task = self.download_queue[0]
 
         if not getattr(self, 'queue_animating', False):
-            self.queue_btn.setText(f"📥 Queue ({len(self.download_queue)})")
+            self.queue_btn.setText(f" Queue ({len(self.download_queue)})")
+            self.set_button_icon(self.queue_btn, "queue")
         self.update_queue_ui()
 
         cmd = task["cmd"]; is_conv = task["is_convert"]; self.is_cancelling = False
@@ -1930,8 +2125,10 @@ class CopynDownApp(QMainWindow):
     def cancel_download(self):
         proc = self.current_process
         if proc and not self.is_cancelling:
-            self.btn_cancel.setEnabled(False); self.btn_cancel.setText("Cancelling...")
-            self.is_cancelling = True; self.add_to_log(">>> Attempting to force close process...")
+            self.btn_cancel.setEnabled(False)
+            self.btn_cancel.setText("Cancelling...")
+            self.is_cancelling = True
+            self.add_to_log(">>> Attempting to force close process...")
             try:
                 if self.is_windows:
                     res = subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True, text=True, encoding='oem', errors='replace', startupinfo=self.startupinfo, timeout=3)
@@ -2002,6 +2199,10 @@ class CopynDownApp(QMainWindow):
                 if not self.is_queue_running:
                     self.toggle_buttons("normal")
                     self.reset_status()
+
+                    if self.download_queue and not self.is_updating:
+                        self.process_next_in_queue()
+
             self.safe_ui(restore_ui)
 
     def get_local_version(self):
