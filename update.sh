@@ -34,7 +34,7 @@ chmod +x bin/ffmpeg
 chmod +x bin/ffprobe
 chmod +x bin/deno
 
-rm -f CopynDown_Linux.zip
+rm -f "CopynDown_Linux.zip" "bin/logo.png" "bin/icon.png"
 
 echo ""
 echo -e "${G}-------------------------------------------------------${W}"
