@@ -27,6 +27,7 @@ if not defined ZIP_FILE exit /b
 if exist "certifi" (
     rmdir /s /q "certifi" "charset_normalizer" "cryptography" "customtkinter" "PIL" "tcl" "tcl8" "tk" >nul 2>&1
     del /f /q "_tkinter.pyd" "pyexpat.pyd" "python3.dll" "_asyncio.pyd" "_cffi_backend.pyd" "_multiprocessing.pyd" "_overlapped.pyd" >nul 2>&1
+    del /f /q "bin\logo.png" "bin\icon.ico" >nul 2>&1
     set "DEST_PATH=.."
 ) else (
     robocopy "bin" "core\bin" /MOVE /E /IS >nul 2>&1
