@@ -2366,7 +2366,7 @@ class CopynDownApp(QMainWindow):
                 if rv != v:
                     self.safe_ui(
                         self.add_to_log,
-                        f"Update available: {rv}. Please update the program."
+                        f">>> Update available: {rv}. Please update the program."
                     )
                     def ask_update():
                         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
