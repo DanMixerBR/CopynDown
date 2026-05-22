@@ -703,7 +703,7 @@ class AboutDialog(QDialog):
         def do_check():
             self.update_btn.setEnabled(False)
             self.update_btn.setText("Checking...")
-            self.main_app.start_github_update(self.update_btn, self)
+            self.main_app.start_github_update(self.update_btn, self, is_startup=False, check_ytdlp_after=True)
             
         self.update_btn.clicked.connect(do_check)
         
@@ -2189,27 +2189,111 @@ class CopynDownApp(QMainWindow):
         self.about_win = AboutDialog(self)
         self.about_win.exec()
 
-    def check_ytdlp_updates(self):
+    def check_ytdlp_updates(self, force=False, show_message=False, btn_to_restore=None):
+        last_check_file = os.path.join(bin_path, ".last_ytdlp_check").replace("\\", "/")
+
+        def finish_ui():
+            self.is_updating = False
+            
+            if btn_to_restore:
+                try:
+                    btn_to_restore.setEnabled(True)
+                    btn_to_restore.setText("Check for updates")
+                except RuntimeError: pass
+
+            if not self.is_queue_running:
+                self.toggle_buttons("normal")
+                self.reset_status()
+
+                if self.download_queue and not self.is_updating:
+                    self.process_next_in_queue()
+
         if not os.path.exists(self.ytdlp_path):
             self.safe_ui(self.add_to_log, ">>> Warning: yt-dlp is missing! Update check skipped. Please check your 'bin' folder.")
+            self.safe_ui(finish_ui)
             return
+
+        if not force and os.path.exists(last_check_file):
+            try:
+                elapsed = time.time() - os.path.getmtime(last_check_file)
+                if elapsed < 3600:
+                    self.safe_ui(self.add_to_log, ">>> yt-dlp update check skipped. It was checked less than 60 minutes ago.")
+                    self.safe_ui(finish_ui)
+                    return
+            except Exception: pass
+
         try:
+            self.is_updating = True
             self.safe_ui(self.toggle_buttons, "disabled", False)
-            p = subprocess.Popen([self.ytdlp_path, "-U"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo)
-            for line in p.stdout:
-                if line.strip(): self.safe_ui(self.add_to_log, f"[yt-dlp update] {line.strip()}")
-            p.wait()
-        except Exception as e: self.safe_ui(self.add_to_log, f"ERROR: {e}")
-        finally: 
-            def restore_ui():
-                if not self.is_queue_running:
-                    self.toggle_buttons("normal")
-                    self.reset_status()
+            self.safe_ui(self.reset_status, "Checking yt-dlp updates...")
 
-                    if self.download_queue and not self.is_updating:
-                        self.process_next_in_queue()
+            result = subprocess.run(
+                [self.ytdlp_path, "-U"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                startupinfo=self.startupinfo,
+                timeout=60
+            )
 
-            self.safe_ui(restore_ui)
+            output = (result.stdout or "") + "\n" + (result.stderr or "")
+
+            if output.strip():
+                for line in output.splitlines():
+                    if line.strip():
+                        self.safe_ui(self.add_to_log, f"[yt-dlp update] {line.strip()}")
+
+            if result.returncode != 0:
+                self.safe_ui(self.add_to_log, f">>> yt-dlp update check failed with exit code {result.returncode}.")
+
+            with open(last_check_file, "w", encoding="utf-8") as f:
+                f.write(str(time.time()))
+
+            if show_message:
+                # 🔻 Analisa o output de baixo para cima para achar a resposta final do yt-dlp
+                final_msg = "yt-dlp update check completed."
+                if result.returncode == 0:
+                    for line in reversed(output.splitlines()):
+                        clean_line = line.strip()
+                        clean_lower = clean_line.lower()
+                        if "up to date" in clean_lower or "updated yt-dlp to" in clean_lower:
+                            final_msg = clean_line
+                            break
+                            
+                # 🔻 Congela a mensagem para o safe_ui
+                def show_ytdlp_result(msg=final_msg, code=result.returncode):
+                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
+                    if code == 0:
+                        QMessageBox.information(self, "yt-dlp update", msg)
+                    else:
+                        QMessageBox.warning(self, "yt-dlp update", "yt-dlp update check failed. See logs for details.")
+                    QApplication.restoreOverrideCursor()
+                self.safe_ui(show_ytdlp_result)
+
+        except subprocess.TimeoutExpired:
+            self.safe_ui(self.add_to_log, ">>> yt-dlp update check timed out after 60 seconds.")
+            with open(last_check_file, "w", encoding="utf-8") as f: f.write(str(time.time()))
+            if show_message:
+                def show_ytdlp_timeout():
+                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
+                    QMessageBox.warning(self, "yt-dlp update", "yt-dlp update check timed out.")
+                    QApplication.restoreOverrideCursor()
+                self.safe_ui(show_ytdlp_timeout)
+
+        except Exception as e:
+            err_msg = str(e) # 🔻 Congela a mensagem de erro!
+            self.safe_ui(self.add_to_log, f">>> yt-dlp update check error: {err_msg}")
+            with open(last_check_file, "w", encoding="utf-8") as f: f.write(str(time.time()))
+            if show_message:
+                def show_ytdlp_err(msg=err_msg): # 🔻 Passa a string congelada!
+                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
+                    QMessageBox.warning(self, "yt-dlp update", f"yt-dlp update check failed:\n{msg}")
+                    QApplication.restoreOverrideCursor()
+                self.safe_ui(show_ytdlp_err)
+
+        finally:
+            self.safe_ui(finish_ui)
 
     def get_local_version(self):
         if os.path.exists(self.version_file):
@@ -2220,20 +2304,29 @@ class CopynDownApp(QMainWindow):
                 pass
         return "Unknown"
 
-    def start_github_update(self, btn=None, dialog=None, is_startup=False):
+    def start_github_update(self, btn=None, dialog=None, is_startup=False, check_ytdlp_after=False):
         self.is_updating = True
         self.safe_ui(self.toggle_buttons, "disabled", False)
         
         if is_startup:
             self.safe_ui(self.add_to_log, ">>> Checking for program updates on startup...")
-            
-        self.safe_ui(self.reset_status, "Checking for updates...")
+            self.safe_ui(self.reset_status, "Checking for updates...")
+        else:
+            self.safe_ui(self.reset_status, "Checking for updates...")
         
         def task():
             try:
                 v = self.get_local_version()
-                r = requests.get("https://api.github.com/repos/DanMixerBR/CopynDown/releases/latest", timeout=10).json()
-                rv = re.search(r'\d+(\.\d+)+', r['tag_name']).group()
+                r = requests.get("https://api.github.com/repos/DanMixerBR/CopynDown/releases/latest", timeout=10)
+                
+                # Prevenção contra Rate Limit
+                if r.status_code == 403:
+                    raise Exception("GitHub API rate limit exceeded.")
+                r.raise_for_status()
+                
+                r_json = r.json()
+                rv = re.search(r'\d+(\.\d+)+', r_json['tag_name']).group()
+                
                 if rv != v:
                     def ask():
                         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
@@ -2241,69 +2334,48 @@ class CopynDownApp(QMainWindow):
                         QApplication.restoreOverrideCursor()
                             
                         if ans == QMessageBox.StandardButton.Yes:
-                            if is_startup:
-                                self.is_updating = True
-                            # 1º Ação Crítica: Inicia a thread de update PRIMEIRO
                             threading.Thread(target=self.do_update, daemon=True).start()
-                            # 2º Ação Visual: Tenta fechar o dialog (blindado)
                             try:
                                 if dialog: dialog.accept()
                             except RuntimeError: pass
                         else:
-                            if is_startup:
-                                # Correção 2: Se recusar o update no boot, libera a flag antes de passar para o yt-dlp
-                                self.is_updating = False
-                                threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
-                            else:
-                                self.is_updating = False
-                                self.safe_ui(self.toggle_buttons, "normal") 
-                                self.safe_ui(self.reset_status)
-                            
-                            try:
-                                if btn: 
-                                    btn.setEnabled(True)
-                                    btn.setText("Check for updates")
-                            except RuntimeError: pass
+                            # Passa o bastão para o yt-dlp
+                            threading.Thread(target=lambda: self.check_ytdlp_updates(force=check_ytdlp_after, show_message=check_ytdlp_after, btn_to_restore=btn), daemon=True).start()
                     self.safe_ui(ask)
                 else:
                     if is_startup:
                         self.safe_ui(self.add_to_log, f">>> Program is up to date (Version {v}).")
-                        self.is_updating = False # 👈 Correção 3: Desliga o estado do GitHub antes do yt-dlp
-                        threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
                     else:
-                        self.is_updating = False
-                        self.safe_ui(self.toggle_buttons, "normal")
-                        self.safe_ui(self.reset_status)
                         def show_info():
                             QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
                             QMessageBox.information(self, "Up to date", "You are using the latest version.")
                             QApplication.restoreOverrideCursor()
-                            try:
-                                if btn: 
-                                    btn.setEnabled(True)
-                                    btn.setText("Check for updates")
-                            except RuntimeError: pass
                         self.safe_ui(show_info)
-            except Exception as e:
-                err_msg = str(e) # 🔻 Congela a mensagem de erro
-                
-                if is_startup:
-                    self.is_updating = False
-                    self.safe_ui(self.add_to_log, f">>> Startup update check failed: {err_msg}")
-                    threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
-                else:
-                    self.is_updating = False
-                    self.safe_ui(lambda: self.set_terminal_state("Update Failed!", f"ERROR: {err_msg}"))
-                    self.safe_ui(self.schedule_reset)
+                        
+                    # Passa o bastão para o yt-dlp
+                    threading.Thread(target=lambda: self.check_ytdlp_updates(force=check_ytdlp_after, show_message=check_ytdlp_after, btn_to_restore=btn), daemon=True).start()
                     
+            except Exception as e:
+                err_msg = str(e)
+                if is_startup:
+                    self.safe_ui(self.add_to_log, f">>> Startup update check failed: {err_msg}")
+                    threading.Thread(target=lambda: self.check_ytdlp_updates(force=False, show_message=False, btn_to_restore=btn), daemon=True).start()
+                else:
                     def show_err(msg=err_msg):
                         QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
                         QMessageBox.critical(self, "Update Error", f"ERROR: {msg}")
                         QApplication.restoreOverrideCursor()
                     self.safe_ui(show_err)
+                    self.safe_ui(lambda: self.set_terminal_state("Update Failed!", f"ERROR: {err_msg}"))
                     
-                    if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
-                    self.safe_ui(self.toggle_buttons, "normal")
+                    if check_ytdlp_after:
+                        threading.Thread(target=lambda: self.check_ytdlp_updates(force=True, show_message=True, btn_to_restore=btn), daemon=True).start()
+                    else:
+                        self.is_updating = False
+                        self.safe_ui(self.schedule_reset)
+                        if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
+                        self.safe_ui(self.toggle_buttons, "normal")
+                        
         threading.Thread(target=task, daemon=True).start()
 
     def do_update(self):
