@@ -2428,7 +2428,7 @@ class CopynDownApp(QMainWindow):
                 self.progress_label.setText("Starting update..."), 
                 self.progress_label.setStyleSheet("font-size: 11px;")
             ))
-            self.safe_ui(self.add_to_log, "\n>>> Downloading update file...")
+            self.safe_ui(self.add_to_log, "\n>>> Starting update...")
             
             url = "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Windows.zip" if self.is_windows else "https://github.com/DanMixerBR/CopynDown/releases/latest/download/CopynDown_Linux.zip"
             zip_platform = "CopynDown_Windows.zip" if self.is_windows else "CopynDown_Linux.zip"
@@ -2439,6 +2439,7 @@ class CopynDownApp(QMainWindow):
             
             if os.path.exists(z_path): os.remove(z_path)
 
+            self.safe_ui(self.add_to_log, "Downloading update file...")
             r = requests.get(url, stream=True, timeout=30)
             r.raise_for_status()
             
