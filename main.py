@@ -249,7 +249,7 @@ class QueueDialog(QDialog):
         super().__init__(parent)
         self.main_app = parent
         self.setWindowTitle("Process Queue")
-        self.setFixedSize(552, 502)
+        self.setFixedSize(580, 520)
         
         self._build_ui()
         apply_theme_titlebar(self)
@@ -763,6 +763,7 @@ class SettingsDialog(QDialog):
         self.cb_auto = QCheckBox("Auto-paste URLs"); self.cb_auto.setChecked(self.cfg["General"].get("auto_paste", True)); layout.addWidget(self.cb_auto)
         self.cb_hide = QCheckBox("Hide UI options before pasting URL"); self.cb_hide.setChecked(self.cfg["General"].get("hide_options", False)); layout.addWidget(self.cb_hide)
         self.cb_prefer = QCheckBox("Prefer video over playlist (If URL contains both)"); self.cb_prefer.setChecked(self.cfg["General"].get("prefer_video", False)); layout.addWidget(self.cb_prefer)
+        self.cb_updates_startup = QCheckBox("Check for updates on startup"); self.cb_updates_startup.setChecked(self.cfg["General"].get("check_updates_startup", True)); layout.addWidget(self.cb_updates_startup)
         
         layout.addSpacing(10)
         theme_row = QHBoxLayout(); theme_row.addWidget(QLabel("Theme:"))
@@ -1038,6 +1039,7 @@ class SettingsDialog(QDialog):
         self.aud_path.setText("~/Music/CopynDown")
         self.cookie_path.setText("bin/cookies.txt")
         self.cb_auto.setChecked(True); self.cb_hide.setChecked(False); self.cb_prefer.setChecked(False)
+        self.cb_updates_startup.setChecked(True)
         self.cb_thumb.setChecked(True); self.cb_meta.setChecked(True); self.cb_native.setChecked(False); self.cb_auto_sub.setChecked(False); self.cb_embed.setChecked(False)
         self.lang_combo.setCurrentText("English"); self.trans_combo.setCurrentText("None")
         self.prof_combo.setCurrentText("High Quality"); self.tmpl_combo.setCurrentText("Title (Default)")
@@ -1056,7 +1058,8 @@ class SettingsDialog(QDialog):
         self.cfg["General"].update({
             "video_path": self.vid_path.text(), "audio_path": self.aud_path.text(), "auto_paste": self.cb_auto.isChecked(),
             "use_cookies": self.cb_cookies.isChecked(), "cookies_path": self.cookie_path.text(), "hide_options": self.cb_hide.isChecked(),
-            "prefer_video": self.cb_prefer.isChecked(), "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
+            "prefer_video": self.cb_prefer.isChecked(), "check_updates_startup": self.cb_updates_startup.isChecked(),
+            "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
             "delay_mode": self.delay.currentText(), "sleep_min": self.s_min.text(), "sleep_max": self.s_max.text(), "sleep_req": self.s_req.text(),
             "conv_profile": self.prof_combo.currentText(),
             "speed_limit": self.speed_combo.currentText(),
@@ -1154,6 +1157,7 @@ class CopynDownApp(QMainWindow):
             "General": { 
                 "auto_paste": True, "use_cookies": True, "cookies_path": self.cookies_path_default, "hide_options": False, 
                 "video_path": "~/Videos/CopynDown", "audio_path": "~/Music/CopynDown", "prefer_video": False, 
+                "check_updates_startup": True,
                 "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", 
                 "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality",
                 "custom_profile": False, "custom_crf": "18", "custom_preset": "faster", "custom_cpu_used": "4",
@@ -1185,7 +1189,9 @@ class CopynDownApp(QMainWindow):
         apply_theme_titlebar(self)
         center_window(self)
 
-        threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
+        # Só dispara a sequência se o usuário quiser checar atualizações na inicialização
+        if self.config_data["General"].get("check_updates_startup", True):
+            QTimer.singleShot(500, lambda: self.start_github_update(is_startup=True))
     
     def changeEvent(self, event):
         from PySide6.QtCore import QEvent
@@ -1297,7 +1303,7 @@ class CopynDownApp(QMainWindow):
 
         self.status_frame = QWidget()
         status_lay = QVBoxLayout(self.status_frame); status_lay.setContentsMargins(0, 0, 0, 0)
-        self.progress_label = QLabel("Starting..."); self.progress_label.setObjectName("muted"); self.progress_label.setStyleSheet("font-size: 11px;")
+        self.progress_label = QLabel("Ready!"); self.progress_label.setObjectName("muted"); self.progress_label.setStyleSheet("font-size: 11px;")
         status_lay.addWidget(self.progress_label)
         self.progress = QProgressBar(); self.progress.setRange(0, 100); self.progress.setValue(0); self.progress.setTextVisible(False); self.progress.setFixedHeight(6)
         status_lay.addWidget(self.progress)
@@ -2214,10 +2220,14 @@ class CopynDownApp(QMainWindow):
                 pass
         return "Unknown"
 
-    def start_github_update(self, btn=None, dialog=None):
+    def start_github_update(self, btn=None, dialog=None, is_startup=False):
         self.is_updating = True
-        self.safe_ui(self.toggle_buttons, "disabled", False) # Bloqueia abas
-        self.reset_status("Checking for updates...")         # Força a interface a se esconder
+        self.safe_ui(self.toggle_buttons, "disabled", False)
+        
+        if is_startup:
+            self.safe_ui(self.add_to_log, ">>> Checking for program updates on startup...")
+            
+        self.safe_ui(self.reset_status, "Checking for updates...")
         
         def task():
             try:
@@ -2231,6 +2241,8 @@ class CopynDownApp(QMainWindow):
                         QApplication.restoreOverrideCursor()
                             
                         if ans == QMessageBox.StandardButton.Yes:
+                            if is_startup:
+                                self.is_updating = True
                             # 1º Ação Crítica: Inicia a thread de update PRIMEIRO
                             threading.Thread(target=self.do_update, daemon=True).start()
                             # 2º Ação Visual: Tenta fechar o dialog (blindado)
@@ -2238,9 +2250,14 @@ class CopynDownApp(QMainWindow):
                                 if dialog: dialog.accept()
                             except RuntimeError: pass
                         else:
-                            self.is_updating = False
-                            self.safe_ui(self.toggle_buttons, "normal") 
-                            self.safe_ui(self.reset_status)
+                            if is_startup:
+                                # Correção 2: Se recusar o update no boot, libera a flag antes de passar para o yt-dlp
+                                self.is_updating = False
+                                threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
+                            else:
+                                self.is_updating = False
+                                self.safe_ui(self.toggle_buttons, "normal") 
+                                self.safe_ui(self.reset_status)
                             
                             try:
                                 if btn: 
@@ -2249,37 +2266,44 @@ class CopynDownApp(QMainWindow):
                             except RuntimeError: pass
                     self.safe_ui(ask)
                 else:
-                    self.is_updating = False
-                    self.safe_ui(self.toggle_buttons, "normal")
-                    self.safe_ui(self.reset_status)
-                    def show_info():
-                        QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
-                        QMessageBox.information(self, "Up to date", "You are using the latest version.")
-                        QApplication.restoreOverrideCursor()
-
-                        # Restaura o botão (blindado)
-                        try:
-                            if btn: 
-                                btn.setEnabled(True)
-                                btn.setText("Check for updates")
-                        except RuntimeError: pass
-                        
-                    self.safe_ui(show_info)
+                    if is_startup:
+                        self.safe_ui(self.add_to_log, f">>> Program is up to date (Version {v}).")
+                        self.is_updating = False # 👈 Correção 3: Desliga o estado do GitHub antes do yt-dlp
+                        threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
+                    else:
+                        self.is_updating = False
+                        self.safe_ui(self.toggle_buttons, "normal")
+                        self.safe_ui(self.reset_status)
+                        def show_info():
+                            QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
+                            QMessageBox.information(self, "Up to date", "You are using the latest version.")
+                            QApplication.restoreOverrideCursor()
+                            try:
+                                if btn: 
+                                    btn.setEnabled(True)
+                                    btn.setText("Check for updates")
+                            except RuntimeError: pass
+                        self.safe_ui(show_info)
             except Exception as e:
-                self.is_updating = False
-                err_msg = str(e) # 🔻 Congela a mensagem de erro ANTES do 'e' sumir!
+                err_msg = str(e) # 🔻 Congela a mensagem de erro
                 
-                self.safe_ui(self.set_terminal_state, "Update Failed!", f"ERROR: {err_msg}")
-                self.safe_ui(self.schedule_reset)
-                
-                def show_api_err(msg=err_msg): # 🔻 Passa a mensagem congelada
-                    QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
-                    QMessageBox.critical(self, "Update Error", f"ERROR: {msg}")
-                    QApplication.restoreOverrideCursor()
-                self.safe_ui(show_api_err)
-                
-                if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
-                self.safe_ui(self.toggle_buttons, "normal") # Reativa as abas
+                if is_startup:
+                    self.is_updating = False
+                    self.safe_ui(self.add_to_log, f">>> Startup update check failed: {err_msg}")
+                    threading.Thread(target=self.check_ytdlp_updates, daemon=True).start()
+                else:
+                    self.is_updating = False
+                    self.safe_ui(lambda: self.set_terminal_state("Update Failed!", f"ERROR: {err_msg}"))
+                    self.safe_ui(self.schedule_reset)
+                    
+                    def show_err(msg=err_msg):
+                        QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
+                        QMessageBox.critical(self, "Update Error", f"ERROR: {msg}")
+                        QApplication.restoreOverrideCursor()
+                    self.safe_ui(show_err)
+                    
+                    if btn: self.safe_ui(lambda: (btn.setEnabled(True), btn.setText("Check for updates")))
+                    self.safe_ui(self.toggle_buttons, "normal")
         threading.Thread(target=task, daemon=True).start()
 
     def do_update(self):
