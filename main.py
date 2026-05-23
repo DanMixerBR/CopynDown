@@ -1037,26 +1037,30 @@ class SettingsDialog(QDialog):
         
         def do_browse():
             title = "Select Output Folder" if is_dir else "Select Cookies File"
-            p = QFileDialog.getExistingDirectory(self, title) if is_dir else QFileDialog.getOpenFileName(self, title, "", "Text Files (*.txt)")[0]
-            if p: 
+
+            start_path = os.path.expanduser(edit.text() or "~")
+            if not os.path.isabs(start_path):
+                start_path = os.path.join(base_dir, start_path)
+
+            if not is_dir:
+                start_path = os.path.dirname(start_path)
+
+            if not os.path.isdir(start_path):
+                start_path = base_dir
+
+            p = QFileDialog.getExistingDirectory(self, title, start_path) if is_dir else QFileDialog.getOpenFileName(self, title, start_path, "Text Files (*.txt)")[0]
+
+            if p:
                 p = p.replace("\\", "/")
                 home = os.path.expanduser("~").replace("\\", "/")
                 app_dir = os.path.abspath(".").replace("\\", "/")
-                if p.startswith(app_dir): p = p[len(app_dir):].lstrip("/")
-                elif p.startswith(home): p = "~" + p[len(home):]
+
+                if p.startswith(app_dir):
+                    p = p[len(app_dir):].lstrip("/")
+                elif p.startswith(home):
+                    p = "~" + p[len(home):]
+
                 edit.setText(p)
-                
-        btn.clicked.connect(do_browse)
-        row.addWidget(edit); row.addWidget(btn)
-        
-        if has_ext:
-            btn_ext = QPushButton("Get extension"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(120)
-            btn_ext.clicked.connect(lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"))
-            row.addWidget(btn_ext)
-            
-        row.addStretch(1)
-        parent_layout.addLayout(row)
-        return edit
 
     def restore_defaults(self):
         self.vid_path.setText("~/Videos/CopynDown")
@@ -1465,9 +1469,32 @@ class CopynDownApp(QMainWindow):
         self.evaluate_ui_state()
 
     def browse_source(self):
-        filters = "Audio Files (*.m4a *.mp3 *.flac *.wav *.opus *.ogg);;Video Files (*.mp4 *.mkv *.webm *.mov *.avi)" if self.current_category == self.TAB_C_AUD else "Video Files (*.mp4 *.mkv *.webm *.mov *.avi);;Audio Files (*.m4a *.mp3 *.flac *.wav *.opus *.ogg)"
-        file = QFileDialog.getOpenFileName(self, "Select Media File", "", filters)[0]
-        if file: self.main_entry.setText(file.replace("\\", "/")); self.evaluate_ui_state()
+        ext_video = "*.mp4 *.mkv *.webm *.mov *.avi"
+        ext_audio = "*.m4a *.mp3 *.flac *.wav *.opus *.ogg"
+
+        if self.current_category == self.TAB_C_AUD:
+            filters = (
+                f"Audio Files ({ext_audio});;"
+                f"Video Files ({ext_video})"
+            )
+        else:
+            filters = (
+                f"Video Files ({ext_video});;"
+                f"Audio Files ({ext_audio})"
+            )
+            
+        start_dir = getattr(self, "last_source_browse_dir", "")
+
+        if not start_dir or not os.path.isdir(start_dir):
+            gen_cfg = self.config_data.get("General", {})
+            raw_path = gen_cfg.get("audio_path") if self.current_category == self.TAB_C_AUD else gen_cfg.get("video_path")
+            start_dir = os.path.expanduser(raw_path or "~")
+
+        file = QFileDialog.getOpenFileName(self, "Select Media File", start_dir, filters)[0]
+        if file:
+            self.last_source_browse_dir = os.path.dirname(file)
+            self.main_entry.setText(file.replace("\\", "/"))
+            self.evaluate_ui_state()
 
     def on_advanced_toggle(self):
         self.evaluate_ui_state()
