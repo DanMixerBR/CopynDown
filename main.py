@@ -1062,6 +1062,18 @@ class SettingsDialog(QDialog):
 
                 edit.setText(p)
 
+        btn.clicked.connect(do_browse)
+        row.addWidget(edit); row.addWidget(btn)
+        
+        if has_ext:
+            btn_ext = QPushButton("Get extension"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(120)
+            btn_ext.clicked.connect(lambda: webbrowser.open_new("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"))
+            row.addWidget(btn_ext)
+            
+        row.addStretch(1)
+        parent_layout.addLayout(row)
+        return edit
+    
     def restore_defaults(self):
         self.vid_path.setText("~/Videos/CopynDown")
         self.aud_path.setText("~/Music/CopynDown")
