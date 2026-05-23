@@ -1045,9 +1045,6 @@ class SettingsDialog(QDialog):
             if not is_dir:
                 start_path = os.path.dirname(start_path)
 
-            if not os.path.isdir(start_path):
-                start_path = base_dir
-
             p = QFileDialog.getExistingDirectory(self, title, start_path) if is_dir else QFileDialog.getOpenFileName(self, title, start_path, "Text Files (*.txt)")[0]
 
             if p:
