@@ -1073,7 +1073,7 @@ class SettingsDialog(QDialog):
         row.addStretch(1)
         parent_layout.addLayout(row)
         return edit
-    
+
     def restore_defaults(self):
         self.vid_path.setText("~/Videos/CopynDown")
         self.aud_path.setText("~/Music/CopynDown")
