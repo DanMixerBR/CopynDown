@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
     QProgressBar, QRadioButton, QScrollArea, QSizePolicy, QStackedWidget,
-    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QMessageBox
+    QTextEdit, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QSystemTrayIcon
 )
 
 if getattr(sys, 'frozen', False):
@@ -49,12 +49,14 @@ THEMES = {
         "border": "#3a3f4b", "blue": "#1f538d", "blue_hover": "#2464aa", "blue_dark": "#14375e",
         "button": "#2c313a", "button_hover": "#353b46", "combo_button": "#2c3e50",
         "text": "#f0f4ff", "muted": "#9aa4b2", "muted2": "#7e8794", "danger": "#a94442",
+        "success": "#2ea043", "warning": "#d29922",
     },
     "light": {
         "bg": "#ffffff", "card": "#f0f2f5", "input": "#ffffff", "input2": "#e4e6eb",
         "border": "#ccd0d5", "blue": "#3ba1ff", "blue_hover": "#288ce6", "blue_dark": "#1d4ed8",
         "button": "#f0f2f5", "button_hover": "#e4e6eb", "combo_button": "#e4e6eb", 
         "text": "#1c1e21", "muted": "#606770", "muted2": "#8d949e", "danger": "#ff5252",
+        "success": "#2ecc71", "warning": "#f4b740",
     }
 }
 COLORS = THEMES[CURRENT_THEME]
@@ -760,10 +762,21 @@ class SettingsDialog(QDialog):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(12)
         layout.addWidget(self._section("General Options"))
         
-        self.cb_auto = QCheckBox("Auto-paste URLs"); self.cb_auto.setChecked(self.cfg["General"].get("auto_paste", True)); layout.addWidget(self.cb_auto)
-        self.cb_hide = QCheckBox("Hide UI options before pasting URL"); self.cb_hide.setChecked(self.cfg["General"].get("hide_options", False)); layout.addWidget(self.cb_hide)
-        self.cb_prefer = QCheckBox("Prefer video over playlist (If URL contains both)"); self.cb_prefer.setChecked(self.cfg["General"].get("prefer_video", False)); layout.addWidget(self.cb_prefer)
-        self.cb_updates_startup = QCheckBox("Check for updates on startup"); self.cb_updates_startup.setChecked(self.cfg["General"].get("check_updates_startup", True)); layout.addWidget(self.cb_updates_startup)
+        self.cb_auto = QCheckBox("Auto-paste URLs")
+        self.cb_auto.setChecked(self.cfg["General"].get("auto_paste", True))
+        layout.addWidget(self.cb_auto)
+        self.cb_hide = QCheckBox("Hide UI options before pasting URL")
+        self.cb_hide.setChecked(self.cfg["General"].get("hide_options", False))
+        layout.addWidget(self.cb_hide)
+        self.cb_prefer = QCheckBox("Prefer video over playlist (If URL contains both)")
+        self.cb_prefer.setChecked(self.cfg["General"].get("prefer_video", False))
+        layout.addWidget(self.cb_prefer)
+        self.cb_notify = QCheckBox("Enable desktop notifications")
+        self.cb_notify.setChecked(self.cfg["General"].get("notifications", True))
+        layout.addWidget(self.cb_notify)
+        self.cb_updates_startup = QCheckBox("Check for updates on startup")
+        self.cb_updates_startup.setChecked(self.cfg["General"].get("check_updates_startup", True))
+        layout.addWidget(self.cb_updates_startup)
         
         layout.addSpacing(10)
         theme_row = QHBoxLayout(); theme_row.addWidget(QLabel("Theme:"))
@@ -933,7 +946,10 @@ class SettingsDialog(QDialog):
 
             def reset_btn():
                 try:
-                    btn_ext.setEnabled(True); btn_ext.setText("Extract cookies"); btn_ext.setStyleSheet("")
+                    btn_ext.setEnabled(True)
+                    btn_ext.setText("Extract cookies")
+                    btn_ext.setIcon(QIcon())
+                    btn_ext.setStyleSheet("")
                 except RuntimeError:
                     pass
 
@@ -974,7 +990,11 @@ class SettingsDialog(QDialog):
                             value = c.get('value', '')
                             f.write(f"{domain}\t{include_sub}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n")
                     
-                    self.main_app.safe_ui(lambda: (btn_ext.setText("✅ Success!"), btn_ext.setStyleSheet("background-color: #2ea043; color: white; border: none;")))
+                    self.main_app.safe_ui(lambda: (
+                        btn_ext.setText(" Success!"),
+                        self.main_app.set_button_icon(btn_ext, "success"),
+                        btn_ext.setStyleSheet(f"background-color: {COLORS['success']}; color: white; border: none;")
+                    ))
                     self.main_app.safe_ui(self.main_app.add_to_log, f">>> Successfully generated valid cookies.txt at {c_path}")
                     self.main_app.safe_ui(lambda: QTimer.singleShot(3000, reset_btn))
 
@@ -983,7 +1003,11 @@ class SettingsDialog(QDialog):
                     err_msg = str(e)
                     
                     # 2. Passamos a mensagem congelada (m=err_msg) para blindar o lambda
-                    self.main_app.safe_ui(lambda: (btn_ext.setText("❌ Error"), btn_ext.setStyleSheet("background-color: #a94442; color: white; border: none;")))
+                    self.main_app.safe_ui(lambda: (
+                        btn_ext.setText(" Error"),
+                        self.main_app.set_button_icon(btn_ext, "error"),
+                        btn_ext.setStyleSheet(f"background-color: {COLORS['danger']}; color: white; border: none;")
+                    ))
                     self.main_app.safe_ui(lambda m=err_msg: QMessageBox.critical(self.main_app, "Extraction Error", f"Failed to extract cookies.\n\nDetails: {m}"))
                     self.main_app.safe_ui(self.main_app.add_to_log, f">>> Cookie extraction error: {err_msg}")
                     self.main_app.safe_ui(lambda: QTimer.singleShot(3000, reset_btn))
@@ -1040,6 +1064,7 @@ class SettingsDialog(QDialog):
         self.cookie_path.setText("bin/cookies.txt")
         self.cb_auto.setChecked(True); self.cb_hide.setChecked(False); self.cb_prefer.setChecked(False)
         self.cb_updates_startup.setChecked(True)
+        self.cb_notify.setChecked(True)
         self.cb_thumb.setChecked(True); self.cb_meta.setChecked(True); self.cb_native.setChecked(False); self.cb_auto_sub.setChecked(False); self.cb_embed.setChecked(False)
         self.lang_combo.setCurrentText("English"); self.trans_combo.setCurrentText("None")
         self.prof_combo.setCurrentText("High Quality"); self.tmpl_combo.setCurrentText("Title (Default)")
@@ -1059,6 +1084,7 @@ class SettingsDialog(QDialog):
             "video_path": self.vid_path.text(), "audio_path": self.aud_path.text(), "auto_paste": self.cb_auto.isChecked(),
             "use_cookies": self.cb_cookies.isChecked(), "cookies_path": self.cookie_path.text(), "hide_options": self.cb_hide.isChecked(),
             "prefer_video": self.cb_prefer.isChecked(), "check_updates_startup": self.cb_updates_startup.isChecked(),
+            "notifications": self.cb_notify.isChecked(),
             "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
             "delay_mode": self.delay.currentText(), "sleep_min": self.s_min.text(), "sleep_max": self.s_max.text(), "sleep_req": self.s_req.text(),
             "conv_profile": self.prof_combo.currentText(),
@@ -1158,6 +1184,7 @@ class CopynDownApp(QMainWindow):
                 "auto_paste": True, "use_cookies": True, "cookies_path": self.cookies_path_default, "hide_options": False, 
                 "video_path": "~/Videos/CopynDown", "audio_path": "~/Music/CopynDown", "prefer_video": False, 
                 "check_updates_startup": True,
+                "notifications": True,
                 "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", 
                 "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality",
                 "custom_profile": False, "custom_crf": "18", "custom_preset": "faster", "custom_cpu_used": "4",
@@ -1169,6 +1196,7 @@ class CopynDownApp(QMainWindow):
         self.load_config()
         self.last_folder = self.config_data["General"]["video_path"]
         self.current_category = self.TAB_VID
+        self.init_notifications()
         
         global CURRENT_THEME, COLORS
         saved_theme = self.config_data.get("General", {}).get("theme", "dark")
@@ -1192,6 +1220,54 @@ class CopynDownApp(QMainWindow):
         # Só dispara a sequência se o usuário quiser checar atualizações na inicialização
         if self.config_data["General"].get("check_updates_startup", True):
             QTimer.singleShot(500, lambda: self.start_github_update(is_startup=True))
+    
+    def init_notifications(self):
+        self.tray_icon = None
+
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        icon = QApplication.windowIcon()
+
+        if icon.isNull():
+            for icon_name in ("icon.ico", "icon.png", "logo.png"):
+                icon_path = os.path.join(bin_path, "icons", icon_name).replace("\\", "/")
+                if os.path.exists(icon_path):
+                    icon = QIcon(icon_path)
+                    break
+
+        if icon.isNull():
+            return
+
+        self.tray_icon = QSystemTrayIcon(icon, self)
+        self.tray_icon.setToolTip("CopynDown")
+        self.tray_icon.show()
+        self.tray_icon.messageClicked.connect(self.restore_from_notification)
+        self.tray_icon.activated.connect(self.restore_from_tray_icon)
+
+    def notify_user(self, title, message, icon_type=None):
+        if not self.config_data.get("General", {}).get("notifications", True):
+            return
+
+        if not getattr(self, "tray_icon", None):
+            return
+
+        if icon_type is None:
+            icon_type = QSystemTrayIcon.MessageIcon.Information
+
+        self.tray_icon.showMessage(title, message, icon_type, 5000)    
+    
+    def restore_from_notification(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def restore_from_tray_icon(self, reason):
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick
+        ):
+            self.restore_from_notification()
     
     def changeEvent(self, event):
         from PySide6.QtCore import QEvent
@@ -1473,7 +1549,15 @@ class CopynDownApp(QMainWindow):
         if log_msg: self.add_to_log(log_msg)
 
     def status_error(self, log_msg=""): self.set_terminal_state("Process Error! (Check Logs)", log_msg)
-    def status_canceled(self, log_msg=">>> Process Canceled!"): self.set_terminal_state("Canceled!", log_msg)
+    def status_canceled(self, log_msg=">>> Process Canceled!"):
+        self.progress.setRange(0, 100); self.progress.setValue(100)
+        self.progress_label.setText("Canceled!")
+        self.progress_label.setStyleSheet("font-size: 11px;")
+        self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['muted']}; }}")
+
+        if log_msg: self.add_to_log(log_msg)
+
+        self.schedule_reset(3000)
 
     def safe_ui(self, func, *args, **kwargs):
         # Emite o sinal de forma 100% segura, não importa em qual Thread estejamos!
@@ -1547,14 +1631,18 @@ class CopynDownApp(QMainWindow):
     def refresh_theme_colors(self):
         txt = self.progress_label.text()
         if "Complete" in txt:
-            self.progress.setStyleSheet("QProgressBar::chunk { background-color: #2ea043; }")
-            self.progress_label.setStyleSheet("color: #2ea043; font-size: 11px;")
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['success']}; }}")
+            self.progress_label.setStyleSheet(f"color: {COLORS['success']}; font-size: 11px;")
         elif "Incomplete" in txt:
-            self.progress.setStyleSheet("QProgressBar::chunk { background-color: #d29922; }")
-            self.progress_label.setStyleSheet("color: #d29922; font-size: 11px;")
-        elif "Error" in txt or "Canceled" in txt or "Failed" in txt or "Invalid" in txt:
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['warning']}; }}")
+            self.progress_label.setStyleSheet(f"color: {COLORS['warning']}; font-size: 11px;")
+        elif "Error" in txt or "Failed" in txt or "Invalid" in txt:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['danger']}; }}")
             self.progress_label.setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px;")
+        elif "Canceled" in txt: 
+            # 🔻 Nova regra exclusiva para o cancelamento
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['muted']}; }}")
+            self.progress_label.setStyleSheet("font-size: 11px;")
         else:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
             self.progress_label.setStyleSheet("font-size: 11px;")
@@ -1649,7 +1737,7 @@ class CopynDownApp(QMainWindow):
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
         url = self.main_entry.text().strip()
-        if not self.is_valid_media_url(url): self.status_error("ERROR: Invalid URL."); return
+        if not self.is_valid_media_url(url): self.reset_status("Invalid URL!", COLORS["danger"]); self.schedule_reset(); return
         if not os.path.exists(self.ytdlp_path): self.status_error("ERROR: yt-dlp is missing! Please place it in the 'bin' folder."); return
         if tab == self.TAB_VID: self.download_video(url)
         elif tab == self.TAB_AUD: self.download_music(url)
@@ -2018,20 +2106,23 @@ class CopynDownApp(QMainWindow):
             
         elif not err:
             msg = f"Conversion Complete! (Total time: {d_str})" if is_conv else f"Download Complete! (Total time: {d_str})"
-            self.progress_label.setText(msg); self.progress_label.setStyleSheet("color: #2ea043; font-size: 11px;")
+            self.progress_label.setText(msg); self.progress_label.setStyleSheet(f"color: {COLORS['success']}; font-size: 11px;")
             self.progress.setRange(0, 100); self.progress.setValue(100)
-            self.progress.setStyleSheet("QProgressBar::chunk { background-color: #2ea043; }") # 👈 VERDE SUAVE
+            self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['success']}; }}") # 👈 VERDE SUAVE
             self.add_to_log(f">>> {msg}\n")
+            self.notify_user("CopynDown", msg)
         else:
             is_p = getattr(self, 'current_playlist_item', '') != ""
             if is_conv or is_p:
                 msg = "Conversion Incomplete (Check Logs)" if is_conv else "Download Incomplete (Check Logs)"
-                self.progress_label.setText(msg); self.progress_label.setStyleSheet("color: #d29922; font-size: 11px;")
+                self.progress_label.setText(msg); self.progress_label.setStyleSheet(f"color: {COLORS['warning']}; font-size: 11px;")
                 self.progress.setRange(0, 100); self.progress.setValue(100)
-                self.progress.setStyleSheet("QProgressBar::chunk { background-color: #d29922; }") # 👈 BARRA AMARELA!
+                self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['warning']}; }}") # 👈 BARRA AMARELA!
                 self.add_to_log(f">>> {msg}\n")
+                self.notify_user("CopynDown", msg, QSystemTrayIcon.MessageIcon.Warning)
             else:
                 self.status_error()
+                self.notify_user("CopynDown", "Process Error! Check logs for details.", QSystemTrayIcon.MessageIcon.Critical)
         
         if self.download_queue: self.download_queue.pop(0)
         QTimer.singleShot(2000 if err else 500, self.process_next_in_queue)
@@ -2523,8 +2614,8 @@ class CopynDownApp(QMainWindow):
 
             self.safe_ui(lambda: (
                 self.progress_label.setText("Update Ready! (100%)"),
-                self.progress_label.setStyleSheet("color: #2ea043; font-size: 11px;"),
-                self.progress.setStyleSheet("QProgressBar::chunk { background-color: #2ea043; }"),
+                self.progress_label.setStyleSheet(f"color: {COLORS['success']}; font-size: 11px;"),
+                self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['success']}; }}"),
                 self.progress.setValue(100)
             ))
             self.safe_ui(self.add_to_log, ">>> Update downloaded and verified successfully!")
@@ -2536,8 +2627,15 @@ class CopynDownApp(QMainWindow):
                 if os.path.exists(s_path):
                     # 🔻 CORREÇÃO 2: Lógica Original de Execução + cwd=base_dir
                     if self.is_windows:
-                        # O cwd garante que o script rode na pasta correta, independentemente de espaços no caminho
-                        subprocess.Popen(['cmd.exe', '/c', f"update.{s_ext}"], cwd=base_dir, creationflags=0x00000010)
+                        subprocess.Popen(
+                            ["cmd.exe", "/c", "start", "", f"update.{s_ext}", str(os.getpid())],
+                            cwd=base_dir,
+                            stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            close_fds=True,
+                            creationflags=0x00000010
+                        )
                     else:
                         os.chmod(s_path, 0o755)
                         limpo_env = os.environ.copy()
