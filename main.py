@@ -1866,7 +1866,7 @@ class CopynDownApp(QMainWindow):
     
     def convert_media(self, media_type):
         src = self.main_entry.text().strip()
-        if not os.path.exists(src): self.status_error("ERROR: Source file does not exist."); return
+        if not os.path.exists(src): self.reset_status("Source file does not exist.", COLORS["danger"]); self.schedule_reset(); return
         
         is_vid = media_type == "video"
         base = os.path.splitext(os.path.basename(src))[0]
