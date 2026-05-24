@@ -1774,6 +1774,7 @@ class CopynDownApp(QMainWindow):
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
         url = self.main_entry.text().strip()
+        if not url: self.reset_status("URL is empty.", COLORS["danger"]); self.schedule_reset(); return
         if not self.is_valid_media_url(url): self.reset_status("Invalid URL.", COLORS["danger"]); self.schedule_reset(); return
         if not os.path.exists(self.ytdlp_path): self.status_error("ERROR: yt-dlp is missing! Please place it in the 'bin' folder."); return
         if tab == self.TAB_VID: self.download_video(url)
