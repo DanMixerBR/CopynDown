@@ -18,7 +18,8 @@ def qt_message_handler(mode, context, message):
     filtros = [
         "QThreadStorage", 
         "QFont::setPointSize", 
-        "zwp_text_input_v3_leave"
+        "zwp_text_input_v3_leave",
+        "must be a top level window"
     ]
 
     if not any(f in message for f in filtros):
