@@ -43,7 +43,7 @@ if defined APP_PID (
 
 echo %C%[%W%*%C%]%W% Status: %Y%Cleaning up legacy files...%W%
 del /f /q "YT Video Downloader.bat" "YT Music Downloader.bat" "YT MP3 Converter.bat" "Insta Video Downloader.bat" "Auto Update.bat" >nul 2>&1
-del /f /q "Readme (EN).txt" "bin\Readme (EN).txt" "Readme (PT).txt" "bin\Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
+del /f /q "Readme (EN).txt" "Readme (PT).txt" "YT.Video.Downloader.zip" >nul 2>&1
 
 echo %C%[%W%*%C%]%W% Status: %Y%Extracting new files...%W%
 
