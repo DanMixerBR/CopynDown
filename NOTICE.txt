@@ -1,0 +1,37 @@
+CopynDown
+Copyright (c) 2026 DanMixerBR
+
+This application utilizes the following third-party open-source software:
+
+- yt-dlp
+- FFmpeg and FFprobe
+- Deno
+- Python
+- PySide6 / Qt for Python
+- Requests
+- Rookiepy
+
+These components are the property of their respective authors and contributors.
+
+CopynDown is an independent project and is not affiliated with, endorsed by,
+or sponsored by YouTube, Instagram, TikTok, FFmpeg, yt-dlp, Deno, The Qt
+Company, Python Software Foundation, or any platform supported by this software.
+
+Detailed licensing information for these third-party components can be found
+in the THIRD_PARTY_LICENSES.txt file included with this distribution.
+
+---
+
+FFmpeg Notice:
+This software includes executable binaries of FFmpeg and FFprobe.
+FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+
+The included FFmpeg and FFprobe binaries are provided by the
+yt-dlp/FFmpeg-Builds project and are distributed under the GNU General
+Public License version 3.0 (GPLv3).
+
+The upstream FFmpeg source code can be found at:
+https://github.com/FFmpeg/FFmpeg
+
+The yt-dlp FFmpeg builds can be found at:
+https://github.com/yt-dlp/FFmpeg-Builds

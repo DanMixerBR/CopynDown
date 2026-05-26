@@ -1,0 +1,184 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+This software (CopynDown) incorporates or bundles third-party software
+components. Their respective license names, copyright notices, source links,
+and license references are listed below.
+
+This file is provided for attribution and transparency purposes. Full license
+texts and source code references are available through the links listed in each
+section.
+
+========================================================================
+1. yt-dlp
+========================================================================
+Project License: The Unlicense
+Standalone Executable Notice: The official yt-dlp executable may include
+third-party components under additional licenses, including GPLv3+ components.
+
+Source: https://github.com/yt-dlp/yt-dlp
+License: https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE
+Third-party licenses: https://github.com/yt-dlp/yt-dlp/blob/master/THIRD_PARTY_LICENSES.txt
+
+CopynDown redistributes the yt-dlp executable as an independent command-line
+tool. yt-dlp is used by CopynDown to extract and download media from supported
+websites.
+
+The yt-dlp project source code is released under The Unlicense. However,
+prebuilt standalone executables may bundle third-party components under
+additional licenses. Users should refer to the yt-dlp THIRD_PARTY_LICENSES.txt
+file for complete details.
+
+The Unlicense text states:
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute
+this software, either in source code form or as a compiled binary, for any
+purpose, commercial or non-commercial, and by any means.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+For more information, please refer to:
+https://unlicense.org
+
+========================================================================
+2. FFmpeg and FFprobe
+========================================================================
+License: GNU General Public License version 3.0 (GPLv3)
+Source (Upstream): https://github.com/FFmpeg/FFmpeg
+Source (yt-dlp Build): https://github.com/yt-dlp/FFmpeg-Builds
+GPLv3 License: https://www.gnu.org/licenses/gpl-3.0.html
+
+CopynDown redistributes executable binaries of FFmpeg and FFprobe obtained
+from the yt-dlp/FFmpeg-Builds project.
+
+These components are independent executable binaries called by CopynDown and
+are not statically linked into the CopynDown source code.
+
+The included FFmpeg and FFprobe binaries are distributed under the GNU General
+Public License version 3.0 (GPLv3).
+
+The corresponding build scripts and release information for the included
+binaries can be found at:
+https://github.com/yt-dlp/FFmpeg-Builds
+
+The upstream FFmpeg source code can be found at:
+https://github.com/FFmpeg/FFmpeg
+
+FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+
+========================================================================
+3. Deno
+========================================================================
+License: MIT License
+Source: https://github.com/denoland/deno
+License: https://github.com/denoland/deno/blob/main/LICENSE.md
+
+Copyright 2018-2026 the Deno authors.
+
+CopynDown redistributes the Deno executable as an independent runtime used by
+yt-dlp-related JavaScript execution features.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+========================================================================
+4. Python
+========================================================================
+License: Python Software Foundation License Version 2
+Source: https://www.python.org/
+License: https://docs.python.org/3/license.html
+
+CopynDown is built using the Python programming language.
+
+Python software and documentation are licensed under the Python Software
+Foundation License Version 2.
+
+Copyright (c) 2001-2026 Python Software Foundation; All Rights Reserved.
+
+For the full Python license text, visit:
+https://docs.python.org/3/license.html
+
+========================================================================
+5. PySide6 / Qt for Python
+========================================================================
+License: GNU Lesser General Public License v3.0 (LGPLv3)
+Source: https://code.qt.io/cgit/pyside/pyside-setup.git/
+Project page: https://pypi.org/project/PySide6/
+LGPLv3 License: https://www.gnu.org/licenses/lgpl-3.0.html
+
+CopynDown uses PySide6 / Qt for Python for its graphical user interface.
+
+PySide6 is available under open-source licenses including LGPLv3, GPLv2,
+GPLv3, and also under a commercial license. CopynDown uses PySide6 under the
+LGPLv3 open-source licensing option.
+
+The source code for PySide6 and Qt for Python can be obtained from the Qt
+Project / Qt Company through the links above.
+
+========================================================================
+6. Requests
+========================================================================
+License: Apache License 2.0
+Source: https://github.com/psf/requests
+License: https://github.com/psf/requests/blob/main/LICENSE
+
+CopynDown uses Requests for HTTP/network operations.
+
+Copyright 2014 Kenneth Reitz.
+
+Licensed under the Apache License, Version 2.0. You may not use this file
+except in compliance with the License. You may obtain a copy of the License at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied.
+
+========================================================================
+7. Rookiepy
+========================================================================
+License: MIT License
+Source: https://github.com/thewh1teagle/rookie
+License: https://github.com/thewh1teagle/rookie/blob/main/MIT-LICENSE.txt
+
+CopynDown uses Rookiepy to load cookies from supported web browsers when the
+user enables browser cookie extraction features.
+
+Copyright (c) 2023-2024 thewh1teagle and others.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
