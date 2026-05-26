@@ -699,7 +699,11 @@ class AboutDialog(QDialog):
         layout.addWidget(scroll, 1)
         
         bottom = QHBoxLayout(); bottom.addStretch(1)
-        github = QPushButton("GitHub"); github.setFixedWidth(120); github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
+        
+        github = QPushButton("GitHub")
+        github.setFixedWidth(120)
+        self.main_app.set_button_icon(github, "github")
+        github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
         
         btn_state = False if self.main_app.is_busy else True
         self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(140); self.update_btn.setEnabled(btn_state)
