@@ -149,7 +149,7 @@ This project is built using:
 * [PySide6](https://pypi.org/project/PySide6) for the modern UI (versions 3.0.0+).
 * [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) for the previous UI (versions up to 2.6.2).
 * [yt-dlp](https://github.com/yt-dlp/yt-dlp) for media downloading.
-* [FFmpeg](https://ffmpeg.org/) for media conversion.
-* [Deno](https://deno.com/) as the JavaScript runtime for executing complex extraction scripts.
+* [FFmpeg](https://github.com/FFmpeg/FFmpeg) for media conversion.
+* [Deno](https://github.com/denoland/deno/) as the JavaScript runtime for executing complex extraction scripts.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
