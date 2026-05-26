@@ -700,7 +700,7 @@ class AboutDialog(QDialog):
         
         bottom = QHBoxLayout(); bottom.addStretch(1)
         
-        github = QPushButton("GitHub")
+        github = QPushButton(" GitHub")
         github.setFixedWidth(120)
         self.main_app.set_button_icon(github, "github")
         github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
