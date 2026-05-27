@@ -162,7 +162,7 @@ QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}
 QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else "#303030"}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
 QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 5px; border: 2px solid {COLORS['muted']}; background-color: transparent; }}
-QCheckBox::indicator:hover {{ border-color: {COLORS['blue_hover']}; }}
+QCheckBox::indicator:hover {{ border-color: {COLORS['text']}; }}
 QCheckBox::indicator:checked {{ background-color: {COLORS['blue']}; border: 2px solid {COLORS['blue']}; }}
 QCheckBox::indicator:checked:hover {{ background-color: {COLORS['blue_hover']}; border: 2px solid {COLORS['blue_hover']}; }}
 QCheckBox:disabled {{ color: {COLORS['muted2']}; }}
