@@ -142,7 +142,7 @@ QPushButton#dangerButton {{ background-color: {COLORS['combo_button']}; color: {
 QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: white; }}
 QPushButton#dangerButton:disabled {{ background-color: {COLORS['input']}; color: {COLORS['muted2']}; }}
 QPushButton#browseButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
-QPushButton#browseButton:hover {{ background-color: {COLORS['blue_hover']}; color: white; }}
+QPushButton#browseButton:hover {{ background-color: {COLORS['blue']}; color: white; }}
 QPushButton#pill {{ background-color: transparent; color: {COLORS['muted']}; border-radius: 18px; padding: 8px 12px; font-weight: 700; min-width: 82px; min-height: 19px; }}
 QPushButton#pill:hover {{ background-color: {COLORS['button_hover']}; }}
 QPushButton#pill:checked {{ background-color: {COLORS['blue']}; color: white; }}
@@ -155,15 +155,16 @@ QComboBox#cardCombo {{ background-color: {COLORS['card']}; }}
 QComboBox:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
 QComboBox::drop-down:disabled {{ background-color: {COLORS['input2']}; }}
 QComboBox::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 34px; border: none; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background-color: {COLORS['combo_button']}; }}
-QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS['blue_hover']}; }}
+QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS['blue']}; }}
 QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
 QComboBox QAbstractItemView {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; outline: 0; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
 QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else "#303030"}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
 QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 5px; border: 2px solid {COLORS['muted']}; background-color: transparent; }}
-QCheckBox::indicator:hover {{ border-color: {COLORS['text']}; }}
+QCheckBox::indicator:hover {{ border-color: {COLORS['blue_hover']}; }}
 QCheckBox::indicator:checked {{ background-color: {COLORS['blue']}; border: 2px solid {COLORS['blue']}; }}
+QCheckBox::indicator:checked:hover {{ background-color: {COLORS['blue_hover']}; border: 2px solid {COLORS['blue_hover']}; }}
 QCheckBox:disabled {{ color: {COLORS['muted2']}; }}
 QCheckBox::indicator:disabled {{ border-color: {COLORS['muted2']}; }}
 QRadioButton {{ spacing: 8px; color: {COLORS['text']}; }}
@@ -173,7 +174,9 @@ QRadioButton::indicator:checked {{ width: 8px; height: 8px; border-radius: 9px; 
 QCheckBox#switch {{ spacing: 9px; color: {COLORS['muted']}; }}
 QCheckBox#switch::indicator {{ width: 34px; height: 18px; border-radius: 9px; border: none; background-color: {COLORS['muted2']}; }}
 QCheckBox#switch::indicator:unchecked {{ background-color: {COLORS['muted2']}; }}
+QCheckBox#switch::indicator:unchecked:hover {{ background-color: {COLORS['muted']}; }}
 QCheckBox#switch::indicator:checked {{ background-color: {COLORS['blue']}; }}
+QCheckBox#switch::indicator:checked:hover {{ background-color: {COLORS['blue_hover']}; }}
 QProgressBar {{ background-color: {COLORS['input']}; border: none; border-radius: 3px; height: 6px; text-align: center; }}
 QProgressBar::chunk {{ background-color: {COLORS['blue']}; border-radius: 3px; }}
 QTextEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: none; border-radius: 6px; padding: 10px; font-family: 'Consolas'; font-size: 11px; selection-background-color: {COLORS['blue']}; }}
