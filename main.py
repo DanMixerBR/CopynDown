@@ -151,6 +151,16 @@ QPushButton#smallFooter:hover {{ background-color: {COLORS['button_hover']}; }}
 QLineEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; border-radius: 4px; padding: 6px 8px; selection-background-color: {COLORS['blue']}; }}
 QLineEdit#mainEntry {{ border: none; background-color: transparent; padding-left: 13px; }}
 QComboBox {{ background-color: {COLORS['input']}; border: none; border-radius: 8px; padding: 8px 10px; min-height: 18px; }}
+QComboBox#subtitleCombo {{
+    background-color: transparent;
+    min-height: 16px;
+    max-height: 16px;
+    padding: 7px 10px;
+}}
+
+QComboBox#subtitleCombo::drop-down {{
+    width: 34px;
+}}
 QComboBox#cardCombo {{ background-color: {COLORS['card']}; }}
 QComboBox:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
 QComboBox::drop-down:disabled {{ background-color: {COLORS['input2']}; }}
@@ -161,6 +171,34 @@ QComboBox QAbstractItemView {{ background-color: {COLORS['input']}; color: {COLO
 QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
 QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else "#303030"}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
+QCheckBox#fieldCheck {{ color: {COLORS['text']}; }}
+QCheckBox#fieldCheck::indicator:unchecked {{
+    border: 2px solid {COLORS['muted2']};
+    background-color: transparent;
+}}
+
+QCheckBox#fieldCheck::indicator {{
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 2px solid {COLORS['muted2']};
+    background-color: transparent;
+}}
+
+QCheckBox#fieldCheck::indicator:unchecked:hover {{
+    border: 2px solid {COLORS['muted']};
+    background-color: {COLORS['input2']};
+}}
+
+QCheckBox#fieldCheck::indicator:checked {{
+    background-color: {COLORS['blue']};
+    border: 2px solid {COLORS['blue']};
+}}
+
+QCheckBox#fieldCheck::indicator:checked:hover {{
+    background-color: {COLORS['blue_hover']};
+    border: 2px solid {COLORS['blue_hover']};
+}}
 QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 5px; border: 2px solid {COLORS['muted']}; background-color: transparent; }}
 QCheckBox::indicator:hover {{ border-color: {COLORS['text']}; }}
 QCheckBox::indicator:checked {{ background-color: {COLORS['blue']}; border: 2px solid {COLORS['blue']}; }}
@@ -578,7 +616,7 @@ class ManualSelectionDialog(QDialog):
                 lay = QVBoxLayout(card)
                 lbl = QLabel(title); lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
                 lay.addWidget(lbl, 0, Qt.AlignmentFlag.AlignCenter)
-                scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedHeight(300)
+                scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFixedHeight(274)
                 content = QWidget(); content.setStyleSheet("background-color: transparent;")
                 scroll_lay = QVBoxLayout(content); scroll_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
                 rb_none = QRadioButton("None"); rb_none.setProperty("fmt_id", "none"); rb_none.setStyleSheet("font-size: 13px; padding: 4px 0px;"); group.addButton(rb_none); scroll_lay.addWidget(rb_none)
@@ -613,23 +651,130 @@ class ManualSelectionDialog(QDialog):
             lists_frame.addWidget(vid_card, 1); lists_frame.addWidget(aud_card, 1)
             self.content_layout.addLayout(lists_frame, 1)
 
+            footer_box = QVBoxLayout()
+            footer_box.setSpacing(8)
+
             footer = QHBoxLayout()
             footer.addWidget(QLabel("Output Format:"))
-            self.format_combo = QComboBox(); self.format_combo.setObjectName("cardCombo"); self.format_combo.addItems(self.allowed_formats); self.format_combo.setFixedWidth(140)
-            if len(self.allowed_formats) == 1: self.format_combo.setEnabled(False)
-            footer.addWidget(self.format_combo); footer.addStretch(1)
 
-            btn_down = QPushButton("Download selected"); btn_down.setObjectName("primaryButton"); btn_down.setFixedSize(145, 35)
+            self.format_combo = QComboBox()
+            self.format_combo.setObjectName("cardCombo")
+            self.format_combo.addItems(self.allowed_formats)
+            self.format_combo.setFixedWidth(140)
+
+            if len(self.allowed_formats) == 1:
+                self.format_combo.setEnabled(False)
+
+            footer.addWidget(self.format_combo)
+            footer.addStretch(1)
+
+            btn_down = QPushButton("Download selected")
+            btn_down.setObjectName("primaryButton")
+            btn_down.setFixedSize(145, 35)
             btn_down.clicked.connect(self.start_download)
             footer.addWidget(btn_down)
-            
-            self.content_layout.addLayout(footer)
+
+            manual_subs_widget = QWidget()
+            manual_subs_widget.setFixedHeight(30)
+
+            manual_subs_row = QHBoxLayout(manual_subs_widget)
+            manual_subs_row.setContentsMargins(0, 0, 0, 0)
+            manual_subs_row.setSpacing(8)
+            manual_subs_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+            is_video_manual = self.main_app.current_category == self.main_app.TAB_VID
+            video_cfg = self.main_app.config_data[self.main_app.TAB_VID]
+
+            self.manual_switch_subtitles = Switch("Download subtitles")
+            self.manual_switch_subtitles.setChecked(
+                video_cfg.get("native_subs", False) or
+                video_cfg.get("auto_subs", False)
+            )
+            self.manual_switch_subtitles.setVisible(is_video_manual)
+            manual_subs_row.addWidget(self.manual_switch_subtitles, 0, Qt.AlignmentFlag.AlignLeft)
+
+            manual_subs_row.addSpacing(8)
+
+            self.manual_embed_check = QCheckBox("Embed subtitles")
+            self.manual_embed_check.setObjectName("fieldCheck")
+            self.manual_embed_check.setChecked(video_cfg.get("embed_subs", False))
+            manual_subs_row.addWidget(self.manual_embed_check)
+
+            manual_subs_row.addSpacing(8)
+
+            manual_lang_label = QLabel("Language:")
+            manual_lang_label.setObjectName("fieldLabel")
+            manual_subs_row.addWidget(manual_lang_label)
+
+            self.manual_subs_lang_combo = QComboBox()
+            self.manual_subs_lang_combo.setObjectName("subtitleCombo")
+            self.manual_subs_lang_combo.addItems(list(self.main_app.lang_map.values())[1:])
+            self.manual_subs_lang_combo.setFixedWidth(120)
+            self.manual_subs_lang_combo.setCurrentText(
+                self.main_app.lang_map.get(video_cfg.get("langs", "en"), "English")
+            )
+            manual_subs_row.addWidget(self.manual_subs_lang_combo)
+
+            manual_subs_row.addSpacing(8)
+
+            manual_trans_label = QLabel("Translate to:")
+            manual_trans_label.setObjectName("fieldLabel")
+            manual_subs_row.addWidget(manual_trans_label)
+
+            self.manual_subs_trans_combo = QComboBox()
+            self.manual_subs_trans_combo.setObjectName("subtitleCombo")
+            self.manual_subs_trans_combo.addItems(list(self.main_app.lang_map.values()))
+            self.manual_subs_trans_combo.setFixedWidth(120)
+            self.manual_subs_trans_combo.setCurrentText(
+                self.main_app.lang_map.get(video_cfg.get("trans_langs", "none"), "None")
+            )
+            manual_subs_row.addWidget(self.manual_subs_trans_combo)
+
+            manual_subs_row.addStretch(1)
+
+            self.manual_subs_widgets = [
+                self.manual_embed_check,
+                manual_lang_label,
+                self.manual_subs_lang_combo,
+                manual_trans_label,
+                self.manual_subs_trans_combo
+            ]
+
+            def update_manual_subs():
+                show_sub_options = is_video_manual and self.manual_switch_subtitles.isChecked()
+
+                for widget in self.manual_subs_widgets:
+                    widget.setVisible(show_sub_options)
+
+            self.manual_switch_subtitles.toggled.connect(update_manual_subs)
+            update_manual_subs()
+
+            footer_box.addWidget(manual_subs_widget)
+            footer_box.addLayout(footer)
+            self.content_layout.addLayout(footer_box)
             self.stack.setCurrentIndex(1)
             
             apply_ui_ux_cursors(self)
             
         finally:
             self.setUpdatesEnabled(True)
+
+    def get_manual_subtitle_cfg(self):
+        cfg = self.main_app.config_data[self.main_app.TAB_VID].copy()
+
+        if not self.manual_switch_subtitles.isChecked():
+            cfg["native_subs"] = False
+            cfg["auto_subs"] = False
+            cfg["embed_subs"] = False
+            return cfg
+
+        cfg["native_subs"] = True
+        cfg["auto_subs"] = True
+        cfg["langs"] = self.main_app.rev_lang_map.get(self.manual_subs_lang_combo.currentText(), "en")
+        cfg["trans_langs"] = self.main_app.rev_lang_map.get(self.manual_subs_trans_combo.currentText(), "none")
+        cfg["embed_subs"] = self.manual_embed_check.isChecked()
+
+        return cfg
 
     def start_download(self):
         vid = self.vid_group.checkedButton().property("fmt_id") if self.vid_group.checkedButton() else None
@@ -656,8 +801,30 @@ class ManualSelectionDialog(QDialog):
         
         cmd = self.base_cmd.copy()
         
-        if ext_final in ["webm", "wav"]:
-            cmd = [arg for arg in cmd if arg not in ("--embed-thumbnail", "--embed-metadata", "--parse-metadata", "%(playlist_index|)s:%(track_number)s", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s", "%(album_artist,creator,channel|)s:%(meta_album_artist)s", "--embed-subs")]
+        if self.main_app.current_category == self.main_app.TAB_VID:
+            cmd = self.main_app.add_subtitle_args(cmd, self.get_manual_subtitle_cfg())        
+        
+        if ext_final == "webm":
+            cmd = [
+                arg for arg in cmd
+                if arg not in (
+                    "--embed-thumbnail",
+                    "--embed-subs",
+                )
+            ]
+
+        elif ext_final == "wav":
+            cmd = [
+                arg for arg in cmd
+                if arg not in (
+                    "--embed-thumbnail",
+                    "--embed-metadata",
+                    "--parse-metadata",
+                    "%(playlist_index|)s:%(track_number)s",
+                    "%(release_year,release_date,date,upload_date).4s:%(meta_date)s",
+                    "%(album_artist,creator,channel|)s:%(meta_album_artist)s",
+                )
+            ]
 
         if self.main_app.current_category == self.main_app.TAB_AUD: 
             cmd += ["-f", fmt, "--audio-format", ext_final, "-o", full_out_tmpl, self.url]
@@ -803,29 +970,81 @@ class SettingsDialog(QDialog):
 
     def _media_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0)
-        layout.addWidget(self._section("Embedding")); layout.addSpacing(12)
-        
-        self.cb_thumb = QCheckBox("Embed thumbnail (Cover art)"); self.cb_thumb.setChecked(self.cfg[self.main_app.TAB_VID].get("thumb", True))
-        self.cb_meta = QCheckBox("Embed metadata (Artist, Title, etc)"); self.cb_meta.setChecked(self.cfg[self.main_app.TAB_AUD].get("meta", True))
-        layout.addWidget(self.cb_thumb); layout.addSpacing(8); layout.addWidget(self.cb_meta)
-        
-        layout.addSpacing(24); layout.addWidget(self._section("Subtitles")); layout.addSpacing(12)
-        self.cb_native = QCheckBox("Download standard subtitles"); self.cb_native.setChecked(self.cfg[self.main_app.TAB_VID].get("native_subs", False))
-        self.cb_auto_sub = QCheckBox("Download auto-generated subtitles"); self.cb_auto_sub.setChecked(self.cfg[self.main_app.TAB_VID].get("auto_subs", False))
-        self.cb_embed = QCheckBox("Embed subtitles into video"); self.cb_embed.setChecked(self.cfg[self.main_app.TAB_VID].get("embed_subs", False))
-        
+        layout.addWidget(self._section("Embed thumbnail (Cover art)"))
+        layout.addSpacing(12)
+
+        thumb_row = QHBoxLayout()
+        thumb_row.setSpacing(18)
+
+        self.cb_vid_thumb = QCheckBox("Video")
+        self.cb_vid_thumb.setChecked(
+            self.cfg[self.main_app.TAB_VID].get("thumb", True)
+        )
+
+        self.cb_aud_thumb = QCheckBox("Audio")
+        self.cb_aud_thumb.setChecked(
+            self.cfg[self.main_app.TAB_AUD].get("thumb", True)
+        )
+
+        thumb_row.addWidget(self.cb_vid_thumb)
+        thumb_row.addWidget(self.cb_aud_thumb)
+        thumb_row.addStretch(1)
+
+        layout.addLayout(thumb_row)
+
+        layout.addSpacing(24)
+        layout.addWidget(self._section("Embed metadata (Artist, Title, etc)"))
+        layout.addSpacing(12)
+
+        meta_row = QHBoxLayout()
+        meta_row.setSpacing(18)
+
+        self.cb_vid_meta = QCheckBox("Video")
+        self.cb_vid_meta.setChecked(
+            self.cfg[self.main_app.TAB_VID].get("meta", False)
+        )
+
+        self.cb_aud_meta = QCheckBox("Audio")
+        self.cb_aud_meta.setChecked(
+            self.cfg[self.main_app.TAB_AUD].get("meta", True)
+        )
+
+        meta_row.addWidget(self.cb_vid_meta)
+        meta_row.addWidget(self.cb_aud_meta)
+        meta_row.addStretch(1)
+
+        layout.addLayout(meta_row)
+
+        layout.addSpacing(24)
+        layout.addWidget(self._section("Subtitles"))
+        layout.addSpacing(12)
+
+        self.cb_subs = QCheckBox("Always download subtitles")
+        self.cb_subs.setChecked(
+            self.cfg[self.main_app.TAB_VID].get("native_subs", False) or
+            self.cfg[self.main_app.TAB_VID].get("auto_subs", False)
+        )
+
+        self.cb_embed = QCheckBox("Always embed subtitles")
+        self.cb_embed.setChecked(self.cfg[self.main_app.TAB_VID].get("embed_subs", False))
+
         def update_subs():
-            self.cb_embed.setEnabled(self.cb_native.isChecked() or self.cb_auto_sub.isChecked())
-            if not self.cb_embed.isEnabled(): self.cb_embed.setChecked(False)
-        self.cb_native.stateChanged.connect(update_subs); self.cb_auto_sub.stateChanged.connect(update_subs); update_subs()
-        
-        layout.addWidget(self.cb_native); layout.addSpacing(8); layout.addWidget(self.cb_auto_sub); layout.addSpacing(8); layout.addWidget(self.cb_embed)
+            self.cb_embed.setEnabled(self.cb_subs.isChecked())
+            if not self.cb_embed.isEnabled():
+                self.cb_embed.setChecked(False)
+
+        self.cb_subs.stateChanged.connect(update_subs)
+        update_subs()
+
+        layout.addWidget(self.cb_subs)
+        layout.addSpacing(8)
+        layout.addWidget(self.cb_embed)
         
         lang_map = {"none": "None", "en": "English", "pt": "Portuguese", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "ja": "Japanese", "ko": "Korean", "ru": "Russian"}
         self.rev_map = {v: k for k, v in lang_map.items()}
         
         layout.addSpacing(20); lang_row = QHBoxLayout(); lang_row.setSpacing(8)
-        lang_col = QVBoxLayout(); lang_col.addWidget(QLabel("Original language:"))
+        lang_col = QVBoxLayout(); lang_col.addWidget(QLabel("Language:"))
         self.lang_combo = QComboBox(); self.lang_combo.addItems(list(lang_map.values())[1:]); self.lang_combo.setFixedWidth(140); self.lang_combo.setCurrentText(lang_map.get(self.cfg[self.main_app.TAB_VID].get("langs", "en"), "English"))
         lang_col.addWidget(self.lang_combo); lang_row.addLayout(lang_col)
         
@@ -1086,7 +1305,12 @@ class SettingsDialog(QDialog):
         self.cb_auto.setChecked(True); self.cb_hide.setChecked(False); self.cb_prefer.setChecked(False)
         self.cb_updates_startup.setChecked(True)
         self.cb_notify.setChecked(True)
-        self.cb_thumb.setChecked(True); self.cb_meta.setChecked(True); self.cb_native.setChecked(False); self.cb_auto_sub.setChecked(False); self.cb_embed.setChecked(False)
+        self.cb_vid_thumb.setChecked(True)
+        self.cb_aud_thumb.setChecked(True)
+        self.cb_vid_meta.setChecked(False)
+        self.cb_aud_meta.setChecked(True)
+        self.cb_subs.setChecked(False)
+        self.cb_embed.setChecked(False)
         self.lang_combo.setCurrentText("English"); self.trans_combo.setCurrentText("None")
         self.prof_combo.setCurrentText("High Quality"); self.tmpl_combo.setCurrentText("Title (Default)")
         self.delay.setCurrentText("Playlist Only")
@@ -1119,11 +1343,18 @@ class SettingsDialog(QDialog):
             "custom_cpu_used": self.cpu_combo.currentText()
         })
         self.cfg[self.main_app.TAB_VID].update({
-            "thumb": self.cb_thumb.isChecked(), "native_subs": self.cb_native.isChecked(), "auto_subs": self.cb_auto_sub.isChecked(),
-            "embed_subs": self.cb_embed.isChecked(), "langs": self.rev_map.get(self.lang_combo.currentText(), "en"), "trans_langs": self.rev_map.get(self.trans_combo.currentText(), "none")
+            "thumb": self.cb_vid_thumb.isChecked(),
+            "meta": self.cb_vid_meta.isChecked(),
+            "native_subs": self.cb_subs.isChecked(),
+            "auto_subs": self.cb_subs.isChecked(),
+            "embed_subs": self.cb_embed.isChecked(),
+            "langs": self.rev_map.get(self.lang_combo.currentText(), "en"),
+            "trans_langs": self.rev_map.get(self.trans_combo.currentText(), "none")
         })
+
         self.cfg[self.main_app.TAB_AUD].update({
-            "thumb": self.cb_thumb.isChecked(), "meta": self.cb_meta.isChecked()
+            "thumb": self.cb_aud_thumb.isChecked(),
+            "meta": self.cb_aud_meta.isChecked()
         })
         
         if sel_theme != CURRENT_THEME:
@@ -1145,6 +1376,10 @@ class SettingsDialog(QDialog):
             
         self.main_app.save_config()
         self.main_app.update_folder_context()
+        self.main_app.subs_embed_check.setChecked(self.cb_embed.isChecked())
+        self.main_app.subs_lang_combo.setCurrentText(self.lang_combo.currentText())
+        self.main_app.subs_trans_combo.setCurrentText(self.trans_combo.currentText())
+        self.main_app.switch_subtitles.setChecked(self.cb_subs.isChecked())
         self.main_app.evaluate_ui_state()
         self.accept()
         self.main_app.add_to_log(">>> Settings saved successfully.")
@@ -1215,6 +1450,33 @@ class CopynDownApp(QMainWindow):
             self.TAB_AUD: {"thumb": True, "meta": True}
         }
         self.load_config()
+
+        self.lang_map = {
+            "none": "None",
+            "en": "English",
+            "pt": "Portuguese",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "ru": "Russian"
+        }
+        self.rev_lang_map = {v: k for k, v in self.lang_map.items()}
+
+        self.lang_variants = {
+            "en": ["en", "en-US", "en-GB"],
+            "pt": ["pt", "pt-BR", "pt-PT"],
+            "es": ["es", "es-ES", "es-419"],
+            "fr": ["fr", "fr-FR", "fr-CA"],
+            "de": ["de", "de-DE"],
+            "it": ["it", "it-IT"],
+            "ja": ["ja", "ja-JP"],
+            "ko": ["ko", "ko-KR"],
+            "ru": ["ru", "ru-RU"]
+        }
+
         self.last_folder = self.config_data["General"]["video_path"]
         self.current_category = self.TAB_VID
         self.init_notifications()
@@ -1383,8 +1645,88 @@ class CopynDownApp(QMainWindow):
         switches_layout = QVBoxLayout(switches_container); switches_layout.setSpacing(16); switches_layout.setContentsMargins(0, 0, 0, 0)
         self.switch_advanced = Switch("Advanced selection")
         self.switch_advanced.clicked.connect(self.on_advanced_toggle)
+
         self.switch_extract_audio = Switch("Extract original audio")
         self.switch_extract_audio.toggled.connect(self.on_extract_audio_toggle)
+
+        self.switch_subtitles = Switch("Download subtitles")
+        self.switch_subtitles.setChecked(
+            self.config_data[self.TAB_VID].get("native_subs", False) or
+            self.config_data[self.TAB_VID].get("auto_subs", False)
+        )
+        self.switch_subtitles.toggled.connect(self.on_subtitles_toggle)
+
+        self.subtitles_row_widget = QWidget()
+        self.subtitles_row_widget.setFixedHeight(30)
+
+        subtitles_row = QHBoxLayout(self.subtitles_row_widget)
+        subtitles_row.setContentsMargins(0, 0, 0, 0)
+        subtitles_row.setSpacing(8)
+        subtitles_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        self.switch_subtitles.setFixedHeight(20)
+        subtitles_row.addWidget(
+            self.switch_subtitles,
+            0,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+
+        subtitles_row.addSpacing(8)
+
+        self.subs_embed_check = QCheckBox("Embed subtitles")
+        self.subs_embed_check.setObjectName("fieldCheck")
+        self.subs_embed_check.setFixedHeight(20)
+        self.subs_embed_check.setChecked(self.config_data[self.TAB_VID].get("embed_subs", False))
+        subtitles_row.addWidget(
+            self.subs_embed_check,
+            0,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+
+        subtitles_row.addSpacing(8)
+
+        subs_lang_label = QLabel("Language:")
+        subs_lang_label.setObjectName("fieldLabel")
+        subtitles_row.addWidget(subs_lang_label)
+
+        self.subs_lang_combo = QComboBox()
+        self.subs_lang_combo.setObjectName("subtitleCombo")
+        self.subs_lang_combo.addItems(list(self.lang_map.values())[1:])
+        self.subs_lang_combo.setFixedWidth(120)
+        self.subs_lang_combo.setCurrentText(
+            self.lang_map.get(self.config_data[self.TAB_VID].get("langs", "en"), "English")
+        )
+        subtitles_row.addWidget(self.subs_lang_combo)
+
+        subtitles_row.addSpacing(8)
+
+        subs_trans_label = QLabel("Translate to:")
+        subs_trans_label.setObjectName("fieldLabel")
+        subtitles_row.addWidget(subs_trans_label)
+
+        self.subs_trans_combo = QComboBox()
+        self.subs_trans_combo.setObjectName("subtitleCombo")
+        self.subs_trans_combo.addItems(list(self.lang_map.values()))
+        self.subs_trans_combo.setFixedWidth(120)
+        self.subs_trans_combo.setCurrentText(
+            self.lang_map.get(self.config_data[self.TAB_VID].get("trans_langs", "none"), "None")
+        )
+        subtitles_row.addWidget(self.subs_trans_combo)
+
+        subtitles_row.addStretch(1)
+
+        self.subs_extra_widgets = [
+            self.subs_embed_check,
+            subs_lang_label,
+            self.subs_lang_combo,
+            subs_trans_label,
+            self.subs_trans_combo
+        ]
+
+        for widget in self.subs_extra_widgets:
+            widget.setVisible(False)
+
+        switches_layout.addWidget(self.subtitles_row_widget)
         switches_layout.addWidget(self.switch_advanced, 0, Qt.AlignmentFlag.AlignLeft)
         switches_layout.addWidget(self.switch_extract_audio, 0, Qt.AlignmentFlag.AlignLeft)
         card_layout.addWidget(switches_container)
@@ -1517,6 +1859,27 @@ class CopynDownApp(QMainWindow):
         self.evaluate_ui_state()
         if self.switch_advanced.isChecked(): self.handle_unified_download()
 
+    def on_subtitles_toggle(self):
+        self.evaluate_ui_state()
+
+    def get_subtitle_download_cfg(self):
+        cfg = self.config_data[self.TAB_VID].copy()
+
+        if not self.switch_subtitles.isChecked():
+            cfg["native_subs"] = False
+            cfg["auto_subs"] = False
+            cfg["embed_subs"] = False
+            return cfg
+
+        cfg["native_subs"] = True
+        cfg["auto_subs"] = True
+
+        cfg["langs"] = self.rev_lang_map.get(self.subs_lang_combo.currentText(), "en")
+        cfg["trans_langs"] = self.rev_lang_map.get(self.subs_trans_combo.currentText(), "none")
+        cfg["embed_subs"] = self.subs_embed_check.isChecked()
+
+        return cfg
+
     def on_extract_audio_toggle(self):
         state = not self.switch_extract_audio.isChecked()
         self.menu_1.setEnabled(state); self.menu_3.setEnabled(state); self.menu_4.setEnabled(state)
@@ -1538,6 +1901,7 @@ class CopynDownApp(QMainWindow):
             self.options_frame.setVisible(False)
             self.switch_advanced.setVisible(False)
             self.switch_extract_audio.setVisible(False)
+            self.subtitles_row_widget.setVisible(False)        
             self.action_frame.setVisible(False)
             self.status_frame.setVisible(True)
             return
@@ -1550,8 +1914,17 @@ class CopynDownApp(QMainWindow):
         show_status = show_options or getattr(self, 'is_queue_running', False)
         
         self.options_frame.setVisible(show_options)
+        show_subtitles = show_options and cat == self.TAB_VID
+
         self.switch_advanced.setVisible(show_options and not is_convert)
         self.switch_extract_audio.setVisible(show_options and cat == self.TAB_C_AUD)
+        self.subtitles_row_widget.setVisible(show_subtitles)
+        self.switch_subtitles.setVisible(show_subtitles)
+
+        show_sub_options = show_subtitles and self.switch_subtitles.isChecked()
+
+        for widget in self.subs_extra_widgets:
+            widget.setVisible(show_sub_options)
         
         self.action_frame.setVisible(show_status)
         self.status_frame.setVisible(show_status)
@@ -1761,13 +2134,48 @@ class CopynDownApp(QMainWindow):
         return cmd
 
     def add_subtitle_args(self, base_cmd, cfg):
-        if cfg.get("native_subs"): base_cmd.append("--write-subs")
-        if cfg.get("auto_subs"): base_cmd.append("--write-auto-subs")
+        if cfg.get("native_subs"):
+            base_cmd.append("--write-subs")
+
+        if cfg.get("auto_subs"):
+            base_cmd.append("--write-auto-subs")
+
         if cfg.get("native_subs") or cfg.get("auto_subs"):
-            src, tgt = cfg.get("langs", "en"), cfg.get("trans_langs", "none")
-            s_str = f"{tgt}-{src}*" if tgt != "none" else f"{src}*"
+            src = cfg.get("langs", "en")
+            tgt = cfg.get("trans_langs", "none")
+
+            def get_variants(lang):
+                return self.lang_variants.get(lang, [lang])
+
+            def exact_patterns(items):
+                return [rf"^{re.escape(item)}$" for item in items]
+
+            if tgt != "none":
+                translated = [
+                    f"{target}-{source}"
+                    for target in get_variants(tgt)
+                    for source in get_variants(src)
+                ]
+
+                patterns = exact_patterns(translated)
+
+                if cfg.get("auto_subs"):
+                    target_group = "|".join(re.escape(item) for item in get_variants(tgt))
+                    source_group = "|".join(re.escape(item) for item in get_variants(src))
+
+                    patterns.append(
+                        rf"^(?:{target_group})-(?:{source_group})-(?!(?:en|pt|es|fr|de|it|ja|ko|ru|zh|nl|id|pl|th|tr|vi)(?:-|$))[A-Za-z0-9_-]+$"
+                    )
+            else:
+                patterns = exact_patterns(get_variants(src))
+
+            s_str = ",".join(patterns)
+
             base_cmd.extend(["--sub-langs", s_str, "--convert-subs", "srt"])
-            if cfg.get("embed_subs"): base_cmd.append("--embed-subs")
+
+            if cfg.get("embed_subs"):
+                base_cmd.append("--embed-subs")
+
         return base_cmd
 
     def trigger_download_from_url_entry(self):
@@ -1788,7 +2196,7 @@ class CopynDownApp(QMainWindow):
         elif tab == self.TAB_AUD: self.download_music(url)
 
     def download_video(self, url):
-        cfg = self.config_data[self.TAB_VID]
+        cfg = self.get_subtitle_download_cfg()
         r_path = os.path.expanduser(self.config_data["General"]["video_path"])
         is_social = any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"])
         
@@ -1798,16 +2206,22 @@ class CopynDownApp(QMainWindow):
         b_cmd = self.build_base_cmd(url=url)
         vfmt = self.menu_2.currentText().lower()
         if cfg["thumb"] and (self.switch_advanced.isChecked() or vfmt != "webm"): b_cmd.append("--embed-thumbnail")
-        if cfg["meta"]: b_cmd.append("--embed-metadata")
-        b_cmd = self.add_subtitle_args(b_cmd, cfg)
+        if cfg["meta"]:
+            b_cmd.extend([
+                "--embed-metadata",
+                "--parse-metadata", "%(playlist_index|)s:%(track_number)s",
+                "--parse-metadata", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s",
+                "--parse-metadata", "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
+            ])
 
         if self.switch_advanced.isChecked():
-            # 🔻 Salva no 'self' e usa .exec() para bloquear o fundo corretamente
             self.manual_win = ManualSelectionDialog(url, b_cmd, o_tmpl, ["MP4", "MKV", "WEBM"], self)
             self.manual_win.exec()
             self.switch_advanced.setChecked(False)
             self.evaluate_ui_state()
             return
+
+        b_cmd = self.add_subtitle_args(b_cmd, cfg)
 
         res_map = {"360p": "360", "480p": "480", "720p": "720", "1080p (H.264)": "1080", "1080p (AV1/VP9)": "1080", "1440p (QHD)": "1440", "2160p (4K)": "2160"}
         sq = self.menu_1.currentText()
