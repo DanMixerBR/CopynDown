@@ -1040,8 +1040,8 @@ class SettingsDialog(QDialog):
         layout.addSpacing(8)
         layout.addWidget(self.cb_embed)
         
-        lang_map = {"none": "None", "en": "English", "pt": "Portuguese", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "ja": "Japanese", "ko": "Korean", "ru": "Russian"}
-        self.rev_map = {v: k for k, v in lang_map.items()}
+        lang_map = self.main_app.lang_map
+        self.rev_map = self.main_app.rev_lang_map
         
         layout.addSpacing(20); lang_row = QHBoxLayout(); lang_row.setSpacing(8)
         lang_col = QVBoxLayout(); lang_col.addWidget(QLabel("Language:"))
@@ -1453,28 +1453,44 @@ class CopynDownApp(QMainWindow):
 
         self.lang_map = {
             "none": "None",
+            "zh-Hans": "Chinese (S)",
+            "zh-Hant": "Chinese (T)",
+            "nl": "Dutch",
             "en": "English",
-            "pt": "Portuguese",
-            "es": "Spanish",
             "fr": "French",
             "de": "German",
+            "id": "Indonesian",
             "it": "Italian",
             "ja": "Japanese",
             "ko": "Korean",
-            "ru": "Russian"
+            "pl": "Polish",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "es": "Spanish",
+            "th": "Thai",
+            "tr": "Turkish",
+            "vi": "Vietnamese"
         }
         self.rev_lang_map = {v: k for k, v in self.lang_map.items()}
 
         self.lang_variants = {
+            "zh-Hans": ["zh-Hans"],
+            "zh-Hant": ["zh-Hant"],
+            "nl": ["nl", "nl-NL"],
             "en": ["en", "en-US", "en-GB"],
-            "pt": ["pt", "pt-BR", "pt-PT"],
-            "es": ["es", "es-ES", "es-419"],
             "fr": ["fr", "fr-FR", "fr-CA"],
             "de": ["de", "de-DE"],
+            "id": ["id", "id-ID"],
             "it": ["it", "it-IT"],
             "ja": ["ja", "ja-JP"],
             "ko": ["ko", "ko-KR"],
-            "ru": ["ru", "ru-RU"]
+            "pl": ["pl", "pl-PL"],
+            "pt": ["pt", "pt-BR", "pt-PT"],
+            "ru": ["ru", "ru-RU"],
+            "es": ["es", "es-ES", "es-419"],
+            "th": ["th", "th-TH"],
+            "tr": ["tr", "tr-TR"],
+            "vi": ["vi", "vi-VN"]
         }
 
         self.last_folder = self.config_data["General"]["video_path"]
