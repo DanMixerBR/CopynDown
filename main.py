@@ -2152,7 +2152,11 @@ class CopynDownApp(QMainWindow):
         self.is_busy = (state == "disabled")
         if getattr(self, 'btn_cancel', None):
             self.btn_cancel.setEnabled(state == "disabled" and is_downloading)
-        # O for-loop que desativava as abas foi removido para deixá-las sempre clicáveis
+            
+        # Abas ativas durante downloads/conversões (is_downloading=True), mas desativadas nos updates (is_downloading=False)
+        tab_state = True if (state == "normal" or is_downloading) else False
+        for btn in self.tab_buttons.values():
+            btn.setEnabled(tab_state)
 
     def build_base_cmd(self, is_json=False, url="", silent=False):
         cmd = [self.ytdlp_path, "-i"]
