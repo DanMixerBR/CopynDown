@@ -77,7 +77,20 @@ def apply_theme_titlebar(window):
         except Exception: pass
 
 def center_window(window):
-    screen_center = QApplication.primaryScreen().availableGeometry().center()
+    # Verifica se a janela tem um "pai" (a janela principal do app)
+    parent = window.parentWidget()
+    
+    if parent and parent.screen():
+        # Se tiver, pega a tela exata onde a janela principal está no momento
+        screen = parent.screen()
+    elif window.screen():
+        # Fallback para a tela onde a própria janela foi instanciada
+        screen = window.screen()
+    else:
+        # Fallback de segurança para o monitor principal
+        screen = QApplication.primaryScreen()
+        
+    screen_center = screen.availableGeometry().center()
     frame_geo = window.frameGeometry()
     frame_geo.moveCenter(screen_center)
     window.move(frame_geo.topLeft())
@@ -135,10 +148,10 @@ QPushButton#primaryButton {{ background-color: {COLORS['blue']}; color: white; f
 QPushButton#primaryButton:hover {{ background-color: {COLORS['blue_hover']}; }}
 QPushButton#primaryButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
 QPushButton#dangerButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
-QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: white; }}
+QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: {COLORS['text']}; }}
 QPushButton#dangerButton:disabled {{ background-color: {COLORS['input']}; color: {COLORS['muted2']}; }}
 QPushButton#browseButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
-QPushButton#browseButton:hover {{ background-color: {COLORS['blue']}; color: white; }}
+QPushButton#browseButton:hover {{ background-color: {COLORS['blue']}; color: {COLORS['text']}; }}
 QPushButton#pill {{ background-color: transparent; color: {COLORS['muted']}; border-radius: 18px; padding: 8px 12px; font-weight: 700; min-width: 82px; min-height: 19px; }}
 QPushButton#pill:hover {{ background-color: {COLORS['button_hover']}; }}
 QPushButton#pill:checked {{ background-color: {COLORS['blue']}; color: white; }}
@@ -147,9 +160,9 @@ QPushButton#smallFooter:hover {{ background-color: {COLORS['button_hover']}; }}
 QLineEdit {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; border-radius: 4px; padding: 6px 8px; selection-background-color: {COLORS['blue']}; }}
 QLineEdit#mainEntry {{ border: none; background-color: transparent; padding-left: 13px; }}
 QComboBox {{ background-color: {COLORS['input']}; border: none; border-radius: 8px; padding: 8px 10px; min-height: 18px; }}
-QComboBox#subtitleCombo {{ background-color: transparent; min-height: 16px; max-height: 16px; padding: 7px 10px; }}
+QComboBox#subtitleCombo {{ background-color: {COLORS['input']}; min-height: 16px; max-height: 16px; padding: 7px 10px; }}
 QComboBox#subtitleCombo::drop-down {{ width: 34px; }}
-QComboBox#cardCombo {{ background-color: {COLORS['card']}; }}
+QComboBox#cardCombo {{ background-color: {COLORS['input']}; }}
 QComboBox:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
 QComboBox::drop-down:disabled {{ background-color: {COLORS['input2']}; }}
 QComboBox::drop-down {{ subcontrol-origin: padding; subcontrol-position: top right; width: 34px; border: none; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background-color: {COLORS['combo_button']}; }}
@@ -653,7 +666,7 @@ class ManualSelectionDialog(QDialog):
 
             manual_subs_row.addSpacing(8)
 
-            manual_lang_label = QLabel("Language:")
+            manual_lang_label = QLabel("Lang:")
             manual_lang_label.setObjectName("fieldLabel")
             manual_subs_row.addWidget(manual_lang_label)
 
@@ -666,7 +679,7 @@ class ManualSelectionDialog(QDialog):
 
             manual_subs_row.addSpacing(8)
 
-            manual_trans_label = QLabel("Translate to:")
+            manual_trans_label = QLabel("Translate:")
             manual_trans_label.setObjectName("fieldLabel")
             manual_subs_row.addWidget(manual_trans_label)
 
@@ -752,61 +765,6 @@ class ManualSelectionDialog(QDialog):
         self.main_app.run_command(cmd, task_name=self.url)
         self.accept()
 
-class AboutDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.main_app = parent
-        self.setWindowTitle("About CopynDown")
-        self.setFixedSize(620, 520)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        
-        self._build_ui()
-        apply_theme_titlebar(self)
-        center_window(self)
-
-    def _build_ui(self):
-        layout = QVBoxLayout(self); layout.setContentsMargins(26, 28, 26, 14)
-        scroll = QScrollArea(); scroll.setWidgetResizable(True)
-        content = QWidget(); content.setStyleSheet("background-color: transparent;")
-        scroll.setWidget(content)
-        body = QVBoxLayout(content); body.setContentsMargins(0, 0, 12, 0); body.setSpacing(18)
-        
-        header_box = QVBoxLayout(); header_box.setSpacing(4)
-        title = QLabel("CopynDown"); title.setStyleSheet("font-size: 24px; font-weight: 700;")
-        version = QLabel(f"Version {self.main_app.version}"); version.setObjectName("muted")
-        header_box.addWidget(title); header_box.addWidget(version)
-        body.addLayout(header_box)
-        dev = QLabel("Developed by DanMixerBR"); dev.setObjectName("sectionTitle"); body.addWidget(dev); body.addSpacing(12)
-        
-        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
-        desc.setWordWrap(True); body.addWidget(desc); body.addSpacing(16)
-        
-        credits = QLabel("Credits & License"); credits.setObjectName("sectionTitle"); body.addWidget(credits)
-        built = QLabel("Built with:\n\n• Python\n• PySide6\n• yt-dlp\n• FFmpeg\n• Deno\n\nThis software is distributed under the MIT License.")
-        built.setWordWrap(True); body.addWidget(built); body.addStretch(1)
-        layout.addWidget(scroll, 1)
-        
-        bottom = QHBoxLayout(); bottom.addStretch(1)
-        
-        github = QPushButton(" GitHub")
-        github.setFixedWidth(120)
-        self.main_app.set_button_icon(github, "github")
-        github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
-        
-        btn_state = False if self.main_app.is_busy else True
-        self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(140); self.update_btn.setEnabled(btn_state)
-        def do_check():
-            self.update_btn.setEnabled(False)
-            self.update_btn.setText("Checking...")
-            self.main_app.start_github_update(self.update_btn, self, is_startup=False, check_ytdlp_after=True)
-            
-        self.update_btn.clicked.connect(do_check)
-        
-        bottom.addWidget(github); bottom.addSpacing(16); bottom.addWidget(self.update_btn); bottom.addStretch(1)
-        layout.addLayout(bottom)
-        
-        apply_ui_ux_cursors(self)
-
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -830,7 +788,9 @@ class SettingsDialog(QDialog):
 
         stack = QStackedWidget()
         stack.setObjectName("settingsStack")
-        tabs = SegmentedTabs(["General", "Media", "Conversion", "Network"], stack)
+        
+        # 1. Adicionado "About" nas Tabs
+        tabs = SegmentedTabs(["General", "Media", "Conversion", "Network", "About"], stack)
         
         scroll = QScrollArea()
         scroll.setObjectName("settingsScroll")
@@ -839,7 +799,9 @@ class SettingsDialog(QDialog):
         
         card_layout.addWidget(tabs); card_layout.addWidget(scroll, 1)
 
-        stack.addWidget(self._general_tab()); stack.addWidget(self._media_tab()); stack.addWidget(self._conversion_tab()); stack.addWidget(self._network_tab())
+        # 2. Adicionado o Widget About na Stack
+        stack.addWidget(self._general_tab()); stack.addWidget(self._media_tab())
+        stack.addWidget(self._conversion_tab()); stack.addWidget(self._network_tab()); stack.addWidget(self._about_tab())
 
         bottom = QHBoxLayout(); bottom.setContentsMargins(10, 2, 10, 0)
         restore = QPushButton("Restore defaults"); restore.setFixedWidth(140); restore.clicked.connect(self.restore_defaults)
@@ -848,6 +810,43 @@ class SettingsDialog(QDialog):
         layout.addLayout(bottom)
         
         apply_ui_ux_cursors(self)
+
+    # Novo método da Tab About dentro do SettingsDialog
+    def _about_tab(self):
+        w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(18)
+        
+        header_box = QVBoxLayout(); header_box.setSpacing(4)
+        title = QLabel("CopynDown - © 2026 DanMixerBR"); title.setStyleSheet("font-size: 16px; font-weight: 700;")
+        version = QLabel(f"Version {self.main_app.version}"); version.setObjectName("muted")
+        header_box.addWidget(title); header_box.addWidget(version)
+        layout.addLayout(header_box)
+        
+        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
+        desc.setWordWrap(True); layout.addWidget(desc)
+        
+        credits = QLabel("Credits & License"); credits.setObjectName("sectionTitle"); layout.addWidget(credits)
+        built = QLabel("Built with:\n\n• Python    • PySide6    • yt-dlp    • FFmpeg    • Deno\n\nThis software is distributed under the MIT License.")
+        built.setWordWrap(True); layout.addWidget(built)
+        
+        bottom = QHBoxLayout()
+        github = QPushButton(" GitHub"); github.setFixedWidth(120); github.setObjectName("")
+        self.main_app.set_button_icon(github, "github")
+        github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
+        
+        btn_state = False if self.main_app.is_busy else True
+        self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(140); self.update_btn.setEnabled(btn_state)
+        
+        def do_check():
+            self.update_btn.setEnabled(False)
+            self.update_btn.setText("Checking...")
+            self.main_app.start_github_update(self.update_btn, self, is_startup=False, check_ytdlp_after=True)
+            
+        self.update_btn.clicked.connect(do_check)
+        
+        bottom.addWidget(github); bottom.addWidget(self.update_btn); bottom.addStretch(1)
+        layout.addLayout(bottom); layout.addStretch(1)
+        
+        return w
 
     def _general_tab(self):
         w = QWidget(); layout = QVBoxLayout(w); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(12)
@@ -1329,7 +1328,7 @@ class CopynDownApp(QMainWindow):
             "vimeo.com", "reddit.com", "dailymotion.com", "dai.ly", "soundcloud.com",
             "linkedin.com", "pinterest.com", "snapchat.com", "bilibili.com", 
             "rumble.com", "bandcamp.com", "mixcloud.com", "kick.com", "odysee.com",
-            "kwai.com", "kw.ai"
+            "kwai.com", "kw.ai", "globo.com"
         ]
         self.full_logs_list = ["--- Program Logs ---"]
 
@@ -1441,6 +1440,8 @@ class CopynDownApp(QMainWindow):
         o_tmpl = "%(title)s.%(ext)s"
         
         self.manual_win = ManualSelectionDialog(url, b_cmd, o_tmpl, self)
+        # Força pular a página de presets e ir direto pro loading/fetch de todos os formatos
+        self.manual_win.load_advanced_formats(True)
         self.manual_win.exec()
 
     def _create_queue_row(self):
@@ -1677,8 +1678,26 @@ class CopynDownApp(QMainWindow):
                     row["progress"].setValue(task.get("progress", 0))
                     row["status"].setText(task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting..."))
                 break
+                
+    def paste_url_btn(self):
+        try:
+            text = QApplication.clipboard().text()[:2000]
+            self.main_entry.setText(text); self.evaluate_ui_state()
+            if not self.is_busy and not self.is_updating:
+                if self.is_valid_media_url(text): self.reset_status("URL Detected!"); self.schedule_reset()
+                else: self.reset_status("Invalid URL.", COLORS["danger"]); self.schedule_reset()
+        except Exception:
+            pass
 
     def _do_update_queue_ui(self):
+        if hasattr(self, 'queue_btn'):
+            # Conta apenas os itens que estão pendentes, rodando ou pausados
+            active_count = sum(1 for t in self.download_queue if t.get("status") in ["Pending", "Running", "Paused"])
+            if active_count > 0:
+                self.queue_btn.setText(f" Activity ({active_count})")
+            else:
+                self.queue_btn.setText(" Activity")
+            
         if not hasattr(self, "queue_rows"): self.queue_rows = []
         if not hasattr(self, "empty_label"):
             self.empty_label = QLabel("List is empty.")
@@ -1701,27 +1720,22 @@ class CopynDownApp(QMainWindow):
             while len(self.queue_rows) < len(queue_data):
                 self.queue_rows.append(self._create_queue_row())
                 
-            # Para que os itens fiquem na ordem correta na interface
             itens_visiveis = 0
             is_tab_convert = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
 
             for i, task in enumerate(self.download_queue):
                 self._update_queue_row(self.queue_rows[i], i, task, len(self.download_queue))
                 
-            # Filtro visual: exibe a linha apenas se o tipo do item bater com a aba atual
                 if task.get("is_convert", False) == is_tab_convert:
                     self.queue_rows[i]["frame"].setVisible(True)
                     itens_visiveis += 1
                 else:
                     self.queue_rows[i]["frame"].setVisible(False)
 
-            # Só exibe "Lista vazia" se não houver nenhum item visível para esta aba
             self.empty_label.setVisible(itens_visiveis == 0)
 
             for index in range(len(self.download_queue), len(self.queue_rows)):
                 self.queue_rows[index]["frame"].setVisible(False)
-            self.setUpdatesEnabled(True)
-
         finally:
             self.setUpdatesEnabled(True)
 
@@ -1795,20 +1809,30 @@ class CopynDownApp(QMainWindow):
         self.settings_btn = self._footer_btn(" Settings", 100, "settings"); self.settings_btn.clicked.connect(self.show_settings)
         top_bar.addWidget(self.settings_btn, 0, Qt.AlignmentFlag.AlignRight)
 
-        # ÁREA CENTRAL
+        # ÁREA CENTRAL COM ABAS INVISÍVEIS (STACKED WIDGET)
         self.main_card = QFrame(); self.main_card.setObjectName("mainCard")
         main_layout.addWidget(self.main_card, 1)
-        card_layout = QVBoxLayout(self.main_card); card_layout.setContentsMargins(40, 20, 40, 20); card_layout.setSpacing(15)
+        card_layout = QVBoxLayout(self.main_card); card_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.main_stack = QStackedWidget()
+        card_layout.addWidget(self.main_stack)
+        
+        # --- PÁGINA 1: PRINCIPAL (Downloader) ---
+        self.home_page = QWidget()
+        self.home_layout = QVBoxLayout(self.home_page); self.home_layout.setContentsMargins(40, 20, 40, 20); self.home_layout.setSpacing(20)
+        self.home_layout.addSpacing(10) # Restaura o espaçamento superior da v3.0.9
+        self.main_stack.addWidget(self.home_page)
 
         self.desc_label = QLabel("Video Downloader"); self.desc_label.setObjectName("muted"); self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card_layout.addWidget(self.desc_label); card_layout.addSpacing(-8)
+        self.home_layout.addWidget(self.desc_label); self.home_layout.addSpacing(-8)
 
         self.input_frame = QFrame(); self.input_frame.setObjectName("inputFrame"); self.input_frame.setFixedHeight(47)
         input_layout = QHBoxLayout(self.input_frame); input_layout.setContentsMargins(8, 5, 6, 5); input_layout.setSpacing(8)
         self.main_entry = QLineEdit(); self.main_entry.setObjectName("mainEntry"); self.main_entry.setPlaceholderText("Paste URL here")
+        self.main_entry.textChanged.connect(self.schedule_ui_evaluation)
         
-        self.main_btn = QPushButton("Search"); self.main_btn.setObjectName("primaryButton"); self.main_btn.setFixedSize(75, 36)
-        self.main_btn.clicked.connect(self.open_manual_selection) 
+        self.main_btn = QPushButton("Paste"); self.main_btn.setObjectName("primaryButton"); self.main_btn.setFixedSize(75, 36)
+        self.main_btn.clicked.connect(self.paste_url_btn) 
         
         def on_entry_focus_in(event):
             QLineEdit.focusInEvent(self.main_entry, event)
@@ -1817,32 +1841,32 @@ class CopynDownApp(QMainWindow):
         self.main_entry.returnPressed.connect(self.trigger_download_from_url_entry)
         
         input_layout.addWidget(self.main_entry, 1); input_layout.addWidget(self.main_btn)
-        card_layout.addWidget(self.input_frame)
+        self.home_layout.addWidget(self.input_frame)
 
-        # VARIÁVEIS INVISÍVEIS PARA MANTER A LÓGICA DAS ABAS DE CONVERSÃO
         self.lbl_1, self.menu_1 = self._field("Quality", ["2160p (4K)", "1440p (QHD)", "1080p (AV1/VP9)", "1080p (H.264)", "720p", "480p", "360p"])
         self.lbl_2, self.menu_2 = self._field("Format", ["MP4", "MKV", "WEBM"])
         self.lbl_3, self.menu_3 = self._field("Video Codec", ["Original", "H.264", "H.265", "VP9"])
         self.lbl_4, self.menu_4 = self._field("Audio Codec", ["Original", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"])
 
         self.options_frame = QWidget()
-        opt_lay = QVBoxLayout(self.options_frame); opt_lay.setContentsMargins(0, 0, 0, 0); opt_lay.setSpacing(10)
+        opt_lay = QVBoxLayout(self.options_frame); opt_lay.setContentsMargins(0, 0, 0, 0); opt_lay.setSpacing(15)
         self.row1_widget = QWidget()
-        row1_layout = QGridLayout(self.row1_widget); row1_layout.setContentsMargins(0, 5, 0, 0); row1_layout.setHorizontalSpacing(20); row1_layout.setVerticalSpacing(10)
+        row1_layout = QGridLayout(self.row1_widget); row1_layout.setContentsMargins(0, 5, 0, 0); row1_layout.setHorizontalSpacing(20); row1_layout.setVerticalSpacing(13)
         row1_layout.addWidget(self.lbl_1, 0, 0); row1_layout.addWidget(self.menu_1, 1, 0)
         row1_layout.addWidget(self.lbl_2, 0, 1); row1_layout.addWidget(self.menu_2, 1, 1)
         opt_lay.addWidget(self.row1_widget)
         self.row2_widget = QWidget()
-        row2_layout = QGridLayout(self.row2_widget); row2_layout.setContentsMargins(0, 0, 0, 0); row2_layout.setHorizontalSpacing(20); row2_layout.setVerticalSpacing(10)
+        row2_layout = QGridLayout(self.row2_widget); row2_layout.setContentsMargins(0, 0, 0, 0); row2_layout.setHorizontalSpacing(20); row2_layout.setVerticalSpacing(13)
         row2_layout.addWidget(self.lbl_3, 0, 0); row2_layout.addWidget(self.menu_3, 1, 0)
         row2_layout.addWidget(self.lbl_4, 0, 1); row2_layout.addWidget(self.menu_4, 1, 1)
         opt_lay.addWidget(self.row2_widget)
-        card_layout.addWidget(self.options_frame)
+        self.home_layout.addWidget(self.options_frame)
 
         self.switches_container = QWidget()
-        switches_layout = QVBoxLayout(self.switches_container); switches_layout.setSpacing(12); switches_layout.setContentsMargins(0, 0, 0, 0)
+        switches_layout = QVBoxLayout(self.switches_container); switches_layout.setSpacing(16); switches_layout.setContentsMargins(0, 0, 0, 0)
         
         self.switch_advanced = Switch("Advanced selection")
+        self.switch_advanced.clicked.connect(self.on_advanced_toggle)
         self.switch_extract_audio = Switch("Extract original audio")
         self.switch_extract_audio.toggled.connect(self.on_extract_audio_toggle)
         
@@ -1858,14 +1882,14 @@ class CopynDownApp(QMainWindow):
         self.subs_embed_check = QCheckBox("Embed subtitles"); self.subs_embed_check.setObjectName("fieldCheck"); self.subs_embed_check.setFixedHeight(20); self.subs_embed_check.setChecked(self.config_data[self.TAB_VID].get("embed_subs", False))
         subtitles_row.addWidget(self.subs_embed_check, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         subtitles_row.addSpacing(8)
-        subs_lang_label = QLabel("Language:"); subs_lang_label.setObjectName("fieldLabel"); subtitles_row.addWidget(subs_lang_label)
+        subs_lang_label = QLabel("Lang:"); subs_lang_label.setObjectName("fieldLabel"); subtitles_row.addWidget(subs_lang_label)
         self.subs_lang_combo = QComboBox(); self.subs_lang_combo.setObjectName("subtitleCombo")
         self.subs_lang_combo.addItems(list(self.lang_map.values())[1:])
         self.subs_lang_combo.setFixedWidth(120)
         self.subs_lang_combo.setCurrentText(self.lang_map.get(self.config_data[self.TAB_VID].get("langs", "en"), "English"))
         subtitles_row.addWidget(self.subs_lang_combo)
         subtitles_row.addSpacing(8)
-        subs_trans_label = QLabel("Translate to:"); subs_trans_label.setObjectName("fieldLabel"); subtitles_row.addWidget(subs_trans_label)
+        subs_trans_label = QLabel("Translate:"); subs_trans_label.setObjectName("fieldLabel"); subtitles_row.addWidget(subs_trans_label)
         self.subs_trans_combo = QComboBox(); self.subs_trans_combo.setObjectName("subtitleCombo")
         self.subs_trans_combo.addItems(list(self.lang_map.values()))
         self.subs_trans_combo.setFixedWidth(120)
@@ -1876,24 +1900,79 @@ class CopynDownApp(QMainWindow):
         self.subs_extra_widgets = [self.subs_embed_check, subs_lang_label, self.subs_lang_combo, subs_trans_label, self.subs_trans_combo]
         for widget in self.subs_extra_widgets: widget.setVisible(False)
 
+        def on_subtitles_toggle():
+            self.evaluate_ui_state()
+        self.switch_subtitles.toggled.connect(on_subtitles_toggle)
+
         switches_layout.addWidget(self.subtitles_row_widget)
         switches_layout.addWidget(self.switch_advanced, 0, Qt.AlignmentFlag.AlignLeft)
         switches_layout.addWidget(self.switch_extract_audio, 0, Qt.AlignmentFlag.AlignLeft)
-        card_layout.addWidget(self.switches_container)
+        self.home_layout.addWidget(self.switches_container)
 
         self.action_frame = QWidget()
-        actions = QHBoxLayout(self.action_frame); actions.setContentsMargins(0, 5, 0, 5); actions.setSpacing(20); actions.addStretch(1)
+        actions = QHBoxLayout(self.action_frame); actions.setContentsMargins(0, 13, 0, 13); actions.setSpacing(20); actions.addStretch(1)
         self.btn_download = QPushButton("Download media"); self.btn_download.setObjectName("primaryButton"); self.btn_download.setFixedWidth(150); self.btn_download.setStyleSheet("min-height: 24px; font-size: 13px;")
         self.btn_download.clicked.connect(self.handle_unified_download)
         self.btn_cancel = QPushButton("Cancel"); self.btn_cancel.setObjectName("dangerButton"); self.btn_cancel.setFixedWidth(150); self.btn_cancel.setStyleSheet("min-height: 24px; font-size: 13px;"); self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_download)
         actions.addWidget(self.btn_download); actions.addWidget(self.btn_cancel); actions.addStretch(1)
-        card_layout.addWidget(self.action_frame)
+        self.home_layout.addWidget(self.action_frame)
+        
+        self.home_layout.addStretch(1)
 
+        # --- PÁGINA 2: QUEUE (Histórico) ---
+        self.queue_page = QWidget()
+        self.queue_page_layout = QVBoxLayout(self.queue_page); self.queue_page_layout.setContentsMargins(30, 20, 30, 20); self.queue_page_layout.setSpacing(10)
+        self.main_stack.addWidget(self.queue_page)
+        
+        queue_header = QHBoxLayout()
+        self.btn_back = QPushButton("❮ Back")
+        self.btn_back.setObjectName("browseButton")
+        self.btn_back.setFixedWidth(80)
+        self.btn_back.clicked.connect(lambda: self.main_stack.setCurrentIndex(0))
+        queue_title = QLabel("Activity")
+        queue_title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        queue_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Espaçador invisível para manter o título perfeitamente centralizado no topo
+        spacer_header = QWidget()
+        spacer_header.setFixedWidth(80)
+        
+        queue_header.addWidget(self.btn_back)
+        queue_header.addWidget(queue_title, 1)
+        queue_header.addWidget(spacer_header)
+        self.queue_page_layout.addLayout(queue_header)
+
+        self.history_scroll = QScrollArea(); self.history_scroll.setWidgetResizable(True); self.history_scroll.setObjectName("settingsScroll")
+        self.history_content = QWidget(); self.history_content.setStyleSheet("background-color: transparent;")
+        self.history_layout = QVBoxLayout(self.history_content); self.history_layout.setAlignment(Qt.AlignmentFlag.AlignTop); self.history_layout.setSpacing(8)
+        self.history_scroll.setWidget(self.history_content)
+        self.queue_page_layout.addWidget(self.history_scroll, 1)
+
+        # RODAPÉ DA QUEUE (Histórico)
+        queue_footer = QHBoxLayout()
+        queue_footer.setContentsMargins(0, 5, 0, 0)
+        
+        self.btn_open_location = self._footer_btn(" Open location", 130, "folder")
+        self.btn_open_location.setObjectName("browseButton")
+        self.btn_open_location.clicked.connect(self.open_folder)
+        
+        self.btn_clear = QPushButton("Clear queue")
+        self.btn_clear.setObjectName("dangerButton")
+        self.btn_clear.setFixedWidth(120)
+        self.btn_clear.clicked.connect(self.clear_entire_queue)
+        
+        queue_footer.addWidget(self.btn_open_location)
+        queue_footer.addStretch(1)
+        queue_footer.addWidget(self.btn_clear)
+        
+        self.queue_page_layout.addLayout(queue_footer)
+
+        # BARRA DE STATUS
         self.status_frame = QWidget()
         self.status_frame.setMinimumWidth(200)
         status_lay = QVBoxLayout(self.status_frame)
-        status_lay.setContentsMargins(15, 0, 15, 0) # Margem lateral para não colar nos botões
+        status_lay.setContentsMargins(15, 0, 15, 0)
         status_lay.setSpacing(2)
         self.progress_label = QLabel("Ready!")
         self.progress_label.setObjectName("muted")
@@ -1906,23 +1985,17 @@ class CopynDownApp(QMainWindow):
         self.progress.setFixedHeight(6)
         status_lay.addWidget(self.progress)
 
-        # HISTÓRICO ROLÁVEL
-        self.history_scroll = QScrollArea(); self.history_scroll.setWidgetResizable(True); self.history_scroll.setObjectName("settingsScroll")
-        self.history_content = QWidget(); self.history_content.setStyleSheet("background-color: transparent;")
-        self.history_layout = QVBoxLayout(self.history_content); self.history_layout.setAlignment(Qt.AlignmentFlag.AlignTop); self.history_layout.setSpacing(8)
-        self.history_scroll.setWidget(self.history_content)
-        card_layout.addWidget(self.history_scroll, 1)
-
         # RODAPÉ
         footer = QHBoxLayout(); footer.setSpacing(10); main_layout.addLayout(footer)
-        self.open_btn = self._footer_btn(" Open location", 140, "folder"); self.open_btn.clicked.connect(self.open_folder)
-        self.logs_btn = self._footer_btn(" View logs", 110, "log"); self.logs_btn.clicked.connect(self.show_logs)
-        self.about_btn = self._footer_btn(" About", 110, "about"); self.about_btn.clicked.connect(self.show_about)
         
-        footer.addWidget(self.open_btn)
-        footer.addWidget(self.status_frame, 1)  # <--- Adicionado ao meio do rodapé, ocupando o espaço vazio
+        self.queue_btn = self._footer_btn(" Activity", 120, "queue")
+        self.queue_btn.clicked.connect(lambda: self.main_stack.setCurrentIndex(1))
+        
+        self.logs_btn = self._footer_btn(" View logs", 120, "log"); self.logs_btn.clicked.connect(self.show_logs)
+        
+        footer.addWidget(self.queue_btn)
+        footer.addWidget(self.status_frame, 1)
         footer.addWidget(self.logs_btn)
-        footer.addWidget(self.about_btn)
         
         apply_ui_ux_cursors(self)
 
@@ -1962,14 +2035,13 @@ class CopynDownApp(QMainWindow):
             self.main_entry.setPlaceholderText("Select source media file..." if is_convert else "Paste URL here")
         self.last_tab_is_convert = is_convert
         
+        self.main_btn.setText("Browse" if is_convert else "Paste")
         if is_convert:
-            self.main_btn.setText("Browse")
             self.main_btn.setObjectName("browseButton"); self.main_btn.setStyleSheet("")
             self.main_btn.clicked.disconnect(); self.main_btn.clicked.connect(self.browse_source)
         else:
-            self.main_btn.setText("Search")
             self.main_btn.setObjectName("primaryButton"); self.main_btn.setStyleSheet("")
-            self.main_btn.clicked.disconnect(); self.main_btn.clicked.connect(self.open_manual_selection)
+            self.main_btn.clicked.disconnect(); self.main_btn.clicked.connect(self.paste_url_btn)
             
         self.main_btn.style().unpolish(self.main_btn); self.main_btn.style().polish(self.main_btn)
 
@@ -2013,6 +2085,11 @@ class CopynDownApp(QMainWindow):
             self.last_source_browse_dir = os.path.dirname(file)
             self.main_entry.setText(file.replace("\\", "/"))
             self.evaluate_ui_state()
+            
+    def on_advanced_toggle(self):
+        self.evaluate_ui_state()
+        if self.switch_advanced.isChecked(): 
+            self.handle_unified_download()
 
     def on_extract_audio_toggle(self):
         state = not self.switch_extract_audio.isChecked()
@@ -2022,9 +2099,7 @@ class CopynDownApp(QMainWindow):
         cat = self.current_category
         is_convert = cat in [self.TAB_C_VID, self.TAB_C_AUD]
 
-        # Exibe a barra de progresso apenas durante atualizações de software
         self.progress.setVisible(self.is_updating)
-
         if self.is_updating:
             self.input_frame.setVisible(False)
             self.options_frame.setVisible(False)
@@ -2033,22 +2108,37 @@ class CopynDownApp(QMainWindow):
             return
             
         self.input_frame.setVisible(True)
-        
-        self.options_frame.setVisible(is_convert)
-        self.switches_container.setVisible(is_convert)
-        self.history_scroll.setVisible(True)  # <--- Alterado para True para aparecer na aba de Conversão
+        self.options_frame.setVisible(True)
+        self.switches_container.setVisible(True)
+        self.action_frame.setVisible(True)
         
         self._do_update_queue_ui()
+        
+        show_subtitles = cat == self.TAB_VID
+        self.subtitles_row_widget.setVisible(show_subtitles)
+        self.switch_subtitles.setVisible(show_subtitles)
+        
+        show_sub_options = show_subtitles and self.switch_subtitles.isChecked()
+        for widget in self.subs_extra_widgets: widget.setVisible(show_sub_options)
         
         if is_convert:
             self.btn_download.setText("Convert media")
             self.row2_widget.setVisible(True)
             self.switch_advanced.setVisible(False)
             self.switch_extract_audio.setVisible(cat == self.TAB_C_AUD)
-            self.subtitles_row_widget.setVisible(False)
-            self.switch_subtitles.setVisible(False)
-        
-        self.action_frame.setVisible(is_convert)
+        else:
+            self.btn_download.setText("Download media")
+            self.row2_widget.setVisible(False)
+            self.switch_advanced.setVisible(True)
+            self.switch_extract_audio.setVisible(False)
+            
+            text = self.main_entry.text().strip()
+            is_valid = self.is_valid_media_url(text)
+            is_playlist = is_valid and "list=" in text.lower()
+            
+            self.switch_advanced.setEnabled(not is_playlist if is_valid else False)
+            if is_playlist or not is_valid: 
+                self.switch_advanced.setChecked(False)
 
     def schedule_ui_evaluation(self, event=None):
         self.ui_update_timer.start(200)
@@ -2186,7 +2276,12 @@ class CopynDownApp(QMainWindow):
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
             self.progress_label.setStyleSheet("font-size: 11px;")
             
-        icon_buttons = [getattr(self, 'settings_btn', None), getattr(self, 'open_btn', None), getattr(self, 'logs_btn', None), getattr(self, 'about_btn', None)]
+        icon_buttons = [
+            getattr(self, 'settings_btn', None), 
+            getattr(self, 'logs_btn', None), 
+            getattr(self, 'queue_btn', None), 
+            getattr(self, 'btn_open_location', None)
+        ]
         for btn in icon_buttons:
             if btn and btn.property("icon_name"): self.set_button_icon(btn, btn.property("icon_name"))
             
@@ -2235,10 +2330,6 @@ class CopynDownApp(QMainWindow):
         if getattr(self, 'btn_cancel', None):
             self.btn_cancel.setEnabled(state == "disabled" and is_downloading)
         for btn in self.tab_buttons.values(): btn.setEnabled(state == "normal")
-        try:
-            if hasattr(self, 'about_win') and self.about_win.isVisible():
-                self.about_win.update_btn.setEnabled(state == "normal")
-        except RuntimeError: pass
 
     def build_base_cmd(self, is_json=False, url="", silent=False):
         cmd = [self.ytdlp_path, "-i"]
@@ -2291,22 +2382,27 @@ class CopynDownApp(QMainWindow):
         return base_cmd
 
     def trigger_download_from_url_entry(self):
-        try:
-            if hasattr(self, 'manual_win') and self.manual_win.isVisible(): 
-                return
-        except RuntimeError:
-            # Captura a exceção caso o objeto C++ da janela já tenha sido destruído
-            self.manual_win = None 
-
-        if self.current_category in [self.TAB_VID, self.TAB_AUD]:
-            self.open_manual_selection()
-        elif self.btn_download.isVisible() and self.btn_download.isEnabled():
+        if self.btn_download.isVisible() and self.btn_download.isEnabled():
             self.btn_download.click()
 
     def handle_unified_download(self):
         tab = self.current_category
         if tab == self.TAB_C_VID: self.convert_media("video"); return
         elif tab == self.TAB_C_AUD: self.convert_media("audio"); return
+        
+        url = self.main_entry.text().strip()
+        if not url: self.reset_status("URL is empty.", COLORS["danger"]); self.schedule_reset(); return
+        if not self.is_valid_media_url(url): self.reset_status("Invalid URL.", COLORS["danger"]); self.schedule_reset(); return
+        
+        # Executar a janela de diálogo antigo APENAS se a checbox "Advanced selection" estiver marcada
+        if self.switch_advanced.isVisible() and self.switch_advanced.isChecked():
+            self.open_manual_selection()
+            self.switch_advanced.setChecked(False)
+            self.evaluate_ui_state()
+            return
+
+        if tab == self.TAB_VID: self.download_video(url)
+        elif tab == self.TAB_AUD: self.download_music(url)
 
     def download_video(self, url):
         cfg = self.config_data[self.TAB_VID].copy()
@@ -2800,11 +2896,6 @@ class CopynDownApp(QMainWindow):
         self.fix_ghost_cursor()
         self.settings_win = SettingsDialog(self)
         self.settings_win.exec()
-        
-    def show_about(self): 
-        self.fix_ghost_cursor()
-        self.about_win = AboutDialog(self)
-        self.about_win.exec()
 
     def check_ytdlp_updates(self, force=False, show_message=False, btn_to_restore=None):
         last_check_file = os.path.join(bin_path, ".last_ytdlp_check").replace("\\", "/")
