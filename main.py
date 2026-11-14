@@ -148,10 +148,10 @@ QPushButton#primaryButton {{ background-color: {COLORS['blue']}; color: white; f
 QPushButton#primaryButton:hover {{ background-color: {COLORS['blue_hover']}; }}
 QPushButton#primaryButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}
 QPushButton#dangerButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
-QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: {COLORS['text']}; }}
+QPushButton#dangerButton:hover {{ background-color: {COLORS['danger']}; color: white; }}
 QPushButton#dangerButton:disabled {{ background-color: {COLORS['input']}; color: {COLORS['muted2']}; }}
 QPushButton#browseButton {{ background-color: {COLORS['combo_button']}; color: {COLORS['text']}; }}
-QPushButton#browseButton:hover {{ background-color: {COLORS['blue']}; color: {COLORS['text']}; }}
+QPushButton#browseButton:hover {{ background-color: {COLORS['blue']}; color: white; }}
 QPushButton#pill {{ background-color: transparent; color: {COLORS['muted']}; border-radius: 18px; padding: 8px 12px; font-weight: 700; min-width: 82px; min-height: 19px; }}
 QPushButton#pill:hover {{ background-color: {COLORS['button_hover']}; }}
 QPushButton#pill:checked {{ background-color: {COLORS['blue']}; color: white; }}
@@ -371,14 +371,29 @@ class ManualSelectionDialog(QDialog):
                 cmd_json = self.main_app.build_base_cmd(is_json=True, silent=True) + [
                     "--no-warnings", "--no-playlist", self.url
                 ]
-                output = subprocess.check_output(
-                    cmd_json, stderr=subprocess.DEVNULL, text=True, encoding='utf-8', 
-                    errors='replace', startupinfo=self.main_app.startupinfo, timeout=60
+                res = subprocess.run(
+                    cmd_json, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", startupinfo=self.main_app.startupinfo, timeout=60
                 )
-                video_data = json.loads(output)
+                raw_out = (res.stdout or "").strip()
+
+                if res.returncode != 0 or not raw_out:
+                    err_lines = [line.strip() for line in (res.stderr or "").splitlines() if line.strip()]
+                    yt_errors = [re.sub(r"^ERROR:\s*", "", line) for line in err_lines if "ERROR:" in line]
+                    detail = "\n".join(yt_errors or err_lines) or raw_out or f"yt-dlp exited with code {res.returncode}."
+                    self.main_app.safe_ui(self.handle_error, detail)
+                    return
+
+                video_data = json.loads(raw_out)
+                if not isinstance(video_data, dict):
+                    err_lines = [line.strip() for line in (res.stderr or "").splitlines() if line.strip()]
+                    detail = "\n".join(err_lines) or "No format metadata returned for this URL."
+                    self.main_app.safe_ui(self.handle_error, detail)
+                    return
+
                 self.main_app.safe_ui(self.build_content, video_data)
-            except subprocess.CalledProcessError as e:
-                self.main_app.safe_ui(self.handle_error, f"Failed to fetch formats:\n{e.output.strip() if e.output else 'Unknown error'}")
+            except subprocess.TimeoutExpired:
+                self.main_app.safe_ui(self.handle_error, "Request timed out after 60 seconds.")
             except Exception as e:
                 self.main_app.safe_ui(self.handle_error, f"Failed to parse data: {e}")
         threading.Thread(target=task, daemon=True).start()
@@ -1092,13 +1107,20 @@ class SettingsDialog(QDialog):
 
             if p:
                 p = p.replace("\\", "/")
-                home = os.path.expanduser("~").replace("\\", "/")
-                app_dir = base_dir.replace("\\", "/")
+                home = os.path.expanduser("~")
+                p_norm = os.path.normcase(os.path.abspath(p))
+                app_norm = os.path.normcase(os.path.abspath(base_dir))
+                home_norm = os.path.normcase(os.path.abspath(home))
 
-                if p.startswith(app_dir):
-                    p = p[len(app_dir):].lstrip("/")
-                elif p.startswith(home):
-                    p = "~" + p[len(home):]
+                app_prefix = app_norm if app_norm.endswith(os.sep) else app_norm + os.sep
+                home_prefix = home_norm if home_norm.endswith(os.sep) else home_norm + os.sep
+
+                if p_norm.startswith(app_prefix):
+                    p = os.path.relpath(p, base_dir).replace("\\", "/")
+                elif p_norm == home_norm:
+                    p = "~"
+                elif p_norm.startswith(home_prefix):
+                    p = "~/" + os.path.relpath(p, home).replace("\\", "/")
 
                 edit.setText(p)
 
@@ -1824,6 +1846,18 @@ class CopynDownApp(QMainWindow):
         self.btn_open_location = self._footer_btn(" Open location", 130, "folder")
         self.btn_open_location.setObjectName("browseButton")
         self.btn_open_location.clicked.connect(self.open_folder)
+
+        def on_open_loc_enter(event):
+            QPushButton.enterEvent(self.btn_open_location, event)
+            if self.btn_open_location.isEnabled():
+                self.set_button_icon(self.btn_open_location, "folder", theme="dark")
+
+        def on_open_loc_leave(event):
+            QPushButton.leaveEvent(self.btn_open_location, event)
+            self.set_button_icon(self.btn_open_location, "folder")
+
+        self.btn_open_location.enterEvent = on_open_loc_enter
+        self.btn_open_location.leaveEvent = on_open_loc_leave
         
         self.btn_clear = QPushButton("Clear queue")
         self.btn_clear.setObjectName("dangerButton")
@@ -1881,8 +1915,9 @@ class CopynDownApp(QMainWindow):
             self.set_button_icon(btn, icon_name)
         return btn
 
-    def set_button_icon(self, btn, icon_name):
-        icon_path = os.path.join(bin_path, "icons", CURRENT_THEME, f"{icon_name}.svg").replace("\\", "/")
+    def set_button_icon(self, btn, icon_name, theme=None):
+        active_theme = theme or CURRENT_THEME
+        icon_path = os.path.join(bin_path, "icons", active_theme, f"{icon_name}.svg").replace("\\", "/")
         if os.path.exists(icon_path):
             from PySide6.QtCore import QSize
             btn.setIcon(QIcon(icon_path))
@@ -2596,9 +2631,9 @@ class CopynDownApp(QMainWindow):
             try:
                 if os.path.exists(t_f):
                     os.remove(t_f)
-                    self.add_to_log(f">>> Lixo residual removido: {os.path.basename(t_f)}")
+                    self.add_to_log(f">>> Incomplete file deleted: {os.path.basename(t_f)}")
             except Exception as e:
-                self.add_to_log(f">>> Aviso: Não foi possível remover o arquivo incompleto: {e}")
+                self.add_to_log(f">>> Warning: Could not delete incomplete file: {e}")
         
         if self.is_cancelling:
             status_val = "Paused"
