@@ -135,7 +135,7 @@ def get_app_qss():
     return f"""
 * {{ font-family: '{APP_FONT_FAMILY}'; font-size: 12px; color: {COLORS['text']}; outline: none; }}
 QMainWindow, QDialog {{ background-color: {COLORS['bg']}; }}
-QFrame#mainCard, QFrame#dialogCard, QFrame#queueCard {{ background-color: {COLORS['card']}; border-radius: 20px; }}
+QFrame#mainCard, QFrame#dialogCard {{ background-color: {COLORS['card']}; border-radius: 20px; }}
 QFrame#navFrame, QFrame#settingsNavFrame {{ background-color: {COLORS['card']}; border-radius: 20px; }}
 QFrame#inputFrame {{ background-color: {COLORS['input']}; border: 1px solid {COLORS['border']}; border-radius: 10px; }}
 QLabel#title, QLabel#dialogTitle {{ font-size: 16px; font-weight: 700; color: {COLORS['text']}; }}
@@ -169,6 +169,7 @@ QComboBox::drop-down {{ subcontrol-origin: padding; subcontrol-position: top rig
 QComboBox::drop-down:hover, QComboBox::drop-down:on {{ background-color: {COLORS['blue']}; }}
 QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
 QComboBox QAbstractItemView {{ background-color: {COLORS['input']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; outline: 0; }}
+QComboBox QAbstractItemView::item {{ background-color: {COLORS['input']}; color: {COLORS['text']}; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
 QComboBox QAbstractItemView::item:hover {{ background-color: {COLORS['input2'] if CURRENT_THEME == 'light' else "#303030"}; color: {COLORS['text']}; }}
 QCheckBox {{ spacing: 8px; color: {COLORS['text']}; }}
@@ -463,6 +464,8 @@ class ManualSelectionDialog(QDialog):
                     rb = QRadioButton(f"ID: {fmt_id} | {ext.upper()} | {ac} | {size_str}")
                     rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
                     rb.setProperty("fmt_id", fmt_id)
+                    rb.setProperty("vcodec", "none")
+                    rb.setProperty("acodec", ac)
                     self.aud_group.addButton(rb)
                     aud_lay.addWidget(rb)
                 elif vc != 'none':
@@ -472,6 +475,8 @@ class ManualSelectionDialog(QDialog):
                     rb = QRadioButton(f"ID: {fmt_id} | {res} | {ext.upper()} | {vc} {t_note} | {size_str}")
                     rb.setStyleSheet("font-size: 13px; padding: 4px 0px;")
                     rb.setProperty("fmt_id", fmt_id)
+                    rb.setProperty("vcodec", vc)
+                    rb.setProperty("acodec", ac)
                     self.vid_group.addButton(rb)
                     vid_lay.addWidget(rb)
 
@@ -489,9 +494,6 @@ class ManualSelectionDialog(QDialog):
             self.format_combo.setObjectName("cardCombo")
             self.format_combo.addItems(self.allowed_formats)
             self.format_combo.setFixedWidth(140)
-
-            if len(self.allowed_formats) == 1:
-                self.format_combo.setEnabled(False)
 
             footer.addWidget(self.format_combo)
             footer.addStretch(1)
@@ -586,8 +588,10 @@ class ManualSelectionDialog(QDialog):
         return cfg
 
     def start_download(self):
-        vid = self.vid_group.checkedButton().property("fmt_id") if self.vid_group.checkedButton() else None
-        aud = self.aud_group.checkedButton().property("fmt_id") if self.aud_group.checkedButton() else None
+        vid_btn = self.vid_group.checkedButton()
+        aud_btn = self.aud_group.checkedButton()
+        vid = vid_btn.property("fmt_id") if vid_btn else None
+        aud = aud_btn.property("fmt_id") if aud_btn else None
         
         if not vid and not aud:
             QMessageBox.critical(self, "Error", "Please select at least one Video or Audio track.")
@@ -600,14 +604,27 @@ class ManualSelectionDialog(QDialog):
             QMessageBox.critical(self, "Error", "Invalid selection.")
             return
 
+        vcodec = (vid_btn.property("vcodec") or "none").lower() if vid_btn and vid != "none" else "none"
+        if aud_btn and aud != "none":
+            acodec = (aud_btn.property("acodec") or "none").lower()
+        elif vid_btn and vid != "none":
+            acodec = (vid_btn.property("acodec") or "none").lower()
+        else:
+            acodec = "none"
+
+        if self.main_app.current_category == self.main_app.TAB_AUD and acodec == "none":
+            QMessageBox.critical(self, "Error", "Selected track has no audio stream.")
+            return
+
         ext_final = self.format_combo.currentText().lower()
         
-        is_video = self.main_app.current_category in [self.main_app.TAB_VID, self.main_app.TAB_C_VID]
+        is_video = self.is_video
         gen_cfg = self.main_app.config_data.get("General", {})
         base_path = os.path.expanduser(gen_cfg.get("video_path") if is_video else gen_cfg.get("audio_path"))
         full_out_tmpl = f"{base_path}/{self.out_tmpl}"
         
         cmd = self.base_cmd.copy()
+        pending_logs = []
         
         if self.main_app.current_category == self.main_app.TAB_VID:
             cmd = self.main_app.add_subtitle_args(cmd, self.get_manual_subtitle_cfg())        
@@ -619,10 +636,30 @@ class ManualSelectionDialog(QDialog):
 
         if self.main_app.current_category == self.main_app.TAB_AUD: 
             cmd += ["-x", "-f", fmt, "--audio-format", ext_final, "-o", full_out_tmpl, self.url]
-        else: 
-            cmd += ["-f", fmt, "--merge-output-format", ext_final, "--remux-video", ext_final, "-o", full_out_tmpl, "-o", f"subtitle:{base_path}/subtitles/{self.out_tmpl}", self.url]
+        else:
+            needs_recode = False
+            if vcodec == "none":
+                needs_recode = True
+            elif ext_final == "webm":
+                vid_ok = any(k in vcodec for k in ("vp8", "vp9", "vp09", "av1", "av01"))
+                aud_ok = (acodec == "none") or any(k in acodec for k in ("opus", "vorbis"))
+                needs_recode = not (vid_ok and aud_ok)
+            elif ext_final == "mp4":
+                vid_ok = "vp8" not in vcodec
+                aud_ok = (acodec == "none") or ("vorbis" not in acodec)
+                needs_recode = not (vid_ok and aud_ok)
 
-        self.main_app.run_command(cmd, task_name=self.url, dest_folder=base_path)
+            if needs_recode:
+                cmd += ["-f", fmt, "--merge-output-format", "mkv", "--recode-video", ext_final]
+                if ext_final == "webm":
+                    cmd += ["--postprocessor-args", "VideoConvertor:-c:v libvpx-vp9 -crf 30 -b:v 0 -c:a libopus"]
+                pending_logs.append(f"[Auto-Fix] Incompatible codecs for {ext_final.upper()} remux. Recoding safely via FFmpeg.")
+            else:
+                cmd += ["-f", fmt, "--merge-output-format", ext_final, "--remux-video", ext_final]
+
+            cmd += ["-o", full_out_tmpl, "-o", f"subtitle:{base_path}/subtitles/{self.out_tmpl}", self.url]
+
+        self.main_app.run_command(cmd, task_name=self.url, task_logs=pending_logs, dest_folder=base_path)
         self.accept()
 
 class SettingsDialog(QDialog):
@@ -693,7 +730,7 @@ class SettingsDialog(QDialog):
         self.main_app.set_button_icon(github, "github")
         github.clicked.connect(lambda: webbrowser.open_new("https://github.com/DanMixerBR/CopynDown"))
         
-        btn_state = False if self.main_app.is_busy else True
+        btn_state = not (self.main_app.is_busy or self.main_app.is_updating)
         self.update_btn = QPushButton("Check for updates"); self.update_btn.setObjectName("primaryButton"); self.update_btn.setFixedWidth(140); self.update_btn.setEnabled(btn_state)
         
         def do_check():
@@ -923,8 +960,9 @@ class SettingsDialog(QDialog):
         c_lay.addWidget(self.cb_cookies)
         c_lay.addSpacing(8)
         r_row = QHBoxLayout()
-        r_auto = QRadioButton("Auto-extract (Edge/Firefox/Brave)"); r_txt = QRadioButton("Import from text file"); r_auto.setChecked(True)
-        r_row.addWidget(r_auto); r_row.addSpacing(10); r_row.addWidget(r_txt); r_row.addStretch(1); c_lay.addLayout(r_row)
+        self.r_auto = QRadioButton("Auto-extract (Edge/Firefox/Brave)")
+        self.r_txt = QRadioButton("Import from text file")
+        r_row.addWidget(self.r_auto); r_row.addSpacing(10); r_row.addWidget(self.r_txt); r_row.addStretch(1); c_lay.addLayout(r_row)
         
         stack = QStackedWidget()
         p_auto = QWidget(); p_auto_lay = QVBoxLayout(p_auto); p_auto_lay.setContentsMargins(0, 2, 0, 0); p_auto_lay.setSpacing(8)
@@ -937,7 +975,11 @@ class SettingsDialog(QDialog):
         def perform_extraction():
             btn_ext.setEnabled(False); btn_ext.setText("Extracting...")
             browser = self.browser_combo.currentText().lower()
-            c_path = self.cookie_path.text()
+            raw_c_path = self.cookie_path.text().strip() or self.main_app.cookies_path_default
+            c_path = os.path.expanduser(raw_c_path)
+            if not os.path.isabs(c_path):
+                c_path = os.path.join(base_dir, c_path)
+            c_path = c_path.replace("\\", "/")
 
             def reset_btn():
                 try:
@@ -972,6 +1014,10 @@ class SettingsDialog(QDialog):
                     
                     if extracted_cookies is None: extracted_cookies = browsers[browser](**ext_args)
                     if not extracted_cookies: raise Exception("No cookies found for the target domains. Are you logged in?")
+
+                    parent_dir = os.path.dirname(c_path)
+                    if parent_dir and not os.path.exists(parent_dir):
+                        os.makedirs(parent_dir, exist_ok=True)
 
                     with open(c_path, 'w', encoding='utf-8') as f:
                         f.write("# Netscape HTTP Cookie File\n# Generated by CopynDown Native Extractor\n\n")
@@ -1013,7 +1059,12 @@ class SettingsDialog(QDialog):
         self.cookie_path = self._path_row(p_txt_lay, "", self.cfg["General"].get("cookies_path", "bin/cookies.txt"), False, True)
         
         stack.addWidget(p_auto); stack.addWidget(p_txt); c_lay.addWidget(stack)
-        r_auto.toggled.connect(lambda c: stack.setCurrentIndex(0) if c else None); r_txt.toggled.connect(lambda c: stack.setCurrentIndex(1) if c else None)
+        self.r_auto.toggled.connect(lambda c: stack.setCurrentIndex(0) if c else None)
+        self.r_txt.toggled.connect(lambda c: stack.setCurrentIndex(1) if c else None)
+        if self.cfg["General"].get("cookie_mode", "auto") == "file":
+            self.r_txt.setChecked(True)
+        else:
+            self.r_auto.setChecked(True)
         layout.addWidget(c_box)
         layout.addStretch(1)
         return w
@@ -1042,7 +1093,7 @@ class SettingsDialog(QDialog):
             if p:
                 p = p.replace("\\", "/")
                 home = os.path.expanduser("~").replace("\\", "/")
-                app_dir = os.path.abspath(".").replace("\\", "/")
+                app_dir = base_dir.replace("\\", "/")
 
                 if p.startswith(app_dir):
                     p = p[len(app_dir):].lstrip("/")
@@ -1067,6 +1118,8 @@ class SettingsDialog(QDialog):
         self.vid_path.setText("~/Videos/CopynDown")
         self.aud_path.setText("~/Music/CopynDown")
         self.cookie_path.setText("bin/cookies.txt")
+        self.r_auto.setChecked(True)
+        self.theme_combo.setCurrentText("Dark")
         self.cb_auto.setChecked(True); self.cb_prefer.setChecked(False)
         self.cb_updates_startup.setChecked(True)
         self.cb_notify.setChecked(True)
@@ -1090,9 +1143,14 @@ class SettingsDialog(QDialog):
     def save_settings(self):
         global CURRENT_THEME, COLORS
         sel_theme = self.theme_combo.currentText().lower()
+        crf_val = self.crf_entry.text().strip()
+        if not crf_val.isdigit() or not (0 <= int(crf_val) <= 51):
+            crf_val = "18"
+
         self.cfg["General"].update({
             "video_path": self.vid_path.text(), "audio_path": self.aud_path.text(), "auto_paste": self.cb_auto.isChecked(),
             "use_cookies": self.cb_cookies.isChecked(), "cookies_path": self.cookie_path.text(),
+            "cookie_mode": "file" if self.r_txt.isChecked() else "auto",
             "prefer_video": self.cb_prefer.isChecked(), "check_updates_startup": self.cb_updates_startup.isChecked(),
             "notifications": self.cb_notify.isChecked(),
             "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
@@ -1103,7 +1161,7 @@ class SettingsDialog(QDialog):
             "proxy_url": self.proxy_entry.text(),
             "theme": sel_theme,
             "custom_profile": self.cb_custom.isChecked(),
-            "custom_crf": self.crf_entry.text(),
+            "custom_crf": crf_val,
             "custom_preset": self.preset_combo.currentText(),
             "custom_cpu_used": self.cpu_combo.currentText()
         })
@@ -1322,9 +1380,6 @@ class CopynDownApp(QMainWindow):
         name_lbl.setMinimumWidth(50)
         name_lbl.setStyleSheet("font-weight: bold; font-size: 13px;")
         
-        link_lbl = ElidedLabel("")
-        link_lbl.hide()
-        
         status_lbl = QLabel("")
         status_lbl.setStyleSheet("font-size: 11px; font-weight: bold;")
         
@@ -1353,7 +1408,7 @@ class CopynDownApp(QMainWindow):
         
         btn_up.setStyleSheet(btn_sub_style); btn_down.setStyleSheet(btn_sub_style); btn_remove.setStyleSheet(btn_remove_style)
 
-        btn_remove.clicked.connect(lambda checked=False, btn=btn_remove: self.remove_from_queue(btn.property("queue_index")))
+        btn_remove.clicked.connect(lambda checked=False, btn=btn_remove: self.delete_queue_item(btn.property("queue_index")))
         btn_up.clicked.connect(lambda checked=False, btn=btn_up: self.move_queue_item(btn.property("queue_index"), -1))
         btn_down.clicked.connect(lambda checked=False, btn=btn_down: self.move_queue_item(btn.property("queue_index"), 1))
 
@@ -1363,7 +1418,7 @@ class CopynDownApp(QMainWindow):
         
         self.history_layout.addWidget(f)
 
-        return {"frame": f, "name": name_lbl, "link": link_lbl, "status": status_lbl, "progress": item_progress, "action": btn_action, "up": btn_up, "down": btn_down, "remove": btn_remove}
+        return {"frame": f, "name": name_lbl, "status": status_lbl, "progress": item_progress, "action": btn_action, "up": btn_up, "down": btn_down, "remove": btn_remove}
 
     def _show_queue_context_menu(self, pos, frame):
         index = frame.property("queue_index")
@@ -1395,9 +1450,9 @@ class CopynDownApp(QMainWindow):
             task = self.download_queue[index]
             if task["status"] == "Running":
                 task["status"] = "Canceled"
+                self._deleting_active = True
+                self.remove_task_by_ref(task)
                 self.cancel_download()
-                # Exclui pela identidade do objeto, prevenindo exclusão acidental se a lista mudar
-                QTimer.singleShot(1500, lambda t=task: self.remove_task_by_ref(t))
             else:
                 self.remove_task_by_ref(task)
 
@@ -1405,7 +1460,7 @@ class CopynDownApp(QMainWindow):
         if task in self.download_queue:
             self.download_queue.remove(task)
             self.save_history()
-            self.update_queue_ui()
+            self._do_update_queue_ui()
 
     def open_specific_folder(self, folder_path):
         try:
@@ -1442,16 +1497,6 @@ class CopynDownApp(QMainWindow):
             self.save_history()
             if not getattr(self, 'is_queue_running', False):
                 self.process_next_in_queue()
-
-    def cancel_queue_item(self, index):
-        if 0 <= index < len(self.download_queue):
-            if self.download_queue[index]["status"] == "Running":
-                self.download_queue[index]["status"] = "Canceled"
-                self.cancel_download()
-            else:
-                self.download_queue[index]["status"] = "Canceled"
-                self.update_queue_ui()
-                self.save_history()
     
     def _update_queue_row(self, row, index, task, queue_len):
         status = task.get("status", "Pending")
@@ -1498,14 +1543,14 @@ class CopynDownApp(QMainWindow):
         row["remove"].setProperty("queue_index", index)
 
         row["frame"].setVisible(True)
-        row["remove"].setEnabled(not is_active)
+        row["remove"].setEnabled(True)
         
-        # Agora as setas funcionam para toda a fila unificada
+        # Agora as setas funcionam para toda a fila unificada (incluindo o item ativo)
         has_up = index > 0
         has_down = index < queue_len - 1
         
-        row["up"].setEnabled(not is_active and has_up)
-        row["down"].setEnabled(not is_active and has_down)
+        row["up"].setEnabled(has_up)
+        row["down"].setEnabled(has_down)
         
         weight = "bold" if is_active else "normal"
         color = COLORS['blue'] if is_active else COLORS['text']
@@ -1515,16 +1560,21 @@ class CopynDownApp(QMainWindow):
         self.queue_update_timer.start(200)
         
     def update_single_queue_row(self):
-        """Atualiza apenas os textos e a barra de progresso do item ativo, buscando-o dinamicamente."""
-        if not hasattr(self, "queue_rows"):
-            return
-        
+        """Atualiza os textos/barra do card ativo na Activity e apenas o label de status no rodapé."""
         for i, task in enumerate(self.download_queue):
             if task.get("status") == "Running":
-                if i < len(self.queue_rows):
+                status_txt = task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting...")
+                
+                # Atualiza somente o texto no rodapé da tela principal (mantendo self.progress oculta)
+                if getattr(self, "progress_label", None) and not self.is_updating:
+                    self.progress_label.setText(status_txt)
+                    self.progress_label.setStyleSheet("font-size: 11px;")
+
+                # Atualiza o card individual dentro da aba Activity
+                if hasattr(self, "queue_rows") and i < len(self.queue_rows):
                     row = self.queue_rows[i]
                     row["progress"].setValue(task.get("progress", 0))
-                    row["status"].setText(task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting..."))
+                    row["status"].setText(status_txt)
                 break
                 
     def paste_url_btn(self):
@@ -1589,18 +1639,12 @@ class CopynDownApp(QMainWindow):
         self.save_history()
         self.update_queue_ui()
 
-    def remove_from_queue(self, index):
-        if 0 <= index < len(self.download_queue):
-            self.download_queue.pop(index)
-            self.save_history()
-            self.update_queue_ui()
-
     def move_queue_item(self, index, direction):
         n_idx = index + direction
         if 0 <= n_idx < len(self.download_queue):
             self.download_queue[index], self.download_queue[n_idx] = self.download_queue[n_idx], self.download_queue[index]
             self.save_history()
-            self.update_queue_ui()
+            self._do_update_queue_ui()
 
     def _build_ui(self):
         root = QWidget(); self.setCentralWidget(root)
@@ -2047,7 +2091,7 @@ class CopynDownApp(QMainWindow):
 
     def save_config(self):
         try:
-            if not os.path.exists("bin"): os.makedirs("bin")
+            if not os.path.exists(bin_path): os.makedirs(bin_path)
             with open(self.config_file, "w") as f: json.dump(self.config_data, f, indent=4)
         except Exception as e: self.add_to_log(f">>> ERROR: Failed to save config.txt: {e}")
 
@@ -2158,11 +2202,25 @@ class CopynDownApp(QMainWindow):
         for btn in self.tab_buttons.values():
             btn.setEnabled(tab_state)
 
+        if getattr(self, 'settings_win', None):
+            try:
+                if getattr(self.settings_win, 'update_btn', None):
+                    can_update = (state == "normal" and not self.is_updating)
+                    self.settings_win.update_btn.setEnabled(can_update)
+                    if can_update:
+                        self.settings_win.update_btn.setText("Check for updates")
+            except RuntimeError:
+                pass
+
     def build_base_cmd(self, is_json=False, url="", silent=False):
         cmd = [self.ytdlp_path, "-i"]
         gen_cfg = self.config_data.get("General", {})
         if gen_cfg.get("use_cookies", True):
-            c_path = gen_cfg.get("cookies_path", self.cookies_path_default)
+            raw_c_path = gen_cfg.get("cookies_path", self.cookies_path_default)
+            c_path = os.path.expanduser(raw_c_path)
+            if c_path and not os.path.isabs(c_path):
+                c_path = os.path.join(base_dir, c_path)
+            c_path = c_path.replace("\\", "/")
             try:
                 if os.path.exists(c_path) and os.path.getsize(c_path) > 0: cmd.extend(["--cookies", c_path])
                 elif not silent: self.safe_ui(self.add_to_log, ">>> Warning: Cookies.txt file not found or empty. Continuing without cookies.")
@@ -2236,13 +2294,32 @@ class CopynDownApp(QMainWindow):
         url = self.main_entry.text().strip()
         if not url: self.reset_status("URL is empty.", COLORS["danger"]); self.schedule_reset(); return
         if not self.is_valid_media_url(url): self.reset_status("Invalid URL.", COLORS["danger"]); self.schedule_reset(); return
+        if not os.path.exists(self.ytdlp_path): self.status_error("ERROR: yt-dlp is missing! Please place it in the 'bin' folder."); return
         
         if self.switch_advanced.isVisible() and self.switch_advanced.isChecked():
+            cfg = self.config_data[tab]
+            b_cmd = self.build_base_cmd(url=url)
+
+            if cfg.get("thumb"):
+                b_cmd.append("--embed-thumbnail")
+            if cfg.get("meta"):
+                b_cmd.extend([
+                    "--embed-metadata",
+                    "--parse-metadata", "%(playlist_index|)s:%(track_number)s",
+                    "--parse-metadata", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s",
+                    "--parse-metadata", "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
+                ])
+
+            if tab == self.TAB_VID:
+                is_social = any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"])
+                tmpl_map = {"Title (Default)": "%(title)s.%(ext)s", "Title + Video ID": "%(title)s [%(id)s].%(ext)s", "Title + Format ID": "%(title)s [%(format_id)s].%(ext)s", "Title + Resolution": "%(title)s [%(resolution)s].%(ext)s"}
+                o_tmpl = "%(uploader)s [%(id)s].%(ext)s" if is_social else tmpl_map.get(self.config_data.get("General", {}).get("file_template", "Title (Default)"), "%(title)s.%(ext)s")
+            else:
+                o_tmpl = "%(playlist_index&{}. |)s%(title)s.%(ext)s"
+            
+            
             # A correção infalível da mãozinha fantasma ao abrir a janela
             self.fix_ghost_cursor()
-            
-            b_cmd = self.build_base_cmd(url=url)
-            o_tmpl = "%(title)s.%(ext)s"
             
             self.manual_win = ManualSelectionDialog(url, b_cmd, o_tmpl, self)
             self.manual_win.exec()
@@ -2271,9 +2348,7 @@ class CopynDownApp(QMainWindow):
             cfg["trans_langs"] = self.rev_lang_map.get(self.subs_trans_combo.currentText(), "none")
             cfg["embed_subs"] = self.subs_embed_check.isChecked()
             
-        r_path = getattr(self, '_temp_manual_dir', None)
-        if not r_path: r_path = os.path.expanduser(self.config_data["General"]["video_path"])
-        self._temp_manual_dir = None
+        r_path = os.path.expanduser(self.config_data["General"]["video_path"])
         is_social = any(d in url for d in ["instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com", ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com", "pinterest.com", "snapchat.com"])
         
         tmpl_map = {"Title (Default)": "%(title)s.%(ext)s", "Title + Video ID": "%(title)s [%(id)s].%(ext)s", "Title + Format ID": "%(title)s [%(format_id)s].%(ext)s", "Title + Resolution": "%(title)s [%(resolution)s].%(ext)s"}
@@ -2307,9 +2382,7 @@ class CopynDownApp(QMainWindow):
 
     def download_music(self, url):
         cfg = self.config_data[self.TAB_AUD]
-        r_path = getattr(self, '_temp_manual_dir', None)
-        if not r_path: r_path = os.path.expanduser(self.config_data["General"]["audio_path"])
-        self._temp_manual_dir = None
+        r_path = os.path.expanduser(self.config_data["General"]["audio_path"])
         afmt, q = self.menu_2.currentText().lower(), self.menu_1.currentText()
         b_cmd = self.build_base_cmd(url=url) + ["-x", "--audio-format", afmt]
         
@@ -2360,7 +2433,7 @@ class CopynDownApp(QMainWindow):
         dst = os.path.join(save_dir, f"{base}_{suf}.{e_fin}").replace("\\", "/")
         if src == dst: dst = os.path.join(save_dir, f"{base}_new.{e_fin}").replace("\\", "/")
         
-        ff_exe = os.path.join("bin", f"ffmpeg{self.exe}").replace("\\", "/")
+        ff_exe = os.path.join(bin_path, f"ffmpeg{self.exe}").replace("\\", "/")
         if not os.path.exists(ff_exe):
             try:
                 subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
@@ -2427,7 +2500,9 @@ class CopynDownApp(QMainWindow):
             
             is_custom = gen_cfg.get("custom_profile", False)
             if is_custom:
-                crf = gen_cfg.get("custom_crf", "18")
+                crf = str(gen_cfg.get("custom_crf", "18")).strip()
+                if not crf.isdigit() or not (0 <= int(crf) <= 51):
+                    crf = "18"
                 v_preset = gen_cfg.get("custom_preset", "faster")
                 v_cpu = gen_cfg.get("custom_cpu_used", "4")
             else:
@@ -2483,9 +2558,6 @@ class CopynDownApp(QMainWindow):
                 if ch != "Original" and ac != "copy": cmd.extend(["-ac", "2" if "Stereo" in ch else "1"])
         
         cmd.append(dst); self.run_command(cmd, base, pending_logs, dest_folder=save_dir)
-
-    def _revert_queue_btn(self):
-        pass # Sem botão footer mais
     
     def run_command(self, cmd, task_name="Media Task", task_logs=None, dest_folder=""):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
@@ -2529,8 +2601,10 @@ class CopynDownApp(QMainWindow):
                 self.add_to_log(f">>> Aviso: Não foi possível remover o arquivo incompleto: {e}")
         
         if self.is_cancelling:
-            # Assume que foi pausado (o botão ⏸ já renomeia o status para Paused antes de cancelar)
-            status_val = "Paused" 
+            status_val = "Paused"
+            if getattr(self, "_deleting_active", False):
+                status_val = "Canceled"
+                self._deleting_active = False 
             
             for t in self.download_queue:
                 if t["status"] == "Running":
@@ -2542,7 +2616,7 @@ class CopynDownApp(QMainWindow):
                 self.status_canceled(">>> Process Paused!", "Paused")
             else:
                 self.status_canceled()
-            
+
             self.is_queue_running = False
             self.update_queue_ui()
             self.toggle_buttons("normal")
@@ -2599,21 +2673,20 @@ class CopynDownApp(QMainWindow):
 
         if next_task_idx is None:
             self.is_queue_running = False
-            self.queue_start_time = None
             self.update_queue_ui()
             self.toggle_buttons("normal")
             return
 
-        if not getattr(self, 'queue_start_time', None):
-            self.queue_start_time = time.time()
-
+        task_start_time = time.time()
         self.is_queue_running = True
         
         task = self.download_queue[next_task_idx]
         task["status"] = "Running"
         self.update_queue_ui()
 
-        cmd = task["cmd"]; is_conv = task["is_convert"]; self.is_cancelling = False
+        cmd = task["cmd"]; is_conv = task["is_convert"]
+        self.is_cancelling = False
+        self._deleting_active = False
         self.status_timer.stop()
         self.toggle_buttons("disabled"); self.current_playlist_item = ""
 
@@ -2642,7 +2715,7 @@ class CopynDownApp(QMainWindow):
                     if c:
                         if "ERROR:" in c or "Invalid data found" in c: err = True; self.safe_ui(self.add_to_log, c); continue
                         if is_conv and "time=" in c:
-                            el = int(time.time() - getattr(self, 'queue_start_time', time.time()))
+                            el = int(time.time() - task_start_time)
                             if el != last_reported_time:  # <-- Só atualiza a tela se o segundo mudou!
                                 last_reported_time = el
                                 task["progress_text"] = f"Converting... (Elapsed time: {el//60}m {el%60}s)" if el>=60 else f"Converting... (Elapsed time: {el}s)"
@@ -2650,7 +2723,7 @@ class CopynDownApp(QMainWindow):
                             
                         if not is_conv and "Downloading item" in c:
                             m = re.search(r"Downloading item (\d+ of \d+)", c)
-                            if m: self.current_playlist_item = f" [{m.group(1)}]"
+                            if m: self.current_playlist_item = f" [Item {m.group(1)}]"
                             
                         if "100%" in c or "already been downloaded" in c or "already is in target format" in c:
                             self.safe_ui(self.add_to_log, c)
@@ -2679,7 +2752,7 @@ class CopynDownApp(QMainWindow):
 
                 if is_conv: self.safe_ui(lambda: self.progress.setRange(0, 100))
 
-                el = int(time.time() - getattr(self, 'queue_start_time', time.time()))
+                el = int(time.time() - task_start_time)
                 d_str = f"{el//60}m {el%60}s" if el >= 60 else f"{el}s"
                 t_f = cmd[-1] if is_conv else None
 
@@ -3059,6 +3132,11 @@ class CopynDownApp(QMainWindow):
                         break
             except: 
                 pass
+
+        # 4. Garante que qualquer alteração pendente na fila seja salva antes de encerrar
+        if getattr(self, "history_timer", None) and self.history_timer.isActive():
+            self.history_timer.stop()
+            self._do_save_history()
         
         event.accept()
         os._exit(0)
