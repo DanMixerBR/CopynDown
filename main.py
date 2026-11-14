@@ -1251,7 +1251,7 @@ class CopynDownApp(QMainWindow):
         self.is_cancelling = False; self.is_busy = False; self.is_updating = False
         self.download_queue = []; self.is_queue_running = False
         
-        self.title_fetch_semaphore = threading.Semaphore(3)
+        self.title_fetch_semaphore = threading.Semaphore(1)
         self.queue_generation = 0
         self.queue_update_timer = QTimer(self)
         self.queue_update_timer.setSingleShot(True)
@@ -1385,7 +1385,7 @@ class CopynDownApp(QMainWindow):
         f_lay = QHBoxLayout(f)
         f_lay.setContentsMargins(12, 10, 12, 10)
 
-        # Botão de Ação (Play / Pause / Restart)
+        # Botão de Ação (Play / Stop / Restart)
         btn_action = QPushButton("▶")
         btn_action.setFixedSize(32, 32)
         btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
@@ -1471,7 +1471,7 @@ class CopynDownApp(QMainWindow):
         if 0 <= index < len(self.download_queue):
             task = self.download_queue[index]
             if task["status"] == "Running":
-                task["status"] = "Canceled"
+                task["status"] = "Stopped"
                 self._deleting_active = True
                 self.remove_task_by_ref(task)
                 self.cancel_download()
@@ -1497,17 +1497,17 @@ class CopynDownApp(QMainWindow):
     def toggle_queue_item_state(self, index):
         if 0 <= index < len(self.download_queue):
             if self.download_queue[index]["status"] == "Running":
-                self.pause_queue_item(index)
+                self.stop_queue_item(index)
             else:
                 self.restart_queue_item(index)
 
-    def pause_queue_item(self, index):
+    def stop_queue_item(self, index):
         if 0 <= index < len(self.download_queue):
             if self.download_queue[index]["status"] == "Running":
-                self.download_queue[index]["status"] = "Paused" # Força o novo status
+                self.download_queue[index]["status"] = "Stopped" # Força o novo status
                 self.cancel_download()
             elif self.download_queue[index]["status"] == "Pending":
-                self.download_queue[index]["status"] = "Paused"
+                self.download_queue[index]["status"] = "Stopped"
                 self.update_queue_ui()
                 self.save_history()
 
@@ -1532,7 +1532,7 @@ class CopynDownApp(QMainWindow):
             row["progress"].setRange(0, 0 if task.get("is_convert") else 100)
             row["status"].setText(task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting..."))
             row["status"].setStyleSheet(f"color: {COLORS['blue']}; font-size: 11px; font-weight: bold;")
-            row["action"].setText("⏸")
+            row["action"].setText("⏹")
         else:
             row["progress"].setVisible(False)
             if status == "Completed":
@@ -1545,14 +1545,10 @@ class CopynDownApp(QMainWindow):
                 row["status"].setText("Failed")
                 row["status"].setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px; font-weight: bold;")
                 row["action"].setText("↺")
-            elif status == "Paused":
-                row["status"].setText("Paused")
+            elif status == "Stopped":
+                row["status"].setText("Stopped")
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px; font-weight: bold;")
                 row["action"].setText("▶")
-            elif status == "Canceled":
-                row["status"].setText("Canceled")
-                row["status"].setStyleSheet(f"color: {COLORS['muted2']}; font-size: 11px; font-weight: bold;")
-                row["action"].setText("↺")
             else:
                 row["status"].setText("Pending")
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
@@ -1611,7 +1607,7 @@ class CopynDownApp(QMainWindow):
 
     def _do_update_queue_ui(self):
         if hasattr(self, 'queue_btn'):
-            active_count = sum(1 for t in self.download_queue if t.get("status") in ["Pending", "Running", "Paused"])
+            active_count = sum(1 for t in self.download_queue if t.get("status") in ["Pending", "Running", "Stopped"])
             if active_count > 0:
                 self.queue_btn.setText(f" Activity ({active_count})")
             else:
@@ -1803,7 +1799,7 @@ class CopynDownApp(QMainWindow):
         actions = QHBoxLayout(self.action_frame); actions.setContentsMargins(0, 13, 0, 13); actions.setSpacing(20); actions.addStretch(1)
         self.btn_download = QPushButton("Download media"); self.btn_download.setObjectName("primaryButton"); self.btn_download.setFixedWidth(150); self.btn_download.setStyleSheet("min-height: 24px; font-size: 13px;")
         self.btn_download.clicked.connect(self.handle_unified_download)
-        self.btn_cancel = QPushButton("Cancel"); self.btn_cancel.setObjectName("dangerButton"); self.btn_cancel.setFixedWidth(150); self.btn_cancel.setStyleSheet("min-height: 24px; font-size: 13px;"); self.btn_cancel.setEnabled(False)
+        self.btn_cancel = QPushButton("Stop"); self.btn_cancel.setObjectName("dangerButton"); self.btn_cancel.setFixedWidth(150); self.btn_cancel.setStyleSheet("min-height: 24px; font-size: 13px;"); self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_download)
         actions.addWidget(self.btn_download); actions.addWidget(self.btn_cancel); actions.addStretch(1)
         self.home_layout.addWidget(self.action_frame)
@@ -2070,14 +2066,11 @@ class CopynDownApp(QMainWindow):
         if log_msg: self.add_to_log(log_msg)
 
     def status_error(self, log_msg=""): self.set_terminal_state("Process Error! (Check Logs)", log_msg)
-    def status_canceled(self, log_msg=">>> Process Canceled!", label_text="Canceled!"):
+    def status_canceled(self, log_msg=">>> Process Stopped!", label_text="Stopped!"):
         self.progress.setRange(0, 100); self.progress.setValue(100)
         self.progress_label.setText(label_text)
-        if label_text == "Paused":
-            self.progress_label.setStyleSheet("font-size: 11px;") # Cor removida para Pausado
-        else:
-            self.progress_label.setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
-        self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['warning'] if label_text == 'Paused' else COLORS['muted']}; }}")
+        self.progress_label.setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
+        self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['muted']}; }}")
         if log_msg: self.add_to_log(log_msg)
         self.schedule_reset(3000)
 
@@ -2142,7 +2135,7 @@ class CopynDownApp(QMainWindow):
                     data = json.load(f)
                     for item in data:
                         if item.get("status") == "Running":
-                            item["status"] = "Paused" # Previne travamentos de itens antigos
+                            item["status"] = "Stopped" # Previne travamentos de itens antigos
                         self.download_queue.append(item)
             except Exception as e: 
                 self.add_to_log(f">>> Failed to load queue history: {e}")
@@ -2154,9 +2147,12 @@ class CopynDownApp(QMainWindow):
     def _do_save_history(self):
         # Esta é a função que realmente escreve no disco
         try:
-            # Agora salvamos TODA a fila, incluindo as conversões!
+            clean_queue = [
+                {k: v for k, v in item.items() if not k.startswith("_")}
+                for item in self.download_queue
+            ]
             with open(self.history_file, "w", encoding="utf-8") as f:
-                json.dump(self.download_queue, f, indent=4)
+                json.dump(clean_queue, f, indent=4)
         except Exception as e: 
             self.add_to_log(f">>> Error saving history: {e}")
         
@@ -2171,9 +2167,9 @@ class CopynDownApp(QMainWindow):
         elif "Error" in txt or "Failed" in txt or "Invalid" in txt:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['danger']}; }}")
             self.progress_label.setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px;")
-        elif "Canceled" in txt: 
+        elif "Stopped" in txt:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['muted']}; }}")
-            self.progress_label.setStyleSheet("font-size: 11px;")
+            self.progress_label.setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
         else:
             self.progress.setStyleSheet(f"QProgressBar::chunk {{ background-color: {COLORS['blue']}; }}")
             self.progress_label.setStyleSheet("font-size: 11px;")
@@ -2192,7 +2188,7 @@ class CopynDownApp(QMainWindow):
                 # Atualiza o fundo do card
                 row["frame"].setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
                 
-                # Atualiza o botão de Ação (Play/Pause/Restart)
+                # Atualiza o botão de Ação (Play/Stop/Restart)
                 btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
                              f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}")
                 row["action"].setStyleSheet(btn_style)
@@ -2594,35 +2590,79 @@ class CopynDownApp(QMainWindow):
         
         cmd.append(dst); self.run_command(cmd, base, pending_logs, dest_folder=save_dir)
     
+    def fetch_task_title(self, qi):
+        if qi.get("is_convert") or qi.get("_fetching_title"):
+            return
+        url = qi.get("url", "")
+        if not url.startswith("http") or qi.get("name") != url:
+            return
+
+        qi["_fetching_title"] = True
+
+        def worker():
+            gen = self.queue_generation
+            self.title_fetch_semaphore.acquire()
+            try:
+                if gen != self.queue_generation or qi not in self.download_queue:
+                    return
+                is_single_video = "--no-playlist" in qi.get("cmd", [])
+                extra_args = (
+                    ["--no-playlist", "--no-warnings", url]
+                    if is_single_video
+                    else ["--flat-playlist", "--no-warnings", "--playlist-items", "1", url]
+                )
+                t_cmd = self.build_base_cmd(is_json=True, silent=True) + extra_args
+                res = subprocess.run(
+                    t_cmd, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", startupinfo=self.startupinfo, timeout=30
+                )
+                if gen != self.queue_generation or qi not in self.download_queue:
+                    return
+                if res.returncode == 0 and res.stdout.strip():
+                    info = json.loads(res.stdout.strip())
+                    if is_single_video:
+                        n_name = info.get("title") or url
+                    else:
+                        p_t = info.get("playlist_title") or info.get("playlist")
+                        n_name = (
+                            f"[Playlist] {p_t}"
+                            if p_t
+                            else (
+                                f"[Playlist] {info.get('title')}"
+                                if "list=" in url.lower()
+                                else info.get("title") or url
+                            )
+                        )
+                    qi["name"] = n_name
+                    self.safe_ui(self.update_queue_ui)
+                    self.safe_ui(self.save_history)
+            except Exception as e:
+                if gen == self.queue_generation:
+                    self.safe_ui(self.add_to_log, f"Could not fetch title: {e}")
+            finally:
+                qi["_fetching_title"] = False
+                self.title_fetch_semaphore.release()
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def run_command(self, cmd, task_name="Media Task", task_logs=None, dest_folder=""):
         is_conv = self.current_category in [self.TAB_C_VID, self.TAB_C_AUD]
-        qi = {"cmd": cmd, "name": task_name, "is_convert": is_conv, "logs": task_logs or [], "status": "Pending", "url": task_name, "dest_folder": dest_folder}
-        self.download_queue.insert(0, qi) # <--- Alterado de append para insert
-        self.save_history() # <--- Adicionado
+        qi = {
+            "cmd": cmd,
+            "name": task_name,
+            "is_convert": is_conv,
+            "logs": task_logs or [],
+            "status": "Pending",
+            "url": task_name,
+            "dest_folder": dest_folder,
+        }
+        self.download_queue.insert(0, qi)
+        self.save_history()
         self.safe_ui(self.update_queue_ui)
 
-        if not is_conv and task_name.startswith("http"):
-            def fetch_title():
-                gen = self.queue_generation
-                self.title_fetch_semaphore.acquire()
-                try:
-                    if gen != self.queue_generation: return
-                    t_cmd = self.build_base_cmd(is_json=True, silent=True) + ["--flat-playlist", "--no-warnings", "--playlist-items", "1", task_name]
-                    res = subprocess.run(t_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', startupinfo=self.startupinfo, timeout=30)
-                    if gen != self.queue_generation: return
-                    if res.returncode == 0:    
-                        info = json.loads(res.stdout.strip())
-                        p_t = info.get('playlist_title') or info.get('playlist')
-                        n_name = f"[Playlist] {p_t}" if p_t else (f"[Playlist] {info.get('title')}" if "list=" in task_name.lower() else info.get('title') or task_name)
-                        qi["name"] = n_name
-                        self.safe_ui(self.update_queue_ui)
-                except Exception as e:
-                    if gen == self.queue_generation: self.safe_ui(self.add_to_log, f"Could not fetch title: {e}")
-                finally:
-                    self.title_fetch_semaphore.release()
-            threading.Thread(target=fetch_title, daemon=True).start()
-            
-        if getattr(self, 'current_process', None) is None and not self.is_updating:
+        self.fetch_task_title(qi)
+
+        if getattr(self, "current_process", None) is None and not self.is_updating:
             self.process_next_in_queue()
 
     def _finish_task(self, is_conv, err, d_str, t_f=None):
@@ -2636,21 +2676,13 @@ class CopynDownApp(QMainWindow):
                 self.add_to_log(f">>> Warning: Could not delete incomplete file: {e}")
         
         if self.is_cancelling:
-            status_val = "Paused"
-            if getattr(self, "_deleting_active", False):
-                status_val = "Canceled"
-                self._deleting_active = False 
-            
+            self._deleting_active = False
             for t in self.download_queue:
                 if t["status"] == "Running":
-                    t["status"] = "Canceled"
-                    status_val = "Canceled" # Confirma que foi um Cancelamento global
+                    t["status"] = "Stopped"
                     break
-            
-            if status_val == "Paused":
-                self.status_canceled(">>> Process Paused!", "Paused")
-            else:
-                self.status_canceled()
+
+            self.status_canceled(">>> Process Stopped!", "Stopped!")
 
             self.is_queue_running = False
             self.update_queue_ui()
@@ -2717,6 +2749,7 @@ class CopynDownApp(QMainWindow):
         
         task = self.download_queue[next_task_idx]
         task["status"] = "Running"
+        self.fetch_task_title(task)
         self.update_queue_ui()
 
         cmd = task["cmd"]; is_conv = task["is_convert"]
@@ -2798,7 +2831,7 @@ class CopynDownApp(QMainWindow):
                 self.safe_ui(lambda: self._finish_task(is_conv, True, "0s", None))
             finally:
                 self.current_process = None; 
-                if getattr(self, 'btn_cancel', None): self.safe_ui(lambda: self.btn_cancel.setText("Cancel"))
+                if getattr(self, 'btn_cancel', None): self.safe_ui(lambda: self.btn_cancel.setText("Stop"))
         threading.Thread(target=worker, daemon=True).start()
 
     def cancel_download(self):
@@ -2806,7 +2839,7 @@ class CopynDownApp(QMainWindow):
         if proc and not self.is_cancelling:
             if getattr(self, 'btn_cancel', None):
                 self.btn_cancel.setEnabled(False)
-                self.btn_cancel.setText("Cancelling...")
+                self.btn_cancel.setText("Stopping...")
             self.is_cancelling = True
             self.add_to_log(">>> Attempting to force close process...")
             try:
