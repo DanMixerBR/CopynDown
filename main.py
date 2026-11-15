@@ -334,6 +334,9 @@ class ManualSelectionDialog(QDialog):
         apply_theme_titlebar(self)
         center_window(self)
         
+        self.fetch_proc = None
+        self._closed = False
+        
         # Pula a etapa de presets e já inicia o carregamento de todos os formatos
         self.fetch_data_task()
 
@@ -365,40 +368,90 @@ class ManualSelectionDialog(QDialog):
 
         apply_ui_ux_cursors(self)
 
+    def _kill_fetch_proc(self):
+        proc, self.fetch_proc = self.fetch_proc, None
+        if proc and proc.poll() is None:
+            try:
+                if self.main_app.is_windows:
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                        capture_output=True, startupinfo=self.main_app.startupinfo, timeout=2
+                    )
+                else:
+                    import signal
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+    def reject(self):
+        self._closed = True
+        self._kill_fetch_proc()
+        super().reject()
+
+    def closeEvent(self, event):
+        self._closed = True
+        self._kill_fetch_proc()
+        super().closeEvent(event)
+
     def fetch_data_task(self):
         def task():
+            proc = None
             try:
                 cmd_json = self.main_app.build_base_cmd(is_json=True, silent=True) + [
                     "--no-warnings", "--no-playlist", self.url
                 ]
-                res = subprocess.run(
-                    cmd_json, capture_output=True, text=True, encoding="utf-8",
-                    errors="replace", startupinfo=self.main_app.startupinfo, timeout=60
-                )
-                raw_out = (res.stdout or "").strip()
+                kwargs = {
+                    "stdout": subprocess.PIPE, "stderr": subprocess.PIPE,
+                    "text": True, "encoding": "utf-8", "errors": "replace",
+                    "startupinfo": self.main_app.startupinfo
+                }
+                if not self.main_app.is_windows:
+                    kwargs["preexec_fn"] = os.setsid
 
-                if res.returncode != 0 or not raw_out:
-                    err_lines = [line.strip() for line in (res.stderr or "").splitlines() if line.strip()]
+                proc = subprocess.Popen(cmd_json, **kwargs)
+                self.fetch_proc = proc
+                if self._closed:
+                    self._kill_fetch_proc()
+                    return
+
+                stdout, stderr = proc.communicate(timeout=60)
+                if self._closed:
+                    return
+
+                raw_out = (stdout or "").strip()
+                if proc.returncode != 0 or not raw_out:
+                    err_lines = [line.strip() for line in (stderr or "").splitlines() if line.strip()]
                     yt_errors = [re.sub(r"^ERROR:\s*", "", line) for line in err_lines if "ERROR:" in line]
-                    detail = "\n".join(yt_errors or err_lines) or raw_out or f"yt-dlp exited with code {res.returncode}."
+                    detail = "\n".join(yt_errors or err_lines) or raw_out or f"yt-dlp exited with code {proc.returncode}."
                     self.main_app.safe_ui(self.handle_error, detail)
                     return
 
                 video_data = json.loads(raw_out)
                 if not isinstance(video_data, dict):
-                    err_lines = [line.strip() for line in (res.stderr or "").splitlines() if line.strip()]
+                    err_lines = [line.strip() for line in (stderr or "").splitlines() if line.strip()]
                     detail = "\n".join(err_lines) or "No format metadata returned for this URL."
                     self.main_app.safe_ui(self.handle_error, detail)
                     return
 
-                self.main_app.safe_ui(self.build_content, video_data)
+                if not self._closed:
+                    self.main_app.safe_ui(self.build_content, video_data)
             except subprocess.TimeoutExpired:
+                self._kill_fetch_proc()
                 self.main_app.safe_ui(self.handle_error, "Request timed out after 60 seconds.")
             except Exception as e:
-                self.main_app.safe_ui(self.handle_error, f"Failed to parse data: {e}")
+                if not self._closed:
+                    self.main_app.safe_ui(self.handle_error, f"Failed to parse data: {e}")
+            finally:
+                if self.fetch_proc is proc:
+                    self.fetch_proc = None
         threading.Thread(target=task, daemon=True).start()
 
     def handle_error(self, msg):
+        if self._closed:
+            return
         self.main_app.add_to_log(f"ERROR: {msg}")
         QMessageBox.critical(self, "Error", f"Failed to fetch data:\n{msg}")
         self.reject()
@@ -1515,6 +1568,7 @@ class CopynDownApp(QMainWindow):
         if 0 <= index < len(self.download_queue):
             self.download_queue[index]["status"] = "Pending"
             self.download_queue[index]["progress"] = 0
+            self.download_queue[index].pop("progress_text", None)
             self.update_queue_ui()
             self.save_history()
             if not getattr(self, 'is_queue_running', False):
@@ -2749,6 +2803,8 @@ class CopynDownApp(QMainWindow):
         
         task = self.download_queue[next_task_idx]
         task["status"] = "Running"
+        task["progress"] = 0
+        task.pop("progress_text", None)
         self.fetch_task_title(task)
         self.update_queue_ui()
 
@@ -2771,8 +2827,13 @@ class CopynDownApp(QMainWindow):
 
         def worker():
             err = False
-            last_reported_progress = -1   # <-- ADICIONE ISTO AQUI
-            last_reported_time = -1       # <-- ADICIONE ISTO AQUI
+            last_reported_progress = -1
+            last_reported_time = -1
+            post_processors = (
+                "[Merger]", "[ModifyChapters]", "[SplitChapters]", "[ExtractAudio]",
+                "[VideoRemuxer]", "[VideoConvertor]", "[Metadata]", "[EmbedSubtitle]",
+                "[EmbedThumbnail]", "[SubtitlesConvertor]", "[ThumbnailsConvertor]"
+            )
             try:
                 kwargs = {'startupinfo': self.startupinfo}
                 if not self.is_windows: kwargs['preexec_fn'] = os.setsid
@@ -2784,7 +2845,7 @@ class CopynDownApp(QMainWindow):
                         if "ERROR:" in c or "Invalid data found" in c: err = True; self.safe_ui(self.add_to_log, c); continue
                         if is_conv and "time=" in c:
                             el = int(time.time() - task_start_time)
-                            if el != last_reported_time:  # <-- Só atualiza a tela se o segundo mudou!
+                            if el != last_reported_time:
                                 last_reported_time = el
                                 task["progress_text"] = f"Converting... (Elapsed time: {el//60}m {el%60}s)" if el>=60 else f"Converting... (Elapsed time: {el}s)"
                                 self.safe_ui(self.update_single_queue_row)
@@ -2803,10 +2864,17 @@ class CopynDownApp(QMainWindow):
                             self.safe_ui(self.add_to_log, c)
                             
                         if not is_conv:
+                            if c.startswith(post_processors) and not err and not self.is_cancelling:
+                                pp_text = f"Post-processing{self.current_playlist_item}..."
+                                if task.get("progress_text") != pp_text:
+                                    task["progress"] = 100
+                                    task["progress_text"] = pp_text
+                                    self.safe_ui(self.update_single_queue_row)
+
                             m = self.re_progress.search(c)
                             if m and not err and not self.is_cancelling:
                                 new_progress = int(float(m.group(1)))
-                                if new_progress != last_reported_progress:  # <-- Só atualiza a tela se a porcentagem (número inteiro) mudou!
+                                if new_progress != last_reported_progress:
                                     last_reported_progress = new_progress
                                     task["progress"] = new_progress
                                     task["progress_text"] = f"Downloading{self.current_playlist_item}... {task['progress']}%"
