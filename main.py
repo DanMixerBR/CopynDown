@@ -42,6 +42,17 @@ else:
 bin_path = os.path.join(base_dir, "bin").replace("\\", "/")
 os.environ["PATH"] = bin_path + os.pathsep + os.environ.get("PATH", "")
 
+def format_display_path(path_str):
+    if not path_str:
+        return ""
+    expanded = os.path.expanduser(path_str.strip())
+    if not os.path.isabs(expanded):
+        expanded = os.path.join(base_dir, expanded)
+    expanded = os.path.abspath(expanded)
+    if sys.platform == "win32":
+        return expanded.replace("/", "\\")
+    return expanded.replace("\\", "/")
+
 CURRENT_THEME = "dark" 
 
 THEMES = {
@@ -206,6 +217,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 QMenu {{ background-color: {COLORS['card']}; color: {COLORS['text']}; border: 1px solid {COLORS['border']}; padding: 4px; }}
 QMenu::item {{ padding: 4px 24px; border-radius: 4px; }}
 QMenu::item:selected {{ background-color: {COLORS['blue']}; color: white; }}
+QMenu::item:disabled {{ color: {COLORS['muted2']}; background-color: transparent; }}
 QMenu::separator {{ height: 1px; background-color: {COLORS['border']}; margin: 4px 0px; }}
 """
 
@@ -786,7 +798,7 @@ class SettingsDialog(QDialog):
         header_box.addWidget(title); header_box.addWidget(version)
         layout.addLayout(header_box)
         
-        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, and Odysee.")
+        desc = QLabel("A modern, fast, and cross-platform media downloader and converter.\n\nSupported platforms: YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai,\nFacebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble,\nBandcamp, Mixcloud, Kick, Odysee and Globo.")
         desc.setWordWrap(True); layout.addWidget(desc)
         
         credits = QLabel("Credits & License"); credits.setObjectName("sectionTitle"); layout.addWidget(credits)
@@ -1035,7 +1047,13 @@ class SettingsDialog(QDialog):
         stack = QStackedWidget()
         p_auto = QWidget(); p_auto_lay = QVBoxLayout(p_auto); p_auto_lay.setContentsMargins(0, 2, 0, 0); p_auto_lay.setSpacing(8)
         n_auto = QLabel("Note: May require closing the browser or running the app as Administrator."); n_auto.setObjectName("muted"); p_auto_lay.addWidget(n_auto)
-        row_ext = QHBoxLayout(); self.browser_combo = QComboBox(); self.browser_combo.addItems(["Edge", "Firefox", "Brave", "Safari"]); self.browser_combo.setFixedWidth(120)
+        row_ext = QHBoxLayout()
+        self.browser_combo = QComboBox()
+        self.browser_combo.addItems(["Edge", "Firefox", "Brave", "Safari"])
+        self.browser_combo.setFixedWidth(120)
+        saved_browser = self.cfg["General"].get("cookie_browser", "Edge")
+        if saved_browser in ["Edge", "Firefox", "Brave", "Safari"]:
+            self.browser_combo.setCurrentText(saved_browser)
         
         btn_ext = QPushButton("Extract cookies"); btn_ext.setObjectName("primaryButton"); btn_ext.setFixedWidth(120)
         row_ext.addWidget(self.browser_combo); row_ext.addWidget(btn_ext); row_ext.addStretch(1); p_auto_lay.addLayout(row_ext)
@@ -1142,40 +1160,25 @@ class SettingsDialog(QDialog):
 
     def _path_row(self, parent_layout, label_text, path, is_dir, has_ext=False):
         if label_text: parent_layout.addWidget(QLabel(label_text)); parent_layout.addSpacing(-8)
-        row = QHBoxLayout(); edit = QLineEdit(path); edit.setReadOnly(True)
+        row = QHBoxLayout()
+        edit = QLineEdit(format_display_path(path))
+        edit.setReadOnly(True)
         edit.setFixedWidth(350)
         btn = QPushButton("Browse"); btn.setObjectName("browseButton"); btn.setFixedWidth(75)
         
         def do_browse():
             title = "Select Output Folder" if is_dir else "Select Cookies File"
-
-            start_path = os.path.expanduser(edit.text() or "~")
-            if not os.path.isabs(start_path):
-                start_path = os.path.join(base_dir, start_path)
-
+            start_path = format_display_path(edit.text() or "~")
             if not is_dir:
                 start_path = os.path.dirname(start_path)
 
-            p = QFileDialog.getExistingDirectory(self, title, start_path) if is_dir else QFileDialog.getOpenFileName(self, title, start_path, "Text Files (*.txt)")[0]
-
+            p = (
+                QFileDialog.getExistingDirectory(self, title, start_path)
+                if is_dir
+                else QFileDialog.getOpenFileName(self, title, start_path, "Text Files (*.txt)")[0]
+            )
             if p:
-                p = p.replace("\\", "/")
-                home = os.path.expanduser("~")
-                p_norm = os.path.normcase(os.path.abspath(p))
-                app_norm = os.path.normcase(os.path.abspath(base_dir))
-                home_norm = os.path.normcase(os.path.abspath(home))
-
-                app_prefix = app_norm if app_norm.endswith(os.sep) else app_norm + os.sep
-                home_prefix = home_norm if home_norm.endswith(os.sep) else home_norm + os.sep
-
-                if p_norm.startswith(app_prefix):
-                    p = os.path.relpath(p, base_dir).replace("\\", "/")
-                elif p_norm == home_norm:
-                    p = "~"
-                elif p_norm.startswith(home_prefix):
-                    p = "~/" + os.path.relpath(p, home).replace("\\", "/")
-
-                edit.setText(p)
+                edit.setText(format_display_path(p))
 
         btn.clicked.connect(do_browse)
         row.addWidget(edit); row.addWidget(btn)
@@ -1190,9 +1193,10 @@ class SettingsDialog(QDialog):
         return edit
 
     def restore_defaults(self):
-        self.vid_path.setText("~/Videos/CopynDown")
-        self.aud_path.setText("~/Music/CopynDown")
-        self.cookie_path.setText("bin/cookies.txt")
+        self.vid_path.setText(format_display_path("~/Videos/CopynDown"))
+        self.aud_path.setText(format_display_path("~/Music/CopynDown"))
+        self.cookie_path.setText(format_display_path("bin/cookies.txt"))
+        self.browser_combo.setCurrentText("Edge")
         self.r_auto.setChecked(True)
         self.theme_combo.setCurrentText("Dark")
         self.cb_auto.setChecked(True); self.cb_prefer.setChecked(False)
@@ -1226,6 +1230,7 @@ class SettingsDialog(QDialog):
             "video_path": self.vid_path.text(), "audio_path": self.aud_path.text(), "auto_paste": self.cb_auto.isChecked(),
             "use_cookies": self.cb_cookies.isChecked(), "cookies_path": self.cookie_path.text(),
             "cookie_mode": "file" if self.r_txt.isChecked() else "auto",
+            "cookie_browser": self.browser_combo.currentText(),
             "prefer_video": self.cb_prefer.isChecked(), "check_updates_startup": self.cb_updates_startup.isChecked(),
             "notifications": self.cb_notify.isChecked(),
             "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
@@ -1327,10 +1332,10 @@ class CopynDownApp(QMainWindow):
 
         self.config_data = {
             "General": { 
-                "auto_paste": True, "use_cookies": True, "cookies_path": self.cookies_path_default,
-                "video_path": "~/Videos/CopynDown", "audio_path": "~/Music/CopynDown", "prefer_video": False, 
-                "check_updates_startup": True,
-                "notifications": True,
+                "auto_paste": True, "use_cookies": True, "cookies_path": format_display_path(self.cookies_path_default),
+                "cookie_mode": "auto", "cookie_browser": "Edge",
+                "video_path": format_display_path("~/Videos/CopynDown"), "audio_path": format_display_path("~/Music/CopynDown"),
+                "prefer_video": False, "check_updates_startup": True, "notifications": True,
                 "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", 
                 "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality",
                 "custom_profile": False, "custom_crf": "18", "custom_preset": "faster", "custom_cpu_used": "4",
@@ -1340,6 +1345,9 @@ class CopynDownApp(QMainWindow):
             self.TAB_AUD: {"thumb": True, "meta": True}
         }
         self.load_config()
+        for k in ("video_path", "audio_path", "cookies_path"):
+            if self.config_data["General"].get(k):
+                self.config_data["General"][k] = format_display_path(self.config_data["General"][k])
 
         self.lang_map = {
             "none": "None", "zh-Hans": "Chinese (S)", "zh-Hant": "Chinese (T)", "nl": "Dutch",
@@ -1420,6 +1428,19 @@ class CopynDownApp(QMainWindow):
         if event.type() == QEvent.Type.ActivationChange and self.isActiveWindow():
             self.on_clipboard_change()
         super().changeEvent(event)
+        
+    def _set_action_icon(self, btn, icon_name, fallback_text):
+        btn.setProperty("icon_name", icon_name)
+        btn.setProperty("fallback_text", fallback_text)
+        icon_path = os.path.join(bin_path, "icons", CURRENT_THEME, f"{icon_name}.svg").replace("\\", "/")
+        if os.path.exists(icon_path):
+            from PySide6.QtCore import QSize
+            btn.setText("")
+            btn.setIcon(QIcon(icon_path))
+            btn.setIconSize(QSize(15, 15))
+        else:
+            btn.setIcon(QIcon())
+            btn.setText(fallback_text)
 
     def _create_queue_row(self):
         f = QFrame()
@@ -1439,11 +1460,12 @@ class CopynDownApp(QMainWindow):
         f_lay.setContentsMargins(12, 10, 12, 10)
 
         # Botão de Ação (Play / Stop / Restart)
-        btn_action = QPushButton("▶")
+        btn_action = QPushButton()
         btn_action.setFixedSize(32, 32)
         btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
                      f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}")
         btn_action.setStyleSheet(btn_style)
+        self._set_action_icon(btn_action, "play", "▶")
         btn_action.clicked.connect(lambda checked=False, btn=btn_action: self.toggle_queue_item_state(btn.property("queue_index")))
 
         # Layout Vertical dos Textos
@@ -1495,6 +1517,38 @@ class CopynDownApp(QMainWindow):
 
         return {"frame": f, "name": name_lbl, "status": status_lbl, "progress": item_progress, "action": btn_action, "up": btn_up, "down": btn_down, "remove": btn_remove}
 
+    def _resolve_task_file(self, task):
+        file_path = task.get("file_path", "")
+        if not file_path and task.get("is_convert") and task.get("cmd"):
+            file_path = task["cmd"][-1]
+        if file_path:
+            resolved = os.path.realpath(os.path.expanduser(file_path))
+            if os.path.isfile(resolved):
+                return resolved
+
+        dest_folder = task.get("dest_folder", "")
+        if task.get("status") == "Completed" and dest_folder:
+            folder = os.path.realpath(os.path.expanduser(dest_folder))
+            if os.path.isdir(folder):
+                ignore_exts = (".srt", ".vtt", ".ass", ".lrc", ".webp", ".jpg", ".jpeg", ".png", ".part", ".ytdl", ".temp")
+                norm_title = re.sub(r"[^a-z0-9]+", "", task.get("name", "").lower())
+                if len(norm_title) >= 4:
+                    try:
+                        for fname in os.listdir(folder):
+                            if fname.lower().endswith(ignore_exts):
+                                continue
+                            fpath = os.path.join(folder, fname)
+                            if os.path.isfile(fpath):
+                                norm_stem = re.sub(r"[^a-z0-9]+", "", os.path.splitext(fname)[0].lower())
+                                if norm_stem == norm_title or (len(norm_stem) >= 6 and norm_title in norm_stem):
+                                    resolved = os.path.realpath(fpath)
+                                    task["file_path"] = resolved
+                                    self.save_history()
+                                    return resolved
+                    except Exception:
+                        pass
+        return ""
+
     def _show_queue_context_menu(self, pos, frame):
         index = frame.property("queue_index")
         if index is not None and 0 <= index < len(self.download_queue):
@@ -1504,21 +1558,38 @@ class CopynDownApp(QMainWindow):
             
             from PySide6.QtWidgets import QMenu
             menu = QMenu(self)
+            open_file_action = menu.addAction("Open file")
             open_action = menu.addAction("Open folder")
             menu.addSeparator()
             copy_action = menu.addAction("Copy link")
             delete_action = menu.addAction("Delete")
             
+            resolved_file = self._resolve_task_file(task)
+            has_valid_file = (task.get("status") == "Completed") and bool(resolved_file)
+            open_file_action.setEnabled(has_valid_file)
+            
             if not dest_folder:
                 open_action.setEnabled(False)
             
             action = menu.exec(frame.mapToGlobal(pos))
-            if action == copy_action and url:
+            if action == open_file_action and has_valid_file:
+                self.open_specific_file(resolved_file)
+            elif action == copy_action and url:
                 QApplication.clipboard().setText(url)
             elif action == open_action:
                 self.open_specific_folder(dest_folder)
             elif action == delete_action:
                 self.delete_queue_item(index)
+
+    def open_specific_file(self, file_path):
+        try:
+            p = os.path.realpath(os.path.expanduser(file_path))
+            if os.path.isfile(p):
+                if self.is_windows: os.startfile(p)
+                elif sys.platform == "darwin": subprocess.Popen(["open", p])
+                else: subprocess.Popen(["xdg-open", p])
+        except Exception as e:
+            self.add_to_log(f">>> Failed to open file: {e}")
 
     def delete_queue_item(self, index):
         if 0 <= index < len(self.download_queue):
@@ -1564,11 +1635,129 @@ class CopynDownApp(QMainWindow):
                 self.update_queue_ui()
                 self.save_history()
 
+    def _refresh_task_with_current_settings(self, task):
+        old_cmd = task.get("cmd", [])
+        if not old_cmd:
+            return
+        gen_cfg = self.config_data.get("General", {})
+
+        if task.get("is_convert"):
+            cmd = list(old_cmd)
+            src = cmd[3] if len(cmd) > 3 else ""
+            old_dst = cmd[-1]
+            ext = os.path.splitext(old_dst)[1].lower().lstrip(".")
+            is_vid = ext in {"mp4", "mkv", "webm", "mov", "avi"}
+
+            save_dir = os.path.expanduser(gen_cfg.get("video_path") if is_vid else gen_cfg.get("audio_path"))
+            os.makedirs(save_dir, exist_ok=True)
+            new_dst = os.path.join(save_dir, os.path.basename(old_dst)).replace("\\", "/")
+            if src and os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(new_dst)):
+                stem, dot_ext = os.path.splitext(os.path.basename(old_dst))
+                new_dst = os.path.join(save_dir, f"{stem}_new{dot_ext}").replace("\\", "/")
+            cmd[-1] = new_dst
+
+            if gen_cfg.get("custom_profile", False):
+                crf = str(gen_cfg.get("custom_crf", "18")).strip()
+                if not crf.isdigit() or not (0 <= int(crf) <= 51):
+                    crf = "18"
+                v_preset = gen_cfg.get("custom_preset", "faster")
+                v_cpu = gen_cfg.get("custom_cpu_used", "4")
+            else:
+                prof = gen_cfg.get("conv_profile", "High Quality")
+                crf = "18" if prof == "High Quality" else ("20" if prof == "Balanced" else "22")
+                v_preset = "faster"
+                v_cpu = "4"
+
+            for idx, arg in enumerate(cmd[:-1]):
+                if arg == "-crf":
+                    cmd[idx + 1] = crf
+                elif arg == "-preset":
+                    cmd[idx + 1] = v_preset
+                elif arg == "-cpu-used":
+                    cmd[idx + 1] = v_cpu
+
+            task["cmd"] = cmd
+            task["dest_folder"] = save_dir
+            task["file_path"] = new_dst
+            return
+
+        url = old_cmd[-1]
+        is_video = "-x" not in old_cmd
+
+        def _get_opt(flag):
+            for idx in range(len(old_cmd) - 2, -1, -1):
+                if old_cmd[idx] == flag:
+                    return old_cmd[idx + 1]
+            return None
+
+        out_ext = (
+            _get_opt("--recode-video")
+            or _get_opt("--remux-video")
+            or _get_opt("--merge-output-format")
+            or _get_opt("--audio-format")
+            or ""
+        ).lower()
+
+        new_cmd = self.build_base_cmd(url=url)
+        if not is_video:
+            new_cmd.append("-x")
+            if out_ext:
+                new_cmd.extend(["--audio-format", out_ext])
+
+        tab_cfg = self.config_data[self.TAB_VID if is_video else self.TAB_AUD]
+        if tab_cfg.get("thumb") and out_ext not in ("webm", "wav"):
+            new_cmd.append("--embed-thumbnail")
+        if tab_cfg.get("meta") and out_ext != "wav":
+            new_cmd.extend([
+                "--embed-metadata",
+                "--parse-metadata", "%(playlist_index|)s:%(track_number)s",
+                "--parse-metadata", "%(release_year,release_date,date,upload_date).4s:%(meta_date)s",
+                "--parse-metadata", "%(album_artist,creator,channel|)s:%(meta_album_artist)s"
+            ])
+
+        if is_video:
+            new_cmd = self.add_subtitle_args(new_cmd, tab_cfg)
+            if out_ext == "webm":
+                new_cmd = [a for a in new_cmd if a not in ("--embed-thumbnail", "--embed-subs")]
+
+        for flag in ("-S", "-f", "--merge-output-format", "--remux-video", "--recode-video", "--postprocessor-args", "--audio-quality"):
+            val = _get_opt(flag)
+            if val is not None:
+                new_cmd.extend([flag, val])
+
+        dest_folder = os.path.expanduser(gen_cfg.get("video_path") if is_video else gen_cfg.get("audio_path"))
+        if is_video:
+            social_domains = [
+                "instagram.com", "tiktok.com", "kwai.com", "kw.ai", "twitter.com",
+                ".x.com", "facebook.com", "fb.watch", "reddit.com", "linkedin.com",
+                "pinterest.com", "snapchat.com"
+            ]
+            tmpl_map = {
+                "Title (Default)": "%(title)s.%(ext)s",
+                "Title + Video ID": "%(title)s [%(id)s].%(ext)s",
+                "Title + Format ID": "%(title)s [%(format_id)s].%(ext)s",
+                "Title + Resolution": "%(title)s [%(resolution)s].%(ext)s",
+            }
+            is_social = any(d in url for d in social_domains)
+            o_tmpl = "%(uploader)s [%(id)s].%(ext)s" if is_social else tmpl_map.get(gen_cfg.get("file_template", "Title (Default)"), "%(title)s.%(ext)s")
+            new_cmd.extend(["-o", f"{dest_folder}/{o_tmpl}", "-o", f"subtitle:{dest_folder}/subtitles/{o_tmpl}", url])
+        else:
+            new_cmd.extend(["-o", f"{dest_folder}/%(playlist_index&{{}}. |)s%(title)s.%(ext)s", url])
+
+        task["cmd"] = new_cmd
+        task["dest_folder"] = dest_folder
+        task.pop("file_path", None)
+
     def restart_queue_item(self, index):
         if 0 <= index < len(self.download_queue):
-            self.download_queue[index]["status"] = "Pending"
-            self.download_queue[index]["progress"] = 0
-            self.download_queue[index].pop("progress_text", None)
+            task = self.download_queue[index]
+            try:
+                self._refresh_task_with_current_settings(task)
+            except Exception as e:
+                self.add_to_log(f">>> Warning: Could not reload settings on restart ({e}).")
+            task["status"] = "Pending"
+            task["progress"] = 0
+            task.pop("progress_text", None)
             self.update_queue_ui()
             self.save_history()
             if not getattr(self, 'is_queue_running', False):
@@ -1586,27 +1775,26 @@ class CopynDownApp(QMainWindow):
             row["progress"].setRange(0, 0 if task.get("is_convert") else 100)
             row["status"].setText(task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting..."))
             row["status"].setStyleSheet(f"color: {COLORS['blue']}; font-size: 11px; font-weight: bold;")
-            row["action"].setText("⏹")
+            self._set_action_icon(row["action"], "stop", "⏹")
         else:
             row["progress"].setVisible(False)
             if status == "Completed":
-                # Mostra Converted ou Downloaded dinamicamente
                 final_status = "Converted" if task.get("is_convert") else "Downloaded"
                 row["status"].setText(final_status)
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px; font-weight: bold;")
-                row["action"].setText("↺")
+                self._set_action_icon(row["action"], "restart", "↺")
             elif status == "Failed":
                 row["status"].setText("Failed")
                 row["status"].setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px; font-weight: bold;")
-                row["action"].setText("↺")
+                self._set_action_icon(row["action"], "restart", "↺")
             elif status == "Stopped":
                 row["status"].setText("Stopped")
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px; font-weight: bold;")
-                row["action"].setText("▶")
+                self._set_action_icon(row["action"], "play", "▶")
             else:
                 row["status"].setText("Pending")
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
-                row["action"].setText("▶")
+                self._set_action_icon(row["action"], "play", "▶")
 
         row["frame"].setProperty("queue_index", index)
         row["action"].setProperty("queue_index", index)
@@ -2037,7 +2225,7 @@ class CopynDownApp(QMainWindow):
         file = QFileDialog.getOpenFileName(self, "Select Media File", start_dir, filters)[0]
         if file:
             self.last_source_browse_dir = os.path.dirname(file)
-            self.main_entry.setText(file.replace("\\", "/"))
+            self.main_entry.setText(format_display_path(file))
             self.evaluate_ui_state()
             
     def on_advanced_toggle(self):
@@ -2055,6 +2243,7 @@ class CopynDownApp(QMainWindow):
 
         self.progress.setVisible(self.is_updating)
         if self.is_updating:
+            self.main_stack.setCurrentIndex(0)
             self.input_frame.setVisible(False)
             self.options_frame.setVisible(False)
             self.switches_container.setVisible(False)      
@@ -2246,6 +2435,10 @@ class CopynDownApp(QMainWindow):
                 btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
                              f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}")
                 row["action"].setStyleSheet(btn_style)
+                
+                icon_name = row["action"].property("icon_name") or "play"
+                fallback_txt = row["action"].property("fallback_text") or "▶"
+                self._set_action_icon(row["action"], icon_name, fallback_txt)
 
                 # Atualiza os botões Sub (Setas)
                 btn_sub_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
@@ -2286,6 +2479,8 @@ class CopynDownApp(QMainWindow):
         tab_state = True if (state == "normal" or is_downloading) else False
         for btn in self.tab_buttons.values():
             btn.setEnabled(tab_state)
+        if getattr(self, 'queue_btn', None):
+            self.queue_btn.setEnabled(tab_state)
 
         if getattr(self, 'settings_win', None):
             try:
@@ -2854,6 +3049,38 @@ class CopynDownApp(QMainWindow):
                             m = re.search(r"Downloading item (\d+ of \d+)", c)
                             if m: self.current_playlist_item = f" [Item {m.group(1)}]"
                             
+                        if is_conv:
+                            task["file_path"] = cmd[-1]
+                        else:
+                            ignore_exts = (".srt", ".vtt", ".ass", ".lrc", ".webp", ".jpg", ".jpeg", ".png")
+                            detected_file = None
+                            if c.startswith("[MoveFiles] Moving file \"") and "\" to \"" in c and c.endswith("\""):
+                                detected_file = c.split("\" to \"", 1)[1][:-1]
+                            elif c.startswith("[Merger] Merging formats into \"") and c.endswith("\""):
+                                detected_file = c[len("[Merger] Merging formats into \""):-1]
+                            elif c.startswith("[ExtractAudio] Destination: "):
+                                detected_file = c[len("[ExtractAudio] Destination: "):].strip()
+                            elif (c.startswith("[VideoRemuxer]") or c.startswith("[VideoConvertor]")) and "Destination: " in c:
+                                detected_file = c.split("Destination: ", 1)[1].strip()
+                            elif c.startswith("[VideoRemuxer] Not remuxing media file \"") and "\";" in c:
+                                detected_file = c.split("[VideoRemuxer] Not remuxing media file \"", 1)[1].split("\";", 1)[0]
+                            elif c.startswith("[EmbedSubtitle] Embedding subtitles in \"") and c.endswith("\""):
+                                detected_file = c[len("[EmbedSubtitle] Embedding subtitles in \""):-1]
+                            elif c.startswith("[Metadata] Adding metadata to \"") and c.endswith("\""):
+                                detected_file = c[len("[Metadata] Adding metadata to \""):-1]
+                            elif c.startswith("[EmbedThumbnail]") and "Adding thumbnail to \"" in c and c.endswith("\""):
+                                detected_file = c.split("Adding thumbnail to \"", 1)[1][:-1]
+                            elif c.startswith("[download] Destination: "):
+                                cand = c[len("[download] Destination: "):].strip()
+                                if not cand.lower().endswith(ignore_exts):
+                                    detected_file = cand
+                            elif c.startswith("[download] ") and c.endswith(" has already been downloaded"):
+                                cand = c[len("[download] "):-len(" has already been downloaded")].strip()
+                                if not cand.lower().endswith(ignore_exts):
+                                    detected_file = cand
+                            if detected_file:
+                                task["file_path"] = detected_file
+                            
                         if "100%" in c or "already been downloaded" in c or "already is in target format" in c:
                             self.safe_ui(self.add_to_log, c)
                             if not is_conv:
@@ -2917,15 +3144,7 @@ class CopynDownApp(QMainWindow):
                     if res.stderr: self.add_to_log(res.stderr.strip())
                 else: 
                     import signal
-                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                
-                # NOVO: Fecha a via de comunicação para liberar a memória do Python e abortar a Thread instantaneamente
-                try:
-                    if proc.stdout:
-                        proc.stdout.close()
-                except Exception:
-                    pass
-                    
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)                    
             except Exception as e: 
                 self.add_to_log(f">>> Failed to close process: {e}")
                 self.is_cancelling = False
