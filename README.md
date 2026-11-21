@@ -37,7 +37,7 @@
 
 ## ⚙️ Supported Sites, Formats & Resolutions
 
-**Supported sites:** YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai, Facebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble, Bandcamp, Mixcloud, Kick, and Odysee.
+**Supported sites:** YouTube, Vimeo, Dailymotion, Twitch, Instagram, TikTok, Kwai, Facebook, Twitter/X, Reddit, SoundCloud, LinkedIn, Pinterest, Snapchat, Bilibili, Rumble, Bandcamp, Mixcloud, Kick, Odysee and Globo.
 
 **Supported video resolutions:** 2160p (4K), 1440p (QHD), 1080p (Full HD), 720p, 480p, and 360p.
 
