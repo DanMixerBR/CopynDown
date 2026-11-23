@@ -842,6 +842,10 @@ class SettingsDialog(QDialog):
         self.cb_updates_startup = QCheckBox("Check for updates on startup")
         self.cb_updates_startup.setChecked(self.cfg["General"].get("check_updates_startup", True))
         layout.addWidget(self.cb_updates_startup)
+
+        self.cb_debug_mode = QCheckBox("Debug mode")
+        self.cb_debug_mode.setChecked(self.cfg["General"].get("debug_mode", False))
+        layout.addWidget(self.cb_debug_mode)
         
         layout.addSpacing(10)
         theme_row = QHBoxLayout(); theme_row.addWidget(QLabel("Theme:"))
@@ -1201,6 +1205,7 @@ class SettingsDialog(QDialog):
         self.theme_combo.setCurrentText("Dark")
         self.cb_auto.setChecked(True); self.cb_prefer.setChecked(False)
         self.cb_updates_startup.setChecked(True)
+        self.cb_debug_mode.setChecked(False)
         self.cb_notify.setChecked(True)
         self.cb_vid_thumb.setChecked(True)
         self.cb_aud_thumb.setChecked(True)
@@ -1232,6 +1237,7 @@ class SettingsDialog(QDialog):
             "cookie_mode": "file" if self.r_txt.isChecked() else "auto",
             "cookie_browser": self.browser_combo.currentText(),
             "prefer_video": self.cb_prefer.isChecked(), "check_updates_startup": self.cb_updates_startup.isChecked(),
+            "debug_mode": self.cb_debug_mode.isChecked(),
             "notifications": self.cb_notify.isChecked(),
             "max_retries": self.retries.text(), "file_template": self.tmpl_combo.currentText(),
             "delay_mode": self.delay.currentText(), "sleep_min": self.s_min.text(), "sleep_max": self.s_max.text(), "sleep_req": self.s_req.text(),
@@ -1335,7 +1341,7 @@ class CopynDownApp(QMainWindow):
                 "auto_paste": True, "use_cookies": True, "cookies_path": format_display_path(self.cookies_path_default),
                 "cookie_mode": "auto", "cookie_browser": "Edge",
                 "video_path": format_display_path("~/Videos/CopynDown"), "audio_path": format_display_path("~/Music/CopynDown"),
-                "prefer_video": False, "check_updates_startup": True, "notifications": True,
+                "prefer_video": False, "check_updates_startup": True, "debug_mode": False, "notifications": True,
                 "max_retries": "10", "file_template": "Title (Default)", "delay_mode": "Playlist Only", 
                 "sleep_min": "2", "sleep_max": "5", "sleep_req": "1", "conv_profile": "High Quality",
                 "custom_profile": False, "custom_crf": "18", "custom_preset": "faster", "custom_cpu_used": "4",
@@ -1442,24 +1448,54 @@ class CopynDownApp(QMainWindow):
             btn.setIcon(QIcon())
             btn.setText(fallback_text)
 
+    def select_queue_card(self, index):
+        if index is not None and 0 <= index < len(self.download_queue):
+            self.selected_task = self.download_queue[index]
+        else:
+            self.selected_task = None
+
+        if hasattr(self, "queue_rows"):
+            for i, row in enumerate(self.queue_rows):
+                if i < len(self.download_queue) and row["frame"].isVisible():
+                    is_sel = (self.download_queue[i] is self.selected_task)
+                    border = f"1px solid {COLORS['blue']}" if is_sel else "1px solid transparent"
+                    row["frame"].setStyleSheet(
+                        f"QFrame#queueCard {{ background-color: {COLORS['input']}; border: {border}; border-radius: 8px; }}"
+                    )
+
     def _create_queue_row(self):
         f = QFrame()
-        
-        # 👇 AQUI VOCÊ CONTROLA O TAMANHO DO CARD:
-        # Aumente este valor (ex: 75, 80) para deixar o card mais alto
+        f.setObjectName("queueCard")
         f.setMinimumHeight(65)
-        # Remova o '#' abaixo e altere o valor caso queira forçar uma largura mínima
-        # f.setMinimumWidth(500) 
-        
-        f.setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
-        
+        f.setStyleSheet(
+            f"QFrame#queueCard {{ background-color: {COLORS['input']}; border: 1px solid transparent; border-radius: 8px; }}"
+        )
+
         f.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         f.customContextMenuRequested.connect(lambda pos, frame=f: self._show_queue_context_menu(pos, frame))
+
+        def on_card_press(event, frame=f):
+            QFrame.mousePressEvent(frame, event)
+            if event.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton):
+                self.select_queue_card(frame.property("queue_index"))
+
+        def on_card_double_click(event, frame=f):
+            QFrame.mouseDoubleClickEvent(frame, event)
+            if event.button() == Qt.MouseButton.LeftButton:
+                idx = frame.property("queue_index")
+                if idx is not None and 0 <= idx < len(self.download_queue):
+                    self.select_queue_card(idx)
+                    task = self.download_queue[idx]
+                    resolved_file = self._resolve_task_file(task)
+                    if task.get("status") == "Completed" and resolved_file:
+                        self.open_specific_file(resolved_file)
+
+        f.mousePressEvent = on_card_press
+        f.mouseDoubleClickEvent = on_card_double_click
 
         f_lay = QHBoxLayout(f)
         f_lay.setContentsMargins(12, 10, 12, 10)
 
-        # Botão de Ação (Play / Stop / Restart)
         btn_action = QPushButton()
         btn_action.setFixedSize(32, 32)
         btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
@@ -1468,18 +1504,17 @@ class CopynDownApp(QMainWindow):
         self._set_action_icon(btn_action, "play", "▶")
         btn_action.clicked.connect(lambda checked=False, btn=btn_action: self.toggle_queue_item_state(btn.property("queue_index")))
 
-        # Layout Vertical dos Textos
         info_lay = QVBoxLayout()
         info_lay.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        info_lay.setSpacing(4) # Distância entre o Nome, o Status e a Barra
-        
+        info_lay.setSpacing(4)
+
         name_lbl = ElidedLabel("")
         name_lbl.setMinimumWidth(50)
         name_lbl.setStyleSheet("font-weight: bold; font-size: 13px;")
-        
+
         status_lbl = QLabel("")
         status_lbl.setStyleSheet("font-size: 11px; font-weight: bold;")
-        
+
         item_progress = QProgressBar()
         item_progress.setRange(0, 100)
         item_progress.setValue(0)
@@ -1488,21 +1523,20 @@ class CopynDownApp(QMainWindow):
         item_progress.setVisible(False)
         sp = item_progress.sizePolicy(); sp.setRetainSizeWhenHidden(True); item_progress.setSizePolicy(sp)
 
-        # 👇 ORDEM MODIFICADA: Nome em cima, Status no meio, Progresso embaixo
         info_lay.addWidget(name_lbl)
         info_lay.addWidget(status_lbl)
         info_lay.addWidget(item_progress)
 
         btn_up = QPushButton("▲"); btn_down = QPushButton("▼"); btn_remove = QPushButton("X")
         btn_up.setFixedSize(30, 24); btn_down.setFixedSize(30, 24); btn_remove.setFixedSize(30, 24)
-        
+
         btn_sub_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
                          f"QPushButton:hover {{ background-color: {COLORS['button_hover']}; }}"
                          f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}")
         btn_remove_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 13px; }}"
                             f"QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }}"
                             f"QPushButton:disabled {{ background-color: {COLORS['input2']}; color: {COLORS['muted2']}; }}")
-        
+
         btn_up.setStyleSheet(btn_sub_style); btn_down.setStyleSheet(btn_sub_style); btn_remove.setStyleSheet(btn_remove_style)
 
         btn_remove.clicked.connect(lambda checked=False, btn=btn_remove: self.delete_queue_item(btn.property("queue_index")))
@@ -1510,9 +1544,9 @@ class CopynDownApp(QMainWindow):
         btn_down.clicked.connect(lambda checked=False, btn=btn_down: self.move_queue_item(btn.property("queue_index"), 1))
 
         f_lay.addWidget(btn_action)
-        f_lay.addLayout(info_lay, 1) # ,1 permite que esse bloco central expanda o máximo possível
+        f_lay.addLayout(info_lay, 1)
         f_lay.addWidget(btn_up); f_lay.addWidget(btn_down); f_lay.addWidget(btn_remove)
-        
+
         self.history_layout.addWidget(f)
 
         return {"frame": f, "name": name_lbl, "status": status_lbl, "progress": item_progress, "action": btn_action, "up": btn_up, "down": btn_down, "remove": btn_remove}
@@ -1553,31 +1587,45 @@ class CopynDownApp(QMainWindow):
         index = frame.property("queue_index")
         if index is not None and 0 <= index < len(self.download_queue):
             task = self.download_queue[index]
+            status = task.get("status", "Pending")
             url = task.get("url", "")
             dest_folder = task.get("dest_folder", "")
-            
+
             from PySide6.QtWidgets import QMenu
             menu = QMenu(self)
             open_file_action = menu.addAction("Open file")
             open_action = menu.addAction("Open folder")
             menu.addSeparator()
+            stop_resume_action = menu.addAction("Stop / Resume")
+            restart_action = menu.addAction("Restart")
+            menu.addSeparator()
             copy_action = menu.addAction("Copy link")
             delete_action = menu.addAction("Delete")
-            
+
             resolved_file = self._resolve_task_file(task)
-            has_valid_file = (task.get("status") == "Completed") and bool(resolved_file)
+            has_valid_file = (status == "Completed") and bool(resolved_file)
             open_file_action.setEnabled(has_valid_file)
-            
-            if not dest_folder:
-                open_action.setEnabled(False)
-            
+            open_action.setEnabled(bool(dest_folder))
+
+            is_in_progress = status in ("Running", "Pending", "Stopped")
+            is_finished = status in ("Completed", "Failed")
+            stop_resume_action.setEnabled(is_in_progress)
+            restart_action.setEnabled(is_finished)
+
             action = menu.exec(frame.mapToGlobal(pos))
             if action == open_file_action and has_valid_file:
                 self.open_specific_file(resolved_file)
-            elif action == copy_action and url:
-                QApplication.clipboard().setText(url)
             elif action == open_action:
                 self.open_specific_folder(dest_folder)
+            elif action == stop_resume_action and is_in_progress:
+                if status in ("Running", "Pending"):
+                    self.stop_queue_item(index)
+                else:
+                    self.restart_queue_item(index)
+            elif action == restart_action and is_finished:
+                self.restart_queue_item(index)
+            elif action == copy_action and url:
+                QApplication.clipboard().setText(url)
             elif action == delete_action:
                 self.delete_queue_item(index)
 
@@ -1620,8 +1668,12 @@ class CopynDownApp(QMainWindow):
 
     def toggle_queue_item_state(self, index):
         if 0 <= index < len(self.download_queue):
-            if self.download_queue[index]["status"] == "Running":
+            task = self.download_queue[index]
+            status = task.get("status")
+            if status == "Running":
                 self.stop_queue_item(index)
+            elif status == "Completed":
+                self.open_specific_folder(task.get("dest_folder", ""))
             else:
                 self.restart_queue_item(index)
 
@@ -1768,13 +1820,13 @@ class CopynDownApp(QMainWindow):
         is_active = (status == "Running")
 
         row["name"].setText(task.get("name", "Media Task"))
-        
+
         if is_active:
             row["progress"].setVisible(True)
             row["progress"].setValue(task.get("progress", 0))
             row["progress"].setRange(0, 0 if task.get("is_convert") else 100)
             row["status"].setText(task.get("progress_text", "Downloading..." if not task.get("is_convert") else "Converting..."))
-            row["status"].setStyleSheet(f"color: {COLORS['blue']}; font-size: 11px; font-weight: bold;")
+            row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px; font-weight: bold;")
             self._set_action_icon(row["action"], "stop", "⏹")
         else:
             row["progress"].setVisible(False)
@@ -1782,7 +1834,7 @@ class CopynDownApp(QMainWindow):
                 final_status = "Converted" if task.get("is_convert") else "Downloaded"
                 row["status"].setText(final_status)
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px; font-weight: bold;")
-                self._set_action_icon(row["action"], "restart", "↺")
+                self._set_action_icon(row["action"], "folder", "📁")
             elif status == "Failed":
                 row["status"].setText("Failed")
                 row["status"].setStyleSheet(f"color: {COLORS['danger']}; font-size: 11px; font-weight: bold;")
@@ -1796,6 +1848,12 @@ class CopynDownApp(QMainWindow):
                 row["status"].setStyleSheet(f"color: {COLORS['muted']}; font-size: 11px;")
                 self._set_action_icon(row["action"], "play", "▶")
 
+        is_selected = (task is getattr(self, "selected_task", None))
+        border = f"1px solid {COLORS['blue']}" if is_selected else "1px solid transparent"
+        row["frame"].setStyleSheet(
+            f"QFrame#queueCard {{ background-color: {COLORS['input']}; border: {border}; border-radius: 8px; }}"
+        )
+
         row["frame"].setProperty("queue_index", index)
         row["action"].setProperty("queue_index", index)
         row["up"].setProperty("queue_index", index)
@@ -1804,16 +1862,15 @@ class CopynDownApp(QMainWindow):
 
         row["frame"].setVisible(True)
         row["remove"].setEnabled(True)
-        
-        # Agora as setas funcionam para toda a fila unificada (incluindo o item ativo)
+
         has_up = index > 0
         has_down = index < queue_len - 1
-        
+
         row["up"].setEnabled(has_up)
         row["down"].setEnabled(has_down)
-        
-        weight = "bold" if is_active else "normal"
-        color = COLORS['blue'] if is_active else COLORS['text']
+
+        weight = "normal"
+        color = COLORS['text']
         row["name"].setStyleSheet(f"font-size: 13px; font-weight: {weight}; color: {color};")
 
     def update_queue_ui(self):
@@ -1973,8 +2030,8 @@ class CopynDownApp(QMainWindow):
 
         self.lbl_1, self.menu_1 = self._field("Quality", ["2160p (4K)", "1440p (QHD)", "1080p (AV1/VP9)", "1080p (H.264)", "720p", "480p", "360p"])
         self.lbl_2, self.menu_2 = self._field("Format", ["MP4", "MKV", "WEBM"])
-        self.lbl_3, self.menu_3 = self._field("Video Codec", ["Original", "H.264", "H.265", "VP9"])
-        self.lbl_4, self.menu_4 = self._field("Audio Codec", ["Original", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"])
+        self.lbl_3, self.menu_3 = self._field("Video Codec", ["Copy", "H.264", "H.265", "VP9"])
+        self.lbl_4, self.menu_4 = self._field("Audio Codec", ["Copy", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"])
 
         self.options_frame = QWidget()
         opt_lay = QVBoxLayout(self.options_frame); opt_lay.setContentsMargins(0, 0, 0, 0); opt_lay.setSpacing(15)
@@ -2054,10 +2111,24 @@ class CopynDownApp(QMainWindow):
         self.main_stack.addWidget(self.queue_page)
         
         queue_header = QHBoxLayout()
-        self.btn_back = QPushButton("❮ Back")
+        self.btn_back = QPushButton(" Back")
         self.btn_back.setObjectName("browseButton")
-        self.btn_back.setFixedWidth(80)
+        self.btn_back.setFixedWidth(85)
+        self.btn_back.setProperty("icon_name", "back")
+        self.set_button_icon(self.btn_back, "back")
         self.btn_back.clicked.connect(lambda: self.main_stack.setCurrentIndex(0))
+
+        def on_back_enter(event):
+            QPushButton.enterEvent(self.btn_back, event)
+            if self.btn_back.isEnabled():
+                self.set_button_icon(self.btn_back, "back", theme="dark")
+
+        def on_back_leave(event):
+            QPushButton.leaveEvent(self.btn_back, event)
+            self.set_button_icon(self.btn_back, "back")
+
+        self.btn_back.enterEvent = on_back_enter
+        self.btn_back.leaveEvent = on_back_leave
         queue_title = QLabel("Activity")
         queue_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         queue_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2097,7 +2168,7 @@ class CopynDownApp(QMainWindow):
         self.btn_open_location.enterEvent = on_open_loc_enter
         self.btn_open_location.leaveEvent = on_open_loc_leave
         
-        self.btn_clear = QPushButton("Clear queue")
+        self.btn_clear = QPushButton("Clear history")
         self.btn_clear.setObjectName("dangerButton")
         self.btn_clear.setFixedWidth(120)
         self.btn_clear.clicked.connect(self.clear_entire_queue)
@@ -2197,15 +2268,15 @@ class CopynDownApp(QMainWindow):
             self.lbl_1.setText("Quality"); self.set_combo(self.menu_1, ["Auto", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)"], "Auto")
             self.lbl_2.setText("Format"); self.set_combo(self.menu_2, ["M4A", "MP3", "FLAC", "WAV", "Opus"], "M4A")
         elif tab == self.TAB_C_VID:
-            self.lbl_1.setText("Resolution"); self.set_combo(self.menu_1, ["Original", "2160p (4K)", "1440p (QHD)", "1080p", "720p", "480p", "360p"], "Original")
+            self.lbl_1.setText("Resolution"); self.set_combo(self.menu_1, ["Copy", "2160p (4K)", "1440p (QHD)", "1080p", "720p", "480p", "360p"], "Copy")
             self.lbl_2.setText("Output Format"); self.set_combo(self.menu_2, ["MP4", "MKV", "WEBM", "MOV", "AVI"], "MP4")
-            self.lbl_3.setText("Video Codec"); self.set_combo(self.menu_3, ["Original", "H.264", "H.265", "VP9"], "Original")
-            self.lbl_4.setText("Audio Codec"); self.set_combo(self.menu_4, ["Original", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"], "Original")
+            self.lbl_3.setText("Video Codec"); self.set_combo(self.menu_3, ["Copy", "H.264", "H.265", "VP9"], "Copy")
+            self.lbl_4.setText("Audio Codec"); self.set_combo(self.menu_4, ["Copy", "AAC", "MP3", "FLAC", "ALAC", "Opus", "None (Video Only)"], "Copy")
         else:
             self.lbl_1.setText("Bitrate"); self.set_combo(self.menu_1, ["Auto", "320 kbps", "256 kbps", "192 kbps", "128 kbps"], "Auto")
             self.lbl_2.setText("Output Format"); self.set_combo(self.menu_2, ["M4A", "MP3", "FLAC", "WAV", "Opus", "Ogg"], "M4A")
-            self.lbl_3.setText("Audio Channels"); self.set_combo(self.menu_3, ["Original", "Stereo (2.0)", "Mono (1.0)"], "Original")
-            self.lbl_4.setText("Sample Rate"); self.set_combo(self.menu_4, ["Original", "48000 Hz", "44100 Hz"], "Original")
+            self.lbl_3.setText("Audio Channels"); self.set_combo(self.menu_3, ["Copy", "Stereo (2.0)", "Mono (1.0)"], "Copy")
+            self.lbl_4.setText("Sample Rate"); self.set_combo(self.menu_4, ["Copy", "48000 Hz", "44100 Hz"], "Copy")
 
         self.update_folder_context()
         self.evaluate_ui_state()
@@ -2421,15 +2492,19 @@ class CopynDownApp(QMainWindow):
             getattr(self, 'settings_btn', None), 
             getattr(self, 'logs_btn', None), 
             getattr(self, 'queue_btn', None), 
-            getattr(self, 'btn_open_location', None)
+            getattr(self, 'btn_open_location', None),
+            getattr(self, 'btn_back', None)
         ]
         for btn in icon_buttons:
             if btn and btn.property("icon_name"): self.set_button_icon(btn, btn.property("icon_name"))
             
         if hasattr(self, 'queue_rows'):
-            for row in self.queue_rows:
-                # Atualiza o fundo do card
-                row["frame"].setStyleSheet(f"QFrame {{ background-color: {COLORS['input']}; border-radius: 8px; }}")
+            for i, row in enumerate(self.queue_rows):
+                is_sel = (i < len(self.download_queue) and self.download_queue[i] is getattr(self, "selected_task", None))
+                border = f"1px solid {COLORS['blue']}" if is_sel else "1px solid transparent"
+                row["frame"].setStyleSheet(
+                    f"QFrame#queueCard {{ background-color: {COLORS['input']}; border: {border}; border-radius: 8px; }}"
+                )
                 
                 # Atualiza o botão de Ação (Play/Stop/Restart)
                 btn_style = (f"QPushButton {{ background-color: {COLORS['button']}; color: {COLORS['text']}; border-radius: 4px; padding: 0px; font-weight: bold; font-size: 15px; }}"
@@ -2514,6 +2589,8 @@ class CopynDownApp(QMainWindow):
         if is_json: cmd.append("-J")
         else:
             cmd.append("--newline")
+            if gen_cfg.get("debug_mode", False):
+                cmd.append("-v")
             
             # Garante um valor numérico válido para as retentativas (fallback para "10" se estiver vazio/inválido)
             retries = str(gen_cfg.get("max_retries", "10")).strip()
@@ -2721,12 +2798,15 @@ class CopynDownApp(QMainWindow):
             except Exception:
                 self.safe_ui(self.status_error, "ERROR: FFmpeg is missing! Please check your 'bin' folder.")
                 return
-        cmd = [ff_exe, "-y", "-i", src]
+        cmd = [ff_exe, "-y"]
+        if gen_cfg.get("debug_mode", False):
+            cmd.extend(["-loglevel", "verbose"])
+        cmd.extend(["-i", src])
         pending_logs = []
 
         if is_vid:
-            vc_map = {"Original": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
-            ac_map = {"Original": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "ALAC": "alac", "Opus": "libopus", "None (Video Only)": "none"}
+            vc_map = {"Copy": "copy", "H.264": "libx264", "H.265": "libx265", "VP9": "libvpx-vp9"}
+            ac_map = {"Copy": "copy", "AAC": "aac", "MP3": "libmp3lame", "FLAC": "flac", "ALAC": "alac", "Opus": "libopus", "None (Video Only)": "none"}
             vc, ac = vc_map.get(self.menu_3.currentText(), "copy"), ac_map.get(self.menu_4.currentText(), "copy")
             
             if e_fin in ["mp4", "mov"] and ac == "flac":
@@ -2735,7 +2815,7 @@ class CopynDownApp(QMainWindow):
                 
             r_c = self.menu_1.currentText()
             sf = None
-            if r_c != "Original" and vc != "none":
+            if r_c != "Copy" and vc != "none":
                 th = {"2160p (4K)": "2160", "1440p (QHD)": "1440", "1080p": "1080", "720p": "720", "480p": "480", "360p": "360"}.get(r_c)
                 if th:
                     sf = f"scale=-2:{th}"
@@ -2834,8 +2914,8 @@ class CopynDownApp(QMainWindow):
                 elif br == "Auto":
                     if ac in ["libmp3lame", "libvorbis"]: cmd.extend(["-q:a", "2"])
                     elif ac in ["aac", "libopus"]: cmd.extend(["-b:a", "192k"])
-                if sr != "Original" and ac != "copy": cmd.extend(["-ar", sr.replace(" Hz", "")])
-                if ch != "Original" and ac != "copy": cmd.extend(["-ac", "2" if "Stereo" in ch else "1"])
+                if sr != "Copy" and ac != "copy": cmd.extend(["-ar", sr.replace(" Hz", "")])
+                if ch != "Copy" and ac != "copy": cmd.extend(["-ac", "2" if "Stereo" in ch else "1"])
         
         cmd.append(dst); self.run_command(cmd, base, pending_logs, dest_folder=save_dir)
     
@@ -3020,6 +3100,8 @@ class CopynDownApp(QMainWindow):
 
         for log_msg in task.get("logs", []): self.add_to_log(log_msg)
 
+        debug_mode = self.config_data.get("General", {}).get("debug_mode", False)
+
         def worker():
             err = False
             last_reported_progress = -1
@@ -3027,9 +3109,16 @@ class CopynDownApp(QMainWindow):
             post_processors = (
                 "[Merger]", "[ModifyChapters]", "[SplitChapters]", "[ExtractAudio]",
                 "[VideoRemuxer]", "[VideoConvertor]", "[Metadata]", "[EmbedSubtitle]",
-                "[EmbedThumbnail]", "[SubtitlesConvertor]", "[ThumbnailsConvertor]"
+                "[EmbedThumbnail]", "[SubtitlesConvertor]", "[ThumbnailsConvertor]",
+                "[FixupStretched]", "[FixupM4a]", "[FixupM3u8]", "[FixupTimestamp]",
+                "[FixupDuration]"
             )
             try:
+                if debug_mode:
+                    import shlex
+                    cmd_str = subprocess.list2cmdline(cmd) if self.is_windows else shlex.join(cmd)
+                    self.safe_ui(self.add_to_log, f"[Debug] Command: {cmd_str}")
+
                 kwargs = {'startupinfo': self.startupinfo}
                 if not self.is_windows: kwargs['preexec_fn'] = os.setsid
                 self.current_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8', errors='replace', **kwargs)
@@ -3087,7 +3176,7 @@ class CopynDownApp(QMainWindow):
                                 task["progress"] = 100
                                 self.safe_ui(self.update_queue_ui)
                                 
-                        elif "B/s" not in c and "ETA" not in c and "time=" not in c: 
+                        elif debug_mode or ("B/s" not in c and "ETA" not in c and "time=" not in c): 
                             self.safe_ui(self.add_to_log, c)
                             
                         if not is_conv:
